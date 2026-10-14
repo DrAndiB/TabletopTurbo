@@ -80,4 +80,4 @@ Run from `_dev/tools/` with the local server running.
 ## Publishing
 
 The website is served by GitHub Pages from the `main` branch of DrAndiB/DrAndiB.github.io.
-Pushing to `main` publishes within a few minutes. Releases are tagged `tabletop-turbo-vX.Y`.
+Pushing to `main` publishes within a few minutes. Restore points are kept as branches named `release/tabletop-turbo-vX.Y`.
