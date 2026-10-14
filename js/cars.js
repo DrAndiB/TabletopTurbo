@@ -48,6 +48,10 @@ export function mergeByMaterial(group, keep = () => false) {
   return group;
 }
 
+function metallicMat(color) {
+  return new THREE.MeshPhysicalMaterial({ color, roughness: 0.22, metalness: 0.55, clearcoat: 1, clearcoatRoughness: 0.04 });
+}
+
 function bodyMat(color) {
   return new THREE.MeshPhysicalMaterial({ color, roughness: 0.3, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.06 });
 }
@@ -142,6 +146,31 @@ function makeRoverWheel(r, w, M) {
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.2, r * 0.2, w * 1.1, 10), M.alu);
   hub.rotation.x = Math.PI / 2; g.add(hub);
   mergeByMaterial(g); // two draw calls per wheel: aluminium and the dark faces
+  return g;
+}
+
+// Monster-truck tyre: fat, deeply lugged, with a coloured rim.
+function makeMonsterWheel(r, w, rimMat, M) {
+  const g = new THREE.Group();
+  const tire = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.9, r * 0.9, w, 24, 1), M.tire);
+  tire.rotation.x = Math.PI / 2; g.add(tire);
+  for (const s of [-1, 1]) {
+    const bulge = new THREE.Mesh(new THREE.TorusGeometry(r * 0.78, w * 0.2, 8, 24), M.tire);
+    bulge.position.z = s * w * 0.36; g.add(bulge);
+  }
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const lug = new THREE.Mesh(new THREE.BoxGeometry(r * 0.2, r * 0.16, w * 0.46), M.tire);
+    lug.position.set(Math.cos(a) * r * 0.93, Math.sin(a) * r * 0.93, (i % 2 ? 1 : -1) * w * 0.25);
+    lug.rotation.z = a; g.add(lug);
+  }
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.5, r * 0.5, w * 1.04, 16), rimMat);
+  rim.rotation.x = Math.PI / 2; g.add(rim);
+  for (let i = 0; i < 6; i++) {
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(r * 0.85, r * 0.1, w * 1.08), M.darkRim);
+    sp.rotation.z = (i / 6) * Math.PI; g.add(sp);
+  }
+  mergeByMaterial(g);
   return g;
 }
 
@@ -371,17 +400,155 @@ export function buildCar(type, colorDef, num) {
     dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
     dec.position.set(1.15, 0.555, 0);
     tilt.add(dec);
+  } else if (type === 'hover') {
+    // hovercraft: black rubber skirt, deck in the player's colour, glass cabin, ducted fan with rudders
+    const skirt = add(new THREE.Mesh(new RoundedBoxGeometry(4.3, 0.62, 2.5, 4, 0.3), M.black));
+    skirt.position.y = 0.31;
+    const deck = add(new THREE.Mesh(new RoundedBoxGeometry(3.95, 0.3, 2.15, 3, 0.14), body));
+    deck.position.y = 0.72;
+    const stripe = add(new THREE.Mesh(new RoundedBoxGeometry(4.0, 0.08, 2.2, 2, 0.04), M.white));
+    stripe.position.y = 0.6;
+    const cabin = add(new THREE.Mesh(new RoundedBoxGeometry(1.7, 0.62, 1.5, 3, 0.25), M.glass));
+    cabin.position.set(0.45, 1.12, 0);
+    const roof = add(new THREE.Mesh(new RoundedBoxGeometry(1.2, 0.1, 1.3, 2, 0.05), body));
+    roof.position.set(0.3, 1.46, 0);
+    const duct = add(new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.13, 10, 28), dark));
+    duct.rotation.y = Math.PI / 2; duct.position.set(-1.5, 1.42, 0);
+    for (const sz of [-0.55, 0.55]) {
+      const strut = add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.1), M.darkRim));
+      strut.position.set(-1.5, 0.95, sz);
+    }
+    const dec = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), numberDecal(num, colorDef));
+    dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
+    dec.position.set(1.55, 0.885, 0);
+    tilt.add(dec);
+  } else if (type === 'snowmobile') {
+    // snowmobile: coloured cowl, windscreen, rider, seat, rubber track and two steering skis
+    const cowl = add(new THREE.Mesh(profileExtrude(smoothProfile([[2.15, 0.5], [1.6, 0.42], [-0.1, 0.48], [-0.25, 0.8], [0.15, 1.12], [0.95, 1.05], [1.85, 0.78]], 2), 1.35, 0.14), body));
+    const wind = add(new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.5, 1.1, 2, 0.03), M.glass));
+    wind.position.set(0.3, 1.32, 0); wind.rotation.z = -0.5;
+    const tunnel = add(new THREE.Mesh(new RoundedBoxGeometry(2.3, 0.38, 1.15, 2, 0.1), dark));
+    tunnel.position.set(-1.05, 0.72, 0);
+    const seat = add(new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.3, 0.75, 2, 0.12), M.black));
+    seat.position.set(-0.95, 1.02, 0);
+    const track = add(new THREE.Mesh(new RoundedBoxGeometry(2.35, 0.5, 0.95, 3, 0.22), M.tire));
+    track.position.set(-1.05, 0.32, 0);
+    for (let i = 0; i < 9; i++) {
+      const lug = add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.98), M.darkRim));
+      lug.position.set(-2.05 + i * 0.25, 0.58, 0);
+    }
+    const bar = add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2, 8), M.chrome));
+    bar.rotation.x = Math.PI / 2; bar.position.set(0.05, 1.42, 0);
+    // rider: jacket in the dark colour, white helmet with visor
+    const torso = add(new THREE.Mesh(new RoundedBoxGeometry(0.55, 0.72, 0.68, 2, 0.2), dark));
+    torso.position.set(-0.55, 1.5, 0); torso.rotation.z = -0.25;
+    const helmet = add(new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 14), M.white));
+    helmet.position.set(-0.4, 2.05, 0);
+    const visor = add(new THREE.Mesh(new THREE.SphereGeometry(0.325, 20, 10, -0.9, 1.8, 1.0, 0.7), M.helmetVisor));
+    visor.position.copy(helmet.position);
+    const dec = new THREE.Mesh(new THREE.CircleGeometry(0.36, 24), numberDecal(num, colorDef));
+    dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
+    dec.position.set(-1.75, 0.925, 0);
+    tilt.add(dec);
+    // skis steer like front wheels (they don't spin)
+    for (const sz of [-0.78, 0.78]) {
+      const pivot = new THREE.Group();
+      pivot.position.set(1.25, 0.1, sz);
+      const ski = new THREE.Group();
+      const plank = new THREE.Mesh(new RoundedBoxGeometry(2.0, 0.08, 0.34, 2, 0.03), M.black);
+      const tip = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.08, 0.34, 2, 0.03), M.black);
+      tip.position.set(1.15, 0.14, 0); tip.rotation.z = 0.55;
+      const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.55, 8), M.chrome);
+      strut.position.set(0, 0.3, 0);
+      ski.add(plank, tip, strut);
+      ski.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+      pivot.add(ski); tilt.add(pivot);
+      wheels.push({ pivot, spinner: ski, front: true, r: 1, noSpin: true });
+    }
+  } else if (type === 'monster') {
+    // monster truck: pickup body in the player's colour high on a chassis with springs, roll bar and lights
+    const frame = add(new THREE.Mesh(new RoundedBoxGeometry(3.6, 0.32, 1.3, 2, 0.08), M.black));
+    frame.position.y = 1.15;
+    for (const sx of [-1.45, 1.45]) {
+      const axle = add(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 2.5, 10), M.darkRim));
+      axle.rotation.x = Math.PI / 2; axle.position.set(sx, 1.0, 0);
+      for (const sz of [-0.55, 0.55]) {
+        const spring = add(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.7, 10), dark));
+        spring.position.set(sx, 1.35, sz);
+      }
+    }
+    const lower = [[-2.2, 1.55], [2.15, 1.55], [2.3, 1.75], [2.25, 2.1], [0.9, 2.2], [-2.2, 2.25], [-2.3, 2.1], [-2.3, 1.7]];
+    add(new THREE.Mesh(profileExtrude(smoothProfile(lower, 2), 2.3, 0.16), body));
+    const cab = add(new THREE.Mesh(profileExtrude(smoothProfile([[0.9, 2.15], [0.35, 2.85], [-0.75, 2.88], [-0.95, 2.18]], 1), 2.05, 0.12, 2), M.glass));
+    const roof = add(new THREE.Mesh(new RoundedBoxGeometry(1.05, 0.1, 1.95, 2, 0.04), body));
+    roof.position.set(-0.22, 2.9, 0);
+    const bed = add(new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.08, 1.95), M.black));
+    bed.position.set(-1.6, 2.27, 0);
+    const bar = add(new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.07, 8, 20, Math.PI), M.chrome));
+    bar.position.set(-1.1, 2.27, 0); bar.rotation.y = Math.PI / 2; bar.scale.set(1, 0.7, 1);
+    for (const sz of [-0.45, -0.15, 0.15, 0.45]) {
+      const l = add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.08, 12), M.head));
+      l.rotation.z = Math.PI / 2; l.position.set(0.25, 2.97, sz);
+    }
+    for (const sz of [-0.75, 0.75]) {
+      const h = add(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.08, 14), M.head));
+      h.rotation.z = Math.PI / 2; h.position.set(2.3, 1.9, sz);
+    }
+    const flame = add(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.5), M.white));
+    flame.position.set(1.35, 2.2, 0); flame.rotation.z = -0.07;
+    const dec = new THREE.Mesh(new THREE.CircleGeometry(0.45, 24), numberDecal(num, colorDef));
+    dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
+    dec.position.set(-0.22, 2.96, 0);
+    tilt.add(dec);
+    wheelR = 1.0; wheelW = 0.9; wx = 1.45; wz = 1.38; wy = 1.0;
+  } else if (type === 'suv') {
+    // luxury SUV: metallic paint, tinted glass, chrome grille and trim, roof rails, big polished rims
+    const paint = metallicMat(colorDef.body);
+    const lower = [[-2.25, 0.42], [2.12, 0.42], [2.32, 0.7], [2.3, 1.12], [1.25, 1.3], [-2.2, 1.36], [-2.34, 1.18], [-2.34, 0.58]];
+    add(new THREE.Mesh(profileExtrude(smoothProfile(lower, 2), 2.24, 0.16), paint));
+    add(new THREE.Mesh(profileExtrude(smoothProfile([[1.2, 1.28], [0.5, 1.92], [-1.9, 1.96], [-2.2, 1.34]], 1), 1.98, 0.1, 2), M.glass));
+    const roof = add(new THREE.Mesh(new RoundedBoxGeometry(2.35, 0.1, 1.9, 2, 0.04), paint));
+    roof.position.set(-0.72, 1.98, 0);
+    const sun = add(new THREE.Mesh(new RoundedBoxGeometry(0.9, 0.04, 1.0, 2, 0.02), M.glass));
+    sun.position.set(-0.3, 2.04, 0);
+    for (const sz of [-0.82, 0.82]) {
+      const rail = add(new THREE.Mesh(new RoundedBoxGeometry(2.2, 0.08, 0.08, 2, 0.03), M.chrome));
+      rail.position.set(-0.75, 2.1, sz);
+      const trim = add(new THREE.Mesh(new RoundedBoxGeometry(3.3, 0.05, 0.04, 1, 0.02), M.chrome));
+      trim.position.set(-0.45, 1.3, sz * 1.21);
+    }
+    const grille = add(new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.48, 1.25, 2, 0.06), M.chrome));
+    grille.position.set(2.3, 0.86, 0);
+    for (let i = 0; i < 4; i++) {
+      const slat = add(new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 1.1), M.black));
+      slat.position.set(2.32, 0.7 + i * 0.1, 0);
+    }
+    for (const sz of [-0.82, 0.82]) {
+      const h = add(new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.09, 0.42, 2, 0.03), M.head));
+      h.position.set(2.27, 1.06, sz);
+      const t = add(new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.1, 0.5, 2, 0.03), M.tail));
+      t.position.set(-2.33, 1.08, sz * 0.95);
+    }
+    for (const sx of [1.35, -1.35]) for (const sz of [-1.12, 1.12]) {
+      const arch = add(new THREE.Mesh(new RoundedBoxGeometry(1.25, 0.34, 0.06, 2, 0.03), M.black));
+      arch.position.set(sx, 0.62, sz);
+    }
+    const dec = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), numberDecal(num, colorDef));
+    dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
+    dec.position.set(-1.3, 2.055, 0);
+    tilt.add(dec);
+    wheelR = 0.6; wheelW = 0.5; wx = 1.38; wz = 1.08; wy = 0.6;
   }
 
   // wheels
-  const rimMat = type === 'truck' ? M.darkRim : M.rim;
-  const axles = type === 'rover' ? [[wx, true], [0.0, false], [-1.45, false]] : type === 'boat' ? [] : [[wx, true], [-wx, false]];
+  const rimMat = type === 'truck' ? M.darkRim : type === 'monster' ? dark : type === 'suv' ? M.chrome : M.rim;
+  const axles = type === 'rover' ? [[wx, true], [0.0, false], [-1.45, false]] : (type === 'boat' || type === 'hover' || type === 'snowmobile') ? [] : [[wx, true], [-wx, false]];
   for (const [sx, front] of axles) {
     for (const sz of [-wz, wz]) {
       const pivot = new THREE.Group();
       pivot.position.set(sx, wy, sz);
       const r = type === 'formula' && !front ? wheelR * 1.12 : wheelR;
-      const w = type === 'rover' ? makeRoverWheel(r, wheelW, M) : makeWheel(r, wheelW, rimMat, M);
+      const w = type === 'rover' ? makeRoverWheel(r, wheelW, M) : type === 'monster' ? makeMonsterWheel(r, wheelW, rimMat, M) : makeWheel(r, wheelW, rimMat, M);
       if (type === 'formula' && !front) pivot.position.y = r;
       w.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
       pivot.add(w);
@@ -397,8 +564,30 @@ export function buildCar(type, colorDef, num) {
   shadow.scale.set(6.2, 3.9, 1);
   shadow.renderOrder = 1;
 
+  let fan = null;
+  if (type === 'hover') {
+    fan = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const blade = new THREE.Mesh(new RoundedBoxGeometry(0.06, 1.15, 0.2, 1, 0.03), M.darkRim);
+      blade.rotation.x = (i / 3) * Math.PI; fan.add(blade);
+    }
+    const hubM = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 8), M.chrome); fan.add(hubM);
+    fan.position.set(-1.5, 1.42, 0);
+    fan.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+    tilt.add(fan);
+    // rudders behind the fan turn with the steering
+    for (const sz of [-0.32, 0.32]) {
+      const pivot = new THREE.Group(); pivot.position.set(-2.0, 1.42, sz);
+      const rud = new THREE.Mesh(new RoundedBoxGeometry(0.42, 1.0, 0.06, 1, 0.02), dark);
+      rud.position.x = -0.18; rud.castShadow = true; pivot.add(rud); tilt.add(pivot);
+      wheels.push({ pivot, spinner: rud, front: true, r: 1, noSpin: true });
+    }
+    shadow.scale.set(5.4, 3.4, 1);
+  }
   if (type === 'boat') shadow.scale.set(5.6, 3.0, 1);
-  return { root, tilt, wheels, shadow, body, boat: type === 'boat' };
+  if (type === 'monster') shadow.scale.set(6.6, 4.8, 1);
+  if (type === 'suv') shadow.scale.set(6.4, 4.0, 1);
+  return { root, tilt, wheels, shadow, body, boat: type === 'boat', hover: type === 'hover', monster: type === 'monster', fan };
 }
 
 // Apply physics state to a car model.
@@ -425,8 +614,19 @@ export function syncCar(model, car, t) {
     tilt.rotation.x = Math.sin(car.tumbleAxis) * car.tumble;
     tilt.rotation.z = Math.cos(car.tumbleAxis) * car.tumble;
   }
+  if (model.hover && car.state === 'drive') {
+    const ph = t * 6 + car.index * 1.3;
+    tilt.position.y = car.airborne ? 0.1 : 0.12 + Math.sin(ph) * 0.05; // floats on its air cushion
+    tilt.rotation.x = Math.max(-0.14, Math.min(0.14, -car.w * Math.abs(car.fwdSpeed) * 0.0016)) + Math.sin(ph * 0.7) * 0.02; // leans out of turns
+  }
+  if (model.fan) model.fan.rotation.x = t * (14 + Math.abs(car.throttle) * 30);
+  if (model.monster && car.state === 'drive' && !car.airborne) {
+    const sp = Math.min(1, car.speed / 40);
+    tilt.position.y = Math.sin(t * 11 + car.index * 2.1) * 0.06 * sp;
+    tilt.rotation.x *= 1.8; // soft suspension: more body roll
+  }
   for (const wh of wheels) {
-    wh.spinner.rotation.z = -car.wheelSpin * (0.5 / wh.r);
+    if (!wh.noSpin) wh.spinner.rotation.z = -car.wheelSpin * (0.5 / wh.r);
     if (wh.front) wh.pivot.rotation.y = -car.steerVis * 0.45;
   }
   const groundY = car.groundY ?? 0;

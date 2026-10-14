@@ -254,3 +254,19 @@ body:not([data-screen="none"]) #touch { display: none; }
 .pod-3 .pod-block { height: 52px; }
 .podium + .standings { margin-top: 0; border-top: var(--line) solid var(--ink); padding-top: 10px; }
 @media (prefers-reduced-motion: reduce) { .podium-panel .trophy { animation: none; } }
+
+/* thirteen tables: compact tiles (thumbnail + name), the selected table's description below */
+.world-list, .world-list.champ { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.world-card { display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 5px; border-radius: 12px; }
+.world-card .thumb, .world-card .thumb { width: 100%; height: auto; aspect-ratio: 16 / 10; border-radius: 8px; grid-row: auto; }
+.world-card .wname { font-size: 14.5px; line-height: 1.08; align-self: stretch; display: block; text-align: center; padding: 0 2px 2px; }
+.world-card .wblurb { display: none; }
+.world-card .wbest { display: block; width: max-content; margin: 3px auto 0; font-size: 10.5px; padding: 0 6px; }
+.world-blurb { margin: 8px 2px 0; font-size: 13px; line-height: 1.35; color: var(--ink-2); min-height: 2.7em; }
+.world-blurb b { color: var(--ink); }
+@media (max-width: 860px) { .world-list, .world-list.champ { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-height: 760px) and (min-width: 861px) {
+  .world-card { grid-template-columns: none; }
+  .world-card .thumb { width: 100%; height: auto; }
+  .world-card .wname { font-size: 13.5px; }
+}

@@ -160,6 +160,7 @@ export class Game {
       }
       const p = tr.place(s0 - back, lat);
       e.car.place(p.x, p.z, p.angle);
+      e.car.y = e.car.groundY = this.physics.groundAt(p.x, p.z).g; // grid slots on a ramp or platform
       e.car.turbo = 0; e.car.bog = 0;
       e.out = false; e.offT = 0; e.respawnT = 0;
       const n = tr.nearest(p.x, p.z);
@@ -522,6 +523,7 @@ export class Game {
     }
     const p = tr.place(s, lat);
     c.place(p.x, p.z, p.angle);
+    c.y = c.groundY = this.physics.groundAt(p.x, p.z).g; // respawning on a viaduct, bridge or platform
     c.ghost = 1.2;
     e.offT = 0; e.respawnT = 0;
     const n = tr.nearest(p.x, p.z, e.trackI);
@@ -875,6 +877,16 @@ export class Game {
         if (c.slip > 10 && sp > 15 && Math.random() < dt * 30) {
           const side = Math.sign(-c.vx * sn + c.vz * cs) || 1;
           this.particles.emit(c.x + cs * 1.2 + sn * side, 0.5, c.z + sn * 1.2 - cs * side, { color: wake.color, size: 0.6, life: 0.45, spread: 6, up: 9, grav: 40, grow: 1.2, alpha: 0.85 });
+        }
+        continue;
+      }
+      if (c.spec.hover) {
+        // hovercraft: a ring of spray/dust blown out from under the skirt, no skid marks
+        const surf = this.def.dust?.[c.surface] || this.def.dust?.normal;
+        const col = c.surface === 'water' ? (this.def.wake?.color ?? 0xf4fbff) : (surf?.color ?? this.def.hoverSpray ?? 0xe8e4dc);
+        if (Math.random() < dt * (5 + sp * 0.6)) {
+          const a = Math.random() * Math.PI * 2;
+          this.particles.emit(c.x + Math.cos(a) * 2.2, 0.2, c.z + Math.sin(a) * 1.5, { color: col, size: 0.9, life: 0.5, spread: 3, up: 1.2, grav: 2, grow: 2.4, alpha: 0.4, vx: Math.cos(a) * 6 - c.vx * 0.2, vz: Math.sin(a) * 6 - c.vz * 0.2 });
         }
         continue;
       }

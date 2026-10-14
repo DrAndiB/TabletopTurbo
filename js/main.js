@@ -114,9 +114,15 @@ function renderLobby() {
     const bestTag = best ? `<span class="wbest" title="Your best time-trial lap">Best ${formatTime(best.t)}</span>` : '';
     b.innerHTML = `<span class="thumb" style="background-image:url(img/${w.id}.jpg)">${mode === 'champ' ? `<span class="wnum">${i + 1}</span>` : ''}</span><span class="wname">${w.name}${bestTag}</span><span class="wblurb">${w.blurb}</span>`;
     if (mode === 'champ') b.setAttribute('aria-disabled', 'true');
+    b.title = `${w.name}: ${w.blurb}`;
     b.onclick = () => { if (settings.mode === 'champ') return; sound.click(); settings.world = w.id; saveSettings(); renderLobby(); };
     wl.appendChild(b);
   });
+  // the tiles only show names: describe the selected table underneath
+  const sel = WORLDS.find((w) => w.id === settings.world) || WORLDS[0];
+  $('#world-blurb').innerHTML = mode === 'champ'
+    ? `One race on each of the ${WORLDS.length} tables, in this order.`
+    : `<b>${sel.name}</b> · ${sel.blurb}`;
   // players
   const pl = $('#player-list');
   pl.innerHTML = '';

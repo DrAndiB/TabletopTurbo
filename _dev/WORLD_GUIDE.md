@@ -78,7 +78,14 @@ export default {
   use it for force zones such as water currents, wind or a fan (e.g. `for (const e of game.cars) { const c = e.car; if (c.state === 'drive' && inside(c.x, c.z)) { c.vx += fx * dt; c.vz += fz * dt; } }`).
   Keep it cheap. (`animate` only runs when frames are rendered; `tick` also runs in test simulations.)
 - World options: `gravity: 0.6` scales gravity (Mars); `wake: {color}` sets boat foam colour.
-- Vehicles: `sports | formula | rally | truck | rover | boat`. Boats float at y = 0 (waterline), drift through
+- Vehicles: `sports | formula | rally | truck | rover | boat | hover | snowmobile | monster | suv`.
+  `hover` (hovercraft) ignores water/slow/sticky/rough penalties (slick still slides) and floats on a cushion;
+  `monster` (monster truck) rides over colliders lower than 1.7 and climbs steps up to 1.8 (mark a collider
+  `solid: true` to block it anyway); `snowmobile` steers on skis; `suv` is a heavy luxury SUV.
+- Kickers: give any static or moving collider `kick: <speed>` (e.g. 45) and cars/pushables that touch it are fired
+  away at least at that speed (pinball bumpers, slingshots, springs). Every collider counts contacts in
+  `c.hits`, so `animate` can flash a light when it changes.
+- Boats float at y = 0 (waterline), drift through
   turns, bob and bank, and leave a foam wake instead of skid marks.
 - Physics: `K.circle(x, z, r, h)`, `K.box(x, z, halfW, halfD, angle, h)`, `K.capsule(x1, z1, x2, z2, r, h)` — `h` = height; a car in the air above `h` passes over.
   `K.surface(kind, {poly} | {x, z, r})` — kinds: `slick` (spins, e.g. milk/oil/ink), `sticky` (jam/glue/paint), `slow` (sand/sawdust/grass), `rough`, `water` (puddles).

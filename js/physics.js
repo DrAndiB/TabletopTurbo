@@ -11,6 +11,14 @@ export const VEHICLES = {
   rover: { maxSpeed: 44, accel: 60, brake: 120, reverseMax: 17, turnRate: 3.35, latGrip: 150, drag: 0.22, rolling: 6, len: 4.4, wid: 2.5, r: 1.22, axle: 1.1, mass: 1.2, offroadGrip: 1.0 },
   // toy speedboat: drifts through turns, coasts to a stop quickly, floats (see spec.boat in game/cars)
   boat: { maxSpeed: 45, accel: 58, brake: 95, reverseMax: 14, turnRate: 3.1, latGrip: 62, drag: 0.5, rolling: 14, len: 4.6, wid: 2.1, r: 1.12, axle: 1.15, mass: 1.0, boat: true, yawFollow: 0.45 },
+  // hovercraft: glides over water, sand and land alike, slides through every turn
+  hover: { maxSpeed: 45, accel: 56, brake: 70, reverseMax: 14, turnRate: 3.2, latGrip: 50, drag: 0.3, rolling: 4, len: 4.3, wid: 2.4, r: 1.2, axle: 1.05, mass: 0.9, yawFollow: 0.55, hover: true },
+  // snowmobile: skis and a track; sure-footed in snow, a little loose
+  snowmobile: { maxSpeed: 46, accel: 62, brake: 100, reverseMax: 15, turnRate: 3.3, latGrip: 105, drag: 0.24, rolling: 6, len: 4.3, wid: 2.0, r: 1.08, axle: 1.1, mass: 0.95, offroadGrip: 1.0, yawFollow: 0.8 },
+  // monster truck: heavy, rides over low obstacles (clearance) and climbs small steps (stepUp)
+  monster: { maxSpeed: 44, accel: 60, brake: 110, reverseMax: 17, turnRate: 3.1, latGrip: 135, drag: 0.2, rolling: 5, len: 4.6, wid: 3.0, r: 1.45, axle: 1.05, mass: 1.5, offroadGrip: 1.0, clearance: 1.7, stepUp: 1.8 },
+  // luxury SUV: heavy and planted
+  suv: { maxSpeed: 46, accel: 60, brake: 115, reverseMax: 17, turnRate: 3.2, latGrip: 140, drag: 0.22, rolling: 6, len: 4.6, wid: 2.3, r: 1.2, axle: 1.15, mass: 1.3 },
   rally: { maxSpeed: 46, accel: 66, brake: 120, reverseMax: 17, turnRate: 3.4, latGrip: 140, drag: 0.22, rolling: 6, len: 4.3, wid: 2.25, r: 1.14, axle: 1.05, mass: 1.05 },
 };
 
@@ -303,6 +311,7 @@ export class PhysicsWorld {
     car.surface = kind;
     let S = SURFACES[kind] || SURFACES.normal;
     if (kind === 'slow' && sp.offroadGrip) S = { ...S, drag: S.drag * 0.45, top: Math.min(1, S.top + 0.2), accel: 0.95 };
+    if (sp.hover && (kind === 'water' || kind === 'slow' || kind === 'sticky' || kind === 'rough')) S = { ...S, grip: 1, drag: S.drag * 0.25, top: Math.max(S.top, 0.92), accel: Math.max(S.accel, 0.9), spin: 0 };
     // speedMul scales top speed, accelMul the engine (catch-up, slipstream, turbo start)
     const top = sp.maxSpeed * S.top * (ctx?.speedMul ?? 1);
     const accMul = ctx?.accelMul ?? 1;
@@ -362,6 +371,14 @@ export class PhysicsWorld {
 
     // vertical: ramps, platforms, drops
     const gr = this.groundAt(car.x, car.z);
+    if (sp.clearance) {
+      // big wheels: ride up onto low obstacles instead of bumping into them
+      for (const c of this.colliders) {
+        if (c.h > sp.clearance || c.h <= gr.g || c.solid) continue;
+        if (c.bb && (car.x < c.bb[0] - 1 || car.x > c.bb[2] + 1 || car.z < c.bb[1] - 1 || car.z > c.bb[3] + 1)) continue;
+        if (this.circleVsCollider(car.x, car.z, 0.9, c)) { gr.g = c.h; gr.ramp = null; gr.slope = 0; }
+      }
+    }
     if (car.airborne) {
       car.vy -= this.gravity * dt;
       car.y += car.vy * dt;
@@ -370,7 +387,7 @@ export class PhysicsWorld {
         car.y = gr.g; car.vy = 0; car.airborne = false;
         if (impact > 25) this.events.push({ type: 'land', car, strength: impact });
       }
-    } else if (gr.g > car.y + 0.9) {
+    } else if (gr.g > car.y + (sp.stepUp ?? 0.9)) {
       // the side of a ramp or step: too high to climb, bounce back
       car.x -= car.vx * dt * 1.5; car.z -= car.vz * dt * 1.5;
       car.vx *= -0.3; car.vz *= -0.3;
@@ -423,11 +440,14 @@ export class PhysicsWorld {
         const r = sp.r;
         const test = (c) => {
           if (car.y >= c.h - 0.2) return;
+          if (sp.clearance && c.h <= sp.clearance && !c.solid) return; // monster trucks drive over it
           if (c.bb && (px + r < c.bb[0] || px - r > c.bb[2] || pz + r < c.bb[1] || pz - r > c.bb[3])) return;
           const hit = this.circleVsCollider(px, pz, r, c);
           if (!hit) return;
           const mv = c.moverFn ? this.moverVelocityAt(c, px - hit.nx * r, pz - hit.nz * r) : null;
-          total += this.resolveCarHit(car, hit, px, pz, c.bounce ?? 0.35, mv);
+          const j0 = this.resolveCarHit(car, hit, px, pz, c.bounce ?? 0.35, mv, c.kick || 0);
+          if (j0 > 0) c.hits = (c.hits || 0) + 1;
+          total += j0;
         };
         for (const c of this.colliders) test(c);
         for (const p of this.platforms) {
@@ -452,11 +472,21 @@ export class PhysicsWorld {
     return total;
   }
 
-  resolveCarHit(car, hit, px, pz, e, mv = null) {
+  resolveCarHit(car, hit, px, pz, e, mv = null, kick = 0) {
     car.x += hit.nx * hit.pen;
     car.z += hit.nz * hit.pen;
     const vn = (car.vx - (mv ? mv[0] : 0)) * hit.nx + (car.vz - (mv ? mv[1] : 0)) * hit.nz;
     if (vn >= 0) return 0;
+    if (kick > 0) {
+      // kicker: always fire the car away at least at `kick` speed
+      const add = kick - vn;
+      car.vx += hit.nx * add; car.vz += hit.nz * add;
+      car.w += (car.index % 2 ? 1 : -1) * Math.min(2.5, add * 0.04);
+      stunCar(car, hit.nx * add, hit.nz * add, CRASH.wallStun);
+      car.hitImpulse = Math.max(car.hitImpulse, add);
+      this.events.push({ type: 'hit', car, strength: Math.max(14, add) });
+      return add;
+    }
     // hard, square-on hits bounce back a little more
     const eh = e + 0.15 * clamp((-vn - 15) / 20, 0, 1);
     const j = -(1 + eh) * vn;
@@ -560,7 +590,8 @@ export class PhysicsWorld {
         d.x += hit.nx * hit.pen; d.z += hit.nz * hit.pen;
         const mv = c.moverFn ? this.moverVelocityAt(c, d.x - hit.nx * d.r, d.z - hit.nz * d.r) : [0, 0];
         const vn = (d.vx - mv[0]) * hit.nx + (d.vz - mv[1]) * hit.nz;
-        if (vn < 0) { const e = c.bounce ?? 0.6; d.vx -= (1 + e) * vn * hit.nx; d.vz -= (1 + e) * vn * hit.nz; if (-vn > 10) this.events.push({ type: 'clack', strength: -vn, x: d.x, z: d.z }); }
+        if (vn < 0 && c.kick) { d.vx += hit.nx * (c.kick - vn); d.vz += hit.nz * (c.kick - vn); c.hits = (c.hits || 0) + 1; this.events.push({ type: 'clack', strength: 20, x: d.x, z: d.z }); }
+        else if (vn < 0) { const e = c.bounce ?? 0.6; d.vx -= (1 + e) * vn * hit.nx; d.vz -= (1 + e) * vn * hit.nz; if (-vn > 10) this.events.push({ type: 'clack', strength: -vn, x: d.x, z: d.z }); }
       }
       for (const h of this.holes) {
         if ((d.x - h.x) ** 2 + (d.z - h.z) ** 2 < (h.r * 0.85) ** 2) {
