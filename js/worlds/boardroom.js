@@ -1392,7 +1392,7 @@ export default {
       P.scrMat.emissiveIntensity = q.lit * (0.75 + (q.buzz ? 0.2 * Math.sin(time * 18) : 0));
       if (q.buzz && game && game.particles && dt > 0.0005 && game.onScreen(q.x, 1, q.z, 0.1)) {
         if (Math.random() < dt * 14) {
-          const a = Math.random() * TAU;
+          const a = Math.random() * (Math.PI * 2);
           game.particles.emit(q.x + Math.cos(a) * 10, 1.0, q.z + Math.sin(a) * 6, { color: 0xbfd8ff, size: 0.9, life: 0.25, spread: 1, up: 2, grav: 0, grow: 2.2, alpha: 0.6, vx: Math.cos(a) * 6, vz: Math.sin(a) * 6 });
         }
         const step = Math.floor(time * 3.2);
