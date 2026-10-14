@@ -22,6 +22,20 @@ const POCKETS = [
 
 let A = null;
 
+// The break shot: the middle cue (lying between the lanes) slides back, pauses and plays the cue ball west across
+// the hairpin into the rack at the foot spot; the ball rebounds, and is re-spotted before the next shot. Pure time.
+const CUE = { x: -17.2, z: 0.62, tipZ: 0.6, butt: [117, 1.4], P: 6.8, hit: 2.155, reset: 5.2 };
+function cueStroke(t) { // how far the cue tip has gone past the point where it meets the resting ball (+ = west)
+  const u = ((t % CUE.P) + CUE.P) % CUE.P;
+  const ease = (f) => f * f * (3 - 2 * f);
+  if (u < 1.2) return -1 - 7 * ease(u / 1.2);
+  if (u < 1.5) return -8 + Math.sin((u - 1.2) * 24) * 0.12;
+  if (u < 2.25) { const q = (u - 1.5) / 0.75; return -8 + 10.5 * q * q; }
+  if (u < 2.7) return 2.5;
+  if (u < 3.5) return 2.5 - 3.5 * ease((u - 2.7) / 0.8);
+  return -1;
+}
+
 export default {
   id: 'pool',
   name: 'Corner Pocket',
@@ -589,7 +603,8 @@ export default {
     // =====================================================================================
     // ---- three cues lying between the lanes ----
     cue(91, 31.6, -56, 34.2, { seed: 1, shaft: '#e6cb98', fore: '#d6b277', points: '#16100c', v1: '#f2eee2', v2: '#a8261c', wrap: '#1b1b1d', sleeve: '#1a110c', ring: '#c8a24a' });
-    cue(-17, 0.6, 117, 1.4, { seed: 2, shaft: '#e9d1a2', fore: '#5e2412', points: '#efe6d0', v1: '#141414', v2: '#d8c08a', wrap: '#1d2c55', sleeve: '#4a1a0c', ring: '#e8e8ea' });
+    // (the middle cue is the moving one: built with the cue ball below)
+    for (let i = 0; i < 6; i++) { const t = (i + 0.5) / 6, x0 = -13.2, x1 = 117; AO(x0 + (x1 - x0) * t, 0.6 + 0.8 * t, (x1 - x0) / 12 + 1, 0.9 + t * 0.9, 0.42, 0.006); }
     cue(95, -31.4, -40, -33.2, { seed: 3, shaft: '#e2c690', fore: '#dcbc86', points: null, wrap: '#1d1d1d', sleeve: '#0f3d26', ring: '#d4b04c', label: '#e8d38a', text: '19 oz' });
     flushCues();
 
@@ -627,7 +642,8 @@ export default {
     {
       const pl = (s, off) => track.place(s, off);
       let p;
-      p = pl(sAt(70, 15), 5.6); pushBall(0, p.x, p.z);             // cue ball on the middle lane
+      pushBall(0, CUE.x, CUE.z);                                   // cue ball on the spot by the middle cue: see the break shot below
+      const cueBall = K.physics.dynamics[K.physics.dynamics.length - 1];
       pushBall(8, 9.8, 59.9);                                      // 8 hanging over the south side pocket
       p = pl(sAt(46, 47.7), -5.6); pushBall(11, p.x, p.z);         // on the start straight
       pushBall(13, -9.5, -59.9);                                   // at the north side pocket
@@ -643,6 +659,23 @@ export default {
       staticBall(7, 1.0, -69.0, -10);
       staticBall(12, 130.6, -67.4, -10);
       staticBall(4, -130.6, -67.2, -10);
+
+      // ---- moving hazard: the middle cue slides back and breaks the cue ball across the west hairpin ----
+      {
+        const ang = Math.atan2(CUE.butt[1] - CUE.tipZ, CUE.butt[0] - (CUE.x + 4));
+        const len = Math.hypot(CUE.butt[1] - CUE.tipZ, CUE.butt[0] - (CUE.x + 4));
+        const tex = TX.toTexture(cueTex({ seed: 2, shaft: '#e9d1a2', fore: '#5e2412', points: '#efe6d0', v1: '#141414', v2: '#d8c08a', wrap: '#1d2c55', sleeve: '#4a1a0c', ring: '#e8e8ea' }), { wrap: false });
+        const stick = new T.Mesh(cueGeo, K.phys({ map: tex, roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.15 }));
+        stick.scale.x = len / 147; stick.rotation.y = -ang;
+        K.add(stick); keep.push(stick);
+        const ca = Math.cos(ang), sa = Math.sin(ang);
+        const tipAt = (o) => ({ x: CUE.x + 3 - o * ca, z: CUE.tipZ - o * sa }); // tip where the capsule end just meets the ball at o = 0
+        K.mover({ type: 'capsule', r: 1.15, h: 2.6 }, (t) => {
+          const tp = tipAt(cueStroke(t));
+          return { x1: tp.x + ca, z1: tp.z + sa, x2: tp.x + ca * (len - 1), z2: tp.z + sa * (len - 1) };
+        });
+        A.cue = { stick, tipAt, ball: cueBall, lastU: 0 };
+      }
     }
 
     // ---- pushable chalk cubes on the road edges ----
@@ -650,7 +683,7 @@ export default {
       let p;
       p = track.place(sAt(62, 47.7), -5.2); chalkCube(p.x, p.z, { push: true });
       p = track.place(sAt(105, 31), -5.4); chalkCube(p.x, p.z, { push: true });
-      p = track.place(sAt(-29.5, 0), 5.2); chalkCube(p.x, p.z, { push: true });
+      p = track.place(sAt(-29.5, 0) - 11, 5.2); chalkCube(p.x, p.z, { push: true }); // clear of the break-shot line
     }
 
     // ---- knocked-over glass of cola: sticky spill across the north lane, beer-mat jump before it ----
@@ -1228,5 +1261,30 @@ export default {
         K.group.add(m);
       }
     }
+  },
+
+  // fixed-rate: re-spot the cue ball before the next shot (only when nobody is parked on the spot)
+  tick(dt, time, game) {
+    if (!A || !A.cue) return;
+    const u = ((time % CUE.P) + CUE.P) % CUE.P;
+    if (u < CUE.reset || u > CUE.P - 0.05) return;
+    const d = A.cue.ball;
+    if (d.state !== 'live') return;
+    if (Math.abs(d.x - CUE.x) < 0.3 && Math.abs(d.z - CUE.z) < 0.3 && Math.hypot(d.vx, d.vz) < 0.5) return;
+    for (const e of game.cars) if (Math.hypot(e.car.x - CUE.x, e.car.z - CUE.z) < 6.5) return;
+    for (const o of game.physics.dynamics) if (o !== d && o.state === 'live' && Math.hypot(o.x - CUE.x, o.z - CUE.z) < o.r + BALL_R + 0.2) return;
+    d.x = CUE.x; d.z = CUE.z; d.vx = d.vz = 0; d.pop = 1;
+  },
+
+  animate(time, dt, game) {
+    if (!A || !A.cue) return;
+    const C = A.cue, o = cueStroke(time), tp = C.tipAt(o);
+    C.stick.position.set(tp.x, 0.64, tp.z);
+    const u = ((time % CUE.P) + CUE.P) % CUE.P;
+    if (C.lastU < CUE.hit && u >= CUE.hit && game && game.particles && dt > 0.001) {
+      // a puff of blue chalk off the tip
+      game.particles.emit(tp.x - 0.5, 1.2, tp.z, { color: 0x4f86d6, n: 10, size: 0.7, life: 0.6, spread: 7, up: 4, grav: 6, grow: 1.8, alpha: 0.8, vx: -6 });
+    }
+    C.lastU = u;
   },
 };

@@ -328,11 +328,54 @@ export function buildCar(type, colorDef, num) {
     dec.position.set(-0.55, 1.59, 0.25);
     tilt.add(dec);
     wheelR = 0.5; wheelW = 0.42; wx = 1.5; wz = 1.22; wy = 0.5;
+  } else if (type === 'boat') {
+    // toy speedboat: white hull with a pointed bow, deck in the player's colour, windscreen,
+    // two seats and an outboard motor; it floats with its waterline at y = 0
+    const planShape = (pts, depth, bevel) => {
+      const sh = new THREE.Shape();
+      const sp2 = smoothProfile(pts, 2);
+      sh.moveTo(sp2[0][0], sp2[0][1]);
+      for (const p of sp2.slice(1)) sh.lineTo(p[0], p[1]);
+      const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 8 });
+      g.rotateX(-Math.PI / 2);
+      return g;
+    };
+    const hullPlan = [[2.55, 0], [2.1, 0.55], [1.2, 0.98], [-0.6, 1.05], [-2.15, 0.98], [-2.25, 0], [-2.15, -0.98], [-0.6, -1.05], [1.2, -0.98], [2.1, -0.55]];
+    const hull = add(new THREE.Mesh(planShape(hullPlan, 0.62, 0.16), M.white));
+    hull.position.y = -0.38;
+    // painted boot stripe at the waterline
+    const boot = add(new THREE.Mesh(planShape(hullPlan.map(([x, z]) => [x * 1.005, z * 1.02]), 0.1, 0.05), dark));
+    boot.position.y = -0.02;
+    const deck = add(new THREE.Mesh(planShape(hullPlan.map(([x, z]) => [x * 0.97, z * 0.93]), 0.14, 0.08), body));
+    deck.position.y = 0.3;
+    // cockpit well and seats
+    const well = add(new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.12, 1.3, 2, 0.1), M.black));
+    well.position.set(-0.75, 0.5, 0);
+    for (const sz of [-0.33, 0.33]) {
+      const seat = add(new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.42, 0.5, 2, 0.12), M.white));
+      seat.position.set(-0.85, 0.72, sz);
+    }
+    const wind = add(new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.42, 1.6, 2, 0.03), M.glass));
+    wind.position.set(0.15, 0.72, 0); wind.rotation.z = -0.55;
+    // bow rails and a little flag mast
+    for (const sz of [-0.7, 0.7]) {
+      const rail = add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.4, 6), M.chrome));
+      rail.rotation.z = Math.PI / 2; rail.position.set(1.35, 0.62, sz * 0.82); rail.rotation.y = sz > 0 ? 0.32 : -0.32;
+    }
+    // outboard motor: cowl in the dark colour, leg into the water
+    const cowl = add(new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.62, 0.55, 3, 0.16), dark));
+    cowl.position.set(-2.45, 0.68, 0);
+    const leg = add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 0.16), M.black));
+    leg.position.set(-2.5, 0.05, 0);
+    const dec = new THREE.Mesh(new THREE.CircleGeometry(0.4, 24), numberDecal(num, colorDef));
+    dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
+    dec.position.set(1.15, 0.555, 0);
+    tilt.add(dec);
   }
 
   // wheels
   const rimMat = type === 'truck' ? M.darkRim : M.rim;
-  const axles = type === 'rover' ? [[wx, true], [0.0, false], [-1.45, false]] : [[wx, true], [-wx, false]];
+  const axles = type === 'rover' ? [[wx, true], [0.0, false], [-1.45, false]] : type === 'boat' ? [] : [[wx, true], [-wx, false]];
   for (const [sx, front] of axles) {
     for (const sz of [-wz, wz]) {
       const pivot = new THREE.Group();
@@ -354,7 +397,8 @@ export function buildCar(type, colorDef, num) {
   shadow.scale.set(6.2, 3.9, 1);
   shadow.renderOrder = 1;
 
-  return { root, tilt, wheels, shadow, body };
+  if (type === 'boat') shadow.scale.set(5.6, 3.0, 1);
+  return { root, tilt, wheels, shadow, body, boat: type === 'boat' };
 }
 
 // Apply physics state to a car model.
@@ -370,6 +414,13 @@ export function syncCar(model, car, t) {
     pitch = Math.atan(car.groundSlope) * along;
   }
   tilt.rotation.set(lean, 0, pitch);
+  if (model.boat && car.state === 'drive') {
+    const sp = Math.abs(car.fwdSpeed);
+    const ph = t * 5.2 + car.index * 1.7;
+    tilt.rotation.x = Math.max(-0.22, Math.min(0.22, car.w * sp * 0.0022)) + Math.sin(ph) * 0.035; // bank into the turn
+    tilt.rotation.z = (car.airborne ? pitch : Math.min(0.12, sp * 0.0026)) + Math.sin(ph * 0.8) * 0.03; // bow lifts with speed
+    tilt.position.y = car.airborne ? 0 : Math.sin(ph * 1.3) * 0.08;
+  }
   if (car.state === 'falling') {
     tilt.rotation.x = Math.sin(car.tumbleAxis) * car.tumble;
     tilt.rotation.z = Math.cos(car.tumbleAxis) * car.tumble;

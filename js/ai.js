@@ -97,6 +97,16 @@ export class AIDriver {
     let diff = wrapAngle(want - car.angle);
     let steer = clamp(diff * 2.6 - car.w * 0.12, -1, 1);
 
+    // knocked loose by a crash: no mistakes, steer towards the line (which counters the slide),
+    // keep a bit of throttle so the car doesn't stall, and don't count it as stuck
+    if (car.stun > 0.06) {
+      this.mistakeT = 0; this.stuckT = 0;
+      car.steer = clamp(diff * 2.2, -1, 1);
+      car.throttle = Math.abs(diff) > 1.3 ? 0.35 : 0.75;
+      car.brake = 0;
+      return;
+    }
+
     // occasional small mistakes
     this.mistakeT -= dt;
     if (this.mistakeT <= 0 && this.r() < sk.mistakes * dt * 10) { this.mistakeT = 0.25 + this.r() * 0.35; this.mistakeSteer = this.r() < 0.5 ? -1 : 1; }
@@ -108,7 +118,9 @@ export class AIDriver {
     const span = 8 + speed * 0.9;
     for (let d = 0; d <= span; d += 2) kmax = Math.max(kmax, Math.abs(tr.curv[tr.idx(s + d)]));
     const sp = car.spec;
-    const vCurve = kmax > 1e-4 ? Math.min(Math.sqrt((sp.latGrip * 0.82 * sk.corner) / kmax), (sp.turnRate * 0.78 * sk.corner) / kmax) : 999;
+    // speedMul: straight-line pace (catch-up, slipstream, turbo); paceMul < 1 also eases off in corners
+    const pace = Math.min(1, opts.paceMul ?? 1);
+    const vCurve = kmax > 1e-4 ? pace * Math.min(Math.sqrt((sp.latGrip * 0.82 * sk.corner) / kmax), (sp.turnRate * 0.78 * sk.corner) / kmax) : 999;
     let vTarget = Math.min(sp.maxSpeed * sk.speed * (opts.speedMul ?? 1), vCurve);
     if (Math.abs(diff) > 0.9) vTarget = Math.min(vTarget, 14);
     if (car.surface === 'slick') vTarget = Math.min(vTarget, 22);

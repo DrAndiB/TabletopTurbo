@@ -9,6 +9,8 @@ export const VEHICLES = {
   formula: { maxSpeed: 51, accel: 70, brake: 135, reverseMax: 17, turnRate: 3.25, latGrip: 170, drag: 0.22, rolling: 6, len: 4.6, wid: 2.1, r: 1.05, axle: 1.2, mass: 0.95 },
   truck: { maxSpeed: 43, accel: 60, brake: 110, reverseMax: 18, turnRate: 3.2, latGrip: 135, drag: 0.2, rolling: 5, len: 4.4, wid: 2.6, r: 1.3, axle: 1.0, mass: 1.25, offroadGrip: 1.0 },
   rover: { maxSpeed: 44, accel: 60, brake: 120, reverseMax: 17, turnRate: 3.35, latGrip: 150, drag: 0.22, rolling: 6, len: 4.4, wid: 2.5, r: 1.22, axle: 1.1, mass: 1.2, offroadGrip: 1.0 },
+  // toy speedboat: drifts through turns, coasts to a stop quickly, floats (see spec.boat in game/cars)
+  boat: { maxSpeed: 45, accel: 58, brake: 95, reverseMax: 14, turnRate: 3.1, latGrip: 62, drag: 0.5, rolling: 14, len: 4.6, wid: 2.1, r: 1.12, axle: 1.15, mass: 1.0, boat: true, yawFollow: 0.45 },
   rally: { maxSpeed: 46, accel: 66, brake: 120, reverseMax: 17, turnRate: 3.4, latGrip: 140, drag: 0.22, rolling: 6, len: 4.3, wid: 2.25, r: 1.14, axle: 1.05, mass: 1.05 },
 };
 
@@ -20,6 +22,41 @@ const SURFACES = {
   rough: { grip: 0.9, drag: 0.8, accel: 0.9, top: 0.8 },
   water: { grip: 0.35, drag: 1.4, accel: 0.7, top: 0.7, spin: 0.4 },
 };
+
+// Crashes: a hard knock briefly breaks the tyres loose (less lateral grip, slower yaw control), so a
+// T-bone shoves a car sideways and spins it, and a nudge in a corner can push the car ahead wide.
+// Light rubbing in a pack (velocity change below dv0) stays clean.
+export const CRASH = {
+  dv0: 3.5,      // velocity change (units/s) below which a hit doesn't stun
+  dv1: 27,       // velocity change for the full stun
+  maxStun: 0.5,  // seconds of loose grip at full stun (divided by sqrt(mass): heavy cars shrug more off)
+  fade: 0.2,     // the last 0.2 s of a stun fade back to full grip
+  grip: 0.78,    // share of lateral grip lost at full stun
+  yaw: 0.85,     // share of yaw-follow (steering authority) lost at full stun
+  longW: 0.6,    // a push along the car's heading counts less than a sideways one
+  carE: 0.5,     // car-car restitution
+  carSpin: 0.09, // spin from off-centre car-car hits (was 0.06, but grip used to cancel it at once)
+  wallSpin: 0.07, // spin from off-centre wall hits
+  wallKick: 0.025, // extra twist on hard, square wall hits (capped at 1.5 rad/s)
+  corner: 1.0,   // a car already turning hard is up to twice as easy to knock loose
+  wallStun: 0.7, // walls stun a bit less than cars (scraping along them is common)
+  objStun: 0.5,  // pushable objects soak up much of the hit
+  objSpin: 0.07,
+};
+
+// Knock a car loose after a velocity change (dvx, dvz). Returns the stun applied (seconds).
+export function stunCar(car, dvx, dvz, scale = 1) {
+  const c = Math.cos(car.angle), s = Math.sin(car.angle);
+  const along = dvx * c + dvz * s, side = -dvx * s + dvz * c;
+  // a car leaning on its tyres in a corner is easier to knock loose (and a shove from behind counts fully)
+  const turn = Math.min(1, Math.abs(car.w) / 2.5);
+  const dv = Math.hypot(side, along * (CRASH.longW + (1 - CRASH.longW) * turn)) * scale * (1 + CRASH.corner * turn);
+  if (dv <= CRASH.dv0) return 0;
+  const k = Math.pow(Math.min(1, (dv - CRASH.dv0) / (CRASH.dv1 - CRASH.dv0)), 0.7);
+  const st = (CRASH.maxStun * k) / Math.sqrt(car.spec.mass || 1);
+  if (st > car.stun) car.stun = st;
+  return st;
+}
 
 export class Car {
   constructor(spec, index) {
@@ -40,6 +77,10 @@ export class Car {
     this.hitImpulse = 0; // last collision strength (sound)
     this.lastRamp = null;
     this.ghost = 0; // seconds of no car-car collisions (after respawn)
+    this.stun = 0; // seconds of loose grip left after a crash
+    this.draft = 0; // 0..1 slipstream strength (set by the game)
+    this.turbo = 0; // seconds of turbo-start boost left
+    this.bog = 0; // seconds of bogged-down launch left (gas held too early)
   }
   get speed() { return Math.hypot(this.vx, this.vz); }
   get fwdSpeed() { return this.vx * Math.cos(this.angle) + this.vz * Math.sin(this.angle); }
@@ -51,6 +92,7 @@ export class Car {
     this.x = x; this.z = z; this.angle = angle;
     this.vx = this.vz = this.w = 0; this.y = 0; this.vy = 0; this.airborne = false;
     this.state = 'drive'; this.tumble = 0; this.fallT = 0; this.slip = 0;
+    this.stun = 0; this.draft = 0;
   }
 }
 
@@ -63,6 +105,7 @@ export class PhysicsWorld {
     this.holes = [];
     this.ramps = [];
     this.platforms = [];
+    this.movers = []; // kinematic colliders moved by a function of time
     this.bounds = opts.bounds || null; // {minX,maxX,minZ,maxZ}
     this.fallOffEdges = opts.fallOffEdges ?? true;
     this.floorY = opts.floorY ?? -70;
@@ -73,6 +116,11 @@ export class PhysicsWorld {
 
   addCollider(c) {
     c.h = c.h ?? 50;
+    this.computeBB(c);
+    this.colliders.push(c);
+    return c;
+  }
+  computeBB(c) {
     if (c.type === 'circle') c.bb = [c.x - c.r, c.z - c.r, c.x + c.r, c.z + c.r];
     else if (c.type === 'box') {
       const ca = Math.abs(Math.cos(c.angle || 0)), sa = Math.abs(Math.sin(c.angle || 0));
@@ -82,8 +130,42 @@ export class PhysicsWorld {
     } else if (c.type === 'capsule') {
       c.bb = [Math.min(c.x1, c.x2) - c.r, Math.min(c.z1, c.z2) - c.r, Math.max(c.x1, c.x2) + c.r, Math.max(c.z1, c.z2) + c.r];
     }
-    this.colliders.push(c);
+  }
+  // Moving collider (a sweeping sprinkler arm, a sliding ruler, a swinging pendulum...).
+  // fn(t) returns the shape's new placement at simulation time t: {x, z, angle} for circle/box,
+  // {x1, z1, x2, z2} for capsule. Cars and pushable objects it hits are shoved along with it.
+  addMover(c, fn) {
+    c.moverFn = fn; c.mvx = 0; c.mvz = 0; c.mw = 0; c.v1 = [0, 0]; c.v2 = [0, 0];
+    Object.assign(c, fn(0));
+    this.addCollider(c);
+    this.movers.push(c);
     return c;
+  }
+  updateMovers(t, dt) {
+    for (const c of this.movers) {
+      const s = c.moverFn(t);
+      const fresh = c.lastT == null || Math.abs(t - c.lastT) > 0.25; // first update or a jump in time: no velocity
+      c.lastT = t;
+      const d = fresh ? Infinity : dt;
+      if (c.type === 'capsule') {
+        const a = [c.x1, c.z1], b = [c.x2, c.z2];
+        Object.assign(c, s);
+        c.v1 = [(c.x1 - a[0]) / d, (c.z1 - a[1]) / d]; c.v2 = [(c.x2 - b[0]) / d, (c.z2 - b[1]) / d];
+      } else {
+        const px = c.x, pz = c.z, pa = c.angle || 0;
+        Object.assign(c, s);
+        c.mvx = (c.x - px) / d; c.mvz = (c.z - pz) / d; c.mw = wrapAngle((c.angle || 0) - pa) / d;
+      }
+      this.computeBB(c);
+    }
+  }
+  // Velocity of a moving collider's surface at point (x, z).
+  moverVelocityAt(c, x, z) {
+    if (c.type === 'capsule') {
+      const q = segDist(x, z, c.x1, c.z1, c.x2, c.z2);
+      return [c.v1[0] + (c.v2[0] - c.v1[0]) * q.t, c.v1[1] + (c.v2[1] - c.v1[1]) * q.t];
+    }
+    return [c.mvx - c.mw * (z - c.z), c.mvz + c.mw * (x - c.x)];
   }
   addDynamic(d) {
     Object.assign(d, { vx: 0, vz: 0, home: [d.x, d.z], state: 'live', t: 0, rolled: 0 });
@@ -208,6 +290,9 @@ export class PhysicsWorld {
     }
     if (car.state !== 'drive') return;
     car.ghost = Math.max(0, car.ghost - dt);
+    // crash stun: full effect, then fading back to normal grip over the last CRASH.fade seconds
+    const stunK = car.stun > 0 ? Math.min(1, car.stun / CRASH.fade) : 0;
+    if (car.stun > 0) car.stun = Math.max(0, car.stun - dt);
 
     const c = Math.cos(car.angle), s = Math.sin(car.angle);
     let vLong = car.vx * c + car.vz * s;
@@ -218,7 +303,9 @@ export class PhysicsWorld {
     car.surface = kind;
     let S = SURFACES[kind] || SURFACES.normal;
     if (kind === 'slow' && sp.offroadGrip) S = { ...S, drag: S.drag * 0.45, top: Math.min(1, S.top + 0.2), accel: 0.95 };
+    // speedMul scales top speed, accelMul the engine (catch-up, slipstream, turbo start)
     const top = sp.maxSpeed * S.top * (ctx?.speedMul ?? 1);
+    const accMul = ctx?.accelMul ?? 1;
 
     if (!car.airborne) {
       // engine & brakes
@@ -227,7 +314,7 @@ export class PhysicsWorld {
         if (vLong < -1 && brk === 0) vLong += sp.brake * thr * dt; // throttle while rolling back = brake
         else {
           const room = Math.max(0, 1 - vLong / top);
-          vLong += sp.accel * S.accel * thr * (0.35 + 0.65 * room) * dt * (vLong > top ? 0 : 1);
+          vLong += sp.accel * S.accel * accMul * thr * (0.35 + 0.65 * room) * dt * (vLong > top ? 0 : 1);
         }
       }
       if (brk > 0) {
@@ -250,11 +337,12 @@ export class PhysicsWorld {
       const dir = vLong >= -0.5 ? 1 : -1;
       const targetW = car.steer * sp.turnRate * g * dir * (S.spin ? 1.15 : 1);
       // yaw follows target, faster with good grip; collisions can add spin which decays
-      const follow = 14 * Math.min(1.2, S.grip + 0.25);
+      // (a crash stun loosens both, so impact spin and sideways shoves survive for a moment)
+      const follow = 14 * Math.min(1.2, S.grip + 0.25) * (sp.yawFollow ?? 1) * (1 - CRASH.yaw * stunK);
       car.w += (targetW - car.w) * (1 - Math.exp(-follow * dt));
 
       // lateral grip (friction-limited: high lateral speeds slide)
-      const maxLat = sp.latGrip * S.grip * dt;
+      const maxLat = sp.latGrip * S.grip * dt * (1 - CRASH.grip * stunK);
       const before = vLat;
       vLat = Math.abs(vLat) <= maxLat ? 0 : vLat - Math.sign(vLat) * maxLat;
       car.slip = Math.abs(before);
@@ -338,7 +426,8 @@ export class PhysicsWorld {
           if (c.bb && (px + r < c.bb[0] || px - r > c.bb[2] || pz + r < c.bb[1] || pz - r > c.bb[3])) return;
           const hit = this.circleVsCollider(px, pz, r, c);
           if (!hit) return;
-          total += this.resolveCarHit(car, hit, px, pz, c.bounce ?? 0.35);
+          const mv = c.moverFn ? this.moverVelocityAt(c, px - hit.nx * r, pz - hit.nz * r) : null;
+          total += this.resolveCarHit(car, hit, px, pz, c.bounce ?? 0.35, mv);
         };
         for (const c of this.colliders) test(c);
         for (const p of this.platforms) {
@@ -363,12 +452,15 @@ export class PhysicsWorld {
     return total;
   }
 
-  resolveCarHit(car, hit, px, pz, e) {
+  resolveCarHit(car, hit, px, pz, e, mv = null) {
     car.x += hit.nx * hit.pen;
     car.z += hit.nz * hit.pen;
-    const vn = car.vx * hit.nx + car.vz * hit.nz;
+    const vn = (car.vx - (mv ? mv[0] : 0)) * hit.nx + (car.vz - (mv ? mv[1] : 0)) * hit.nz;
     if (vn >= 0) return 0;
-    const j = -(1 + e) * vn;
+    // hard, square-on hits bounce back a little more
+    const eh = e + 0.15 * clamp((-vn - 15) / 20, 0, 1);
+    const j = -(1 + eh) * vn;
+    const vx0 = car.vx, vz0 = car.vz;
     car.vx += hit.nx * j;
     car.vz += hit.nz * j;
     // tangential scrub
@@ -378,7 +470,14 @@ export class PhysicsWorld {
     // spin from off-centre impact
     const rx = px - car.x, rz = pz - car.z;
     const torque = rx * hit.nz * j - rz * hit.nx * j;
-    car.w += torque * 0.09;
+    car.w += torque * CRASH.wallSpin;
+    // a hard hit twists the car: the nose swings round towards the wall's direction
+    if (j > 16) {
+      const cross = Math.cos(car.angle) * hit.nz - Math.sin(car.angle) * hit.nx;
+      const sgn = Math.abs(cross) > 0.05 ? Math.sign(cross) : (car.index % 2 ? 1 : -1);
+      car.w += sgn * Math.min(1.5, (j - 16) * CRASH.wallKick);
+    }
+    stunCar(car, car.vx - vx0, car.vz - vz0, CRASH.wallStun);
     car.hitImpulse = Math.max(car.hitImpulse, j);
     return j;
   }
@@ -406,14 +505,15 @@ export class PhysicsWorld {
           const rvx = a.vx - b.vx, rvz = a.vz - b.vz;
           const vn = rvx * nx + rvz * nz;
           if (vn >= 0) continue;
-          const e = 0.55;
-          const jimp = -(1 + e) * vn / (1 / ma + 1 / mb);
+          const jimp = -(1 + CRASH.carE) * vn / (1 / ma + 1 / mb);
           a.vx += nx * jimp / ma; a.vz += nz * jimp / ma;
           b.vx -= nx * jimp / mb; b.vz -= nz * jimp / mb;
-          // spin
+          // spin from off-centre contact (heavier cars turn less), then knock both loose
           const rax = p[0] - a.x, raz = p[1] - a.z, rbx = q[0] - b.x, rbz = q[1] - b.z;
-          a.w += (rax * nz - raz * nx) * jimp * 0.06;
-          b.w -= (rbx * nz - rbz * nx) * jimp * 0.06;
+          a.w += (rax * nz - raz * nx) * jimp * CRASH.carSpin / ma;
+          b.w -= (rbx * nz - rbz * nx) * jimp * CRASH.carSpin / mb;
+          stunCar(a, nx * jimp / ma, nz * jimp / ma);
+          stunCar(b, -nx * jimp / mb, -nz * jimp / mb);
           if (jimp > 6) this.events.push({ type: 'bump', car: a, other: b, strength: jimp, x: (p[0] + q[0]) / 2, z: (p[1] + q[1]) / 2 });
         }
       }
@@ -458,7 +558,8 @@ export class PhysicsWorld {
         const hit = this.circleVsCollider(d.x, d.z, d.r, c);
         if (!hit) continue;
         d.x += hit.nx * hit.pen; d.z += hit.nz * hit.pen;
-        const vn = d.vx * hit.nx + d.vz * hit.nz;
+        const mv = c.moverFn ? this.moverVelocityAt(c, d.x - hit.nx * d.r, d.z - hit.nz * d.r) : [0, 0];
+        const vn = (d.vx - mv[0]) * hit.nx + (d.vz - mv[1]) * hit.nz;
         if (vn < 0) { const e = c.bounce ?? 0.6; d.vx -= (1 + e) * vn * hit.nx; d.vz -= (1 + e) * vn * hit.nz; if (-vn > 10) this.events.push({ type: 'clack', strength: -vn, x: d.x, z: d.z }); }
       }
       for (const h of this.holes) {
@@ -509,7 +610,9 @@ export class PhysicsWorld {
           car.vx += nx * jj / ma; car.vz += nz * jj / ma;
           d.vx -= nx * jj / mb; d.vz -= nz * jj / mb;
           const rx = p[0] - car.x, rz = p[1] - car.z;
-          car.w += (rx * nz - rz * nx) * jj * 0.05;
+          car.w += (rx * nz - rz * nx) * jj * CRASH.objSpin / ma;
+          // heavy objects (relative to the car) knock it loose; light ones barely do
+          stunCar(car, nx * jj / ma, nz * jj / ma, CRASH.objStun * Math.min(1, mb / ma));
           if (jj > 5) this.events.push({ type: 'bump', car, strength: jj, x: d.x, z: d.z, obj: true });
         }
       }

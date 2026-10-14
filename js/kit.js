@@ -125,6 +125,8 @@ export function makeKit({ scene, track, physics, quality, seed = 7 }) {
     hole(x, z, rad) { return physics.addHole({ x, z, r: rad }); },
     ramp(x, z, angle, len, wid, height, base = 0) { return physics.addRamp({ x, z, angle, len, wid, height, base }); },
     platform(x, z, hw, hd, angle, h) { return physics.addPlatform({ x, z, hw, hd, angle, h }); },
+    // moving collider: shape {type:'circle'|'box'|'capsule', r|hw,hd, h}, fn(t) -> {x,z,angle} or {x1,z1,x2,z2}
+    mover(shape, fn) { return physics.addMover({ h: 50, ...shape }, fn); },
 
     // Is a point clear of the road (for decoration placement)?
     offRoad(x, z, margin = 2) {

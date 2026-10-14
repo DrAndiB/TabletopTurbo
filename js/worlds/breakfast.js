@@ -662,8 +662,128 @@ export default {
       }
       K.instances(new T.DodecahedronGeometry(1, 0), K.std({ color: 0xffffff, roughness: 0.9 }), list, { colors: true, cast: false });
     }
+
+    // ---------------- moving hazard: a clockwork tin chick hopping to and fro across the east straight ----------------
+    {
+      const p0 = track.at(CHICK.s);
+      const ax = p0.x - p0.nx * CHICK.lat, az = p0.z - p0.nz * CHICK.lat; // infield end
+      const bx = p0.x + p0.nx * CHICK.lat, bz = p0.z + p0.nz * CHICK.lat; // outfield end
+      const pose = chickPose(ax, az, bx, bz);
+      K.mover({ type: 'circle', r: 2.75 * CHICK.scale, h: 7.5 }, (t) => { const q = pose(t); return { x: q.x, z: q.z, angle: q.angle }; });
+
+      // lithographed tin: yellow with printed scalloped feathers, an orange band and a crimped red seam
+      const tinC = TX.makeCanvas(512, 256);
+      const tg = tinC.getContext('2d');
+      const tgr = tg.createLinearGradient(0, 0, 0, 256); tgr.addColorStop(0, '#ffe46a'); tgr.addColorStop(0.7, '#f7c62a'); tgr.addColorStop(1, '#e9a91a');
+      tg.fillStyle = tgr; tg.fillRect(0, 0, 512, 256);
+      for (let row = 0; row < 7; row++) {
+        const y = 40 + row * 26;
+        for (let i = 0; i < 26; i++) {
+          const x = i * 20 + (row % 2) * 10;
+          tg.strokeStyle = row > 4 ? 'rgba(214,96,22,0.75)' : 'rgba(222,140,20,0.55)'; tg.lineWidth = 3;
+          tg.beginPath(); tg.arc(x, y, 10, 0.1, Math.PI - 0.1); tg.stroke();
+        }
+      }
+      tg.fillStyle = '#d4471e'; tg.fillRect(0, 0, 512, 16); // bottom band (lathe v = 0 at the bottom)
+      tg.fillStyle = '#fff3c0'; for (let i = 0; i < 32; i++) tg.fillRect(i * 16 + 4, 5, 6, 5);
+      const tinTex = TX.toTexture(tinC, { wrap: true });
+      tinTex.flipY = false; tinTex.needsUpdate = true;
+      const tin = K.phys({ map: tinTex, roughness: 0.3, metalness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.12 });
+      const tinOrange = K.phys({ color: 0xf06a14, roughness: 0.32, metalness: 0.4, clearcoat: 0.7, clearcoatRoughness: 0.15 });
+      const tinRed = K.phys({ color: 0xc8261c, roughness: 0.3, metalness: 0.45, clearcoat: 0.7, clearcoatRoughness: 0.15 });
+      const brass = K.metal(0xc9a24a, 0.28);
+      const black = K.phys({ color: 0x111111, roughness: 0.15, clearcoat: 1 });
+
+      const root = new T.Group(); // placed on the table, rotated to the walking direction (+x local = forward)
+      const body = new T.Group(); root.add(body); // bobs with each hop
+      // egg-shaped body
+      const prof = [];
+      for (let i = 0; i <= 18; i++) {
+        const a = (i / 18) * Math.PI;
+        const rr = Math.sin(a) * (2.5 + 0.3 * Math.cos(a)) + 0.001;
+        prof.push([rr, 1.0 + (1 - Math.cos(a)) * 2.05]);
+      }
+      const bodyGeo = K.lathe(prof, 40);
+      const bm = new T.Mesh(bodyGeo, tin); bm.scale.set(1.12, 1, 1); body.add(bm);
+      // crimped seam around the middle (the two tin halves)
+      const seam = new T.Mesh(new T.TorusGeometry(2.48, 0.12, 6, 48), tinRed); seam.rotation.x = Math.PI / 2; seam.position.y = 1.55; seam.scale.set(1.12, 1, 1); body.add(seam);
+      // head, beak, eyes, tuft
+      const head = new T.Mesh(new T.SphereGeometry(1.75, 28, 18), tin); head.position.set(1.15, 5.15, 0); body.add(head);
+      const beak = new T.Mesh(new T.ConeGeometry(0.5, 1.3, 14), tinOrange); beak.rotation.z = -Math.PI / 2; beak.position.set(3.35, 5.0, 0); body.add(beak);
+      for (const sd of [-1, 1]) {
+        const eye = new T.Mesh(new T.SphereGeometry(0.32, 12, 8), black); eye.position.set(2.45, 5.65, sd * 0.95); body.add(eye);
+        const hl = new T.Mesh(new T.SphereGeometry(0.1, 8, 6), K.std({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.5 })); hl.position.set(2.7, 5.78, sd * 1.02); body.add(hl);
+        // printed orange wing, slightly raised from the body
+        const wing = new T.Mesh(new T.SphereGeometry(1, 20, 12), tinOrange); wing.scale.set(1.75, 1.05, 0.32); wing.position.set(-0.35, 2.85, sd * 2.45); wing.rotation.z = 0.35; body.add(wing);
+      }
+      const tuft = new T.Mesh(new T.ConeGeometry(0.35, 1.0, 8), tinRed); tuft.position.set(0.9, 7.0, 0); tuft.rotation.z = 0.3; body.add(tuft);
+      const tail = new T.Mesh(new T.ConeGeometry(0.9, 1.8, 12), tinOrange); tail.rotation.z = Math.PI / 2 + 0.6; tail.position.set(-2.75, 3.6, 0); body.add(tail);
+      // wind-up key in the back (spins while it walks)
+      const key = new T.Group(); key.position.set(-2.85, 2.6, 0); body.add(key);
+      const shaft = new T.Mesh(new T.CylinderGeometry(0.16, 0.16, 1.3, 8), brass); shaft.rotation.z = Math.PI / 2; shaft.position.x = -0.5; key.add(shaft);
+      const bow = new T.Group(); bow.position.x = -1.2; key.add(bow);
+      for (const sd of [-1, 1]) { const loop = new T.Mesh(new T.TorusGeometry(0.62, 0.17, 8, 20), brass); loop.rotation.y = Math.PI / 2; loop.position.z = sd * 0.75; bow.add(loop); }
+      // wire legs and flat tin feet
+      const legs = [];
+      for (const sd of [-1, 1]) {
+        const leg = new T.Group(); leg.position.set(0.2, 1.25, sd * 0.95); root.add(leg);
+        const l = new T.Mesh(new T.CylinderGeometry(0.17, 0.17, 1.2, 8), tinOrange); l.position.y = -0.6; leg.add(l);
+        const foot = new T.Mesh(new K.RoundedBoxGeometry(1.5, 0.22, 1.0, 2, 0.08), tinOrange); foot.position.set(0.35, -1.15, 0); leg.add(foot);
+        legs.push(leg);
+      }
+      root.scale.setScalar(CHICK.scale);
+      K.add(root);
+      const shadow = K.contact(ax, az, 4.1, 3.7, 0.45);
+      HZ = { pose, root, body, legs, bow, shadow, gy, lastHop: -1 };
+    }
+  },
+
+  animate(time, dt, game) {
+    if (!HZ) return;
+    const q = HZ.pose(time);
+    const y0 = HZ.gy(q.x, q.z);
+    HZ.root.position.set(q.x, y0 + q.lift, q.z);
+    HZ.root.rotation.set(0, -q.angle, q.tilt);
+    HZ.body.rotation.x = q.waddle;
+    HZ.legs[0].rotation.z = q.leg; HZ.legs[1].rotation.z = -q.leg;
+    HZ.bow.rotation.x = q.key;
+    HZ.shadow.position.set(q.x, y0 + 0.04, q.z);
+    HZ.shadow.material.opacity = 0.45 - q.lift * 0.25;
+    // clockwork tick on every hop while racing and in view
+    if (q.hop !== HZ.lastHop) {
+      HZ.lastHop = q.hop;
+      const st = game.state;
+      if ((st === 'race' || st === 'countdown' || st === 'roundEnd') && game.sound.ctx && game.onScreen(q.x, 2, q.z)) {
+        game.sound.tone(q.walking ? 2600 : 1900, 0.025, { type: 'square', vol: 0.03 });
+        if (q.walking && q.hop % 3 === 0) game.particles.emit(q.x, y0 + 0.2, q.z, { color: 0xf3e6c8, n: 2, size: 0.7, life: 0.35, spread: 3, up: 1, grav: 2, grow: 1.6, alpha: 0.35 });
+      }
+    }
   },
 };
+
+// Clockwork chick: walks the line A->B in little hops, shuffles round, walks back. Pure function of time.
+const CHICK = { s: 203, lat: 16, P: 12, W: 4.6, TN: 1.4, scale: 1.15 };
+let HZ = null;
+function chickPose(ax, az, bx, bz) {
+  const dir = Math.atan2(bz - az, bx - ax);
+  const N = 15; // hops per crossing
+  const ease = (f) => f * f * (3 - 2 * f);
+  return (t) => {
+    const { P, W, TN } = CHICK;
+    const u = (((t + 7.3) % P) + P) % P;
+    let f, angle, hop, walking = true, k, fr;
+    if (u < W) { const q = u / W; k = Math.floor(q * N); fr = q * N - k; f = (k + ease(fr)) / N; angle = dir; hop = k; }
+    else if (u < W + TN) { const q = (u - W) / TN; k = Math.floor(q * 4); fr = q * 4 - k; f = 1; angle = dir + Math.PI * ease(q); hop = 100 + k; walking = false; }
+    else if (u < 2 * W + TN) { const q = (u - W - TN) / W; k = Math.floor(q * N); fr = q * N - k; f = 1 - (k + ease(fr)) / N; angle = dir + Math.PI; hop = 200 + k; }
+    else { const q = (u - 2 * W - TN) / TN; k = Math.floor(q * 4); fr = q * 4 - k; f = 0; angle = dir + Math.PI + Math.PI * ease(q); hop = 300 + k; walking = false; }
+    const s = Math.sin(Math.PI * fr);
+    return {
+      x: ax + (bx - ax) * f, z: az + (bz - az) * f, angle, hop, walking,
+      lift: s * (walking ? 0.55 : 0.25), tilt: walking ? -0.12 + s * 0.16 : 0, waddle: Math.sin((hop + fr) * Math.PI) * 0.09,
+      leg: walking ? Math.sin(fr * Math.PI * 2) * 0.45 : 0, key: -t * 5,
+    };
+  };
+}
 
 function nearestS(track, x, z) {
   return track.distTo(x, z).s;

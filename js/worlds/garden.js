@@ -9,6 +9,11 @@ const TRACK = [
 
 let A = null; // per-frame animation state (set by build)
 
+// Rotary sprinkler beside the west straight (s ~600-640): a long arm sweeps the path anticlockwise (with the traffic
+// on the road side), the jets trail a wet band behind it. Pure function of time.
+const SPR = { x: -37.5, z: -16, R: 14, stub: 3.6, w: 0.9, phi0: 0.3, wet: 0.32 };
+function sprAngle(t) { return SPR.phi0 - SPR.w * t; }
+
 export default {
   id: 'garden',
   name: 'Garden Grand Prix',
@@ -532,6 +537,55 @@ export default {
       const handle = new T.Mesh(new T.TorusGeometry(1.4, 0.3, 8, 6), K.plastic(0xc0302a, 0.4)); handle.rotation.x = Math.PI / 2; handle.position.set(0, 1.6, 2.8); tapG.add(handle);
       tapG.position.set(tx, 14, tz); K.add(tapG);
       contact(tx, tz - 2, 5, 5, 0.5);
+    }
+
+    // ---------------- moving hazard: a rotary lawn sprinkler beside the west straight, its long arm sweeping the path ----------------
+    {
+      const { x: sx, z: sz, R, stub } = SPR;
+      const yellow = K.plastic(0xf2c230, 0.35);
+      const green = K.plastic(0x2f8a3a, 0.4);
+      // sled base: two runners and a domed body
+      for (const a of [0.35, 0.35 + Math.PI / 2]) K.mesh(new K.RoundedBoxGeometry(7.5, 0.6, 1.0, 2, 0.25), green, sx, 0.3, sz, { ry: a });
+      K.mesh(K.lathe([[0.001, 0], [2.7, 0], [2.6, 0.7], [2.0, 1.5], [1.2, 1.9], [0.001, 2.0]], 32), green, sx, 0.3, sz);
+      K.circle(sx, sz, 2.6, 2.2);
+      contact(sx, sz, 4.6, 4.6, 0.45);
+      bareCircle(sx, sz, 4.2);
+      // supply hose snaking off into the kidney bed
+      const hc = new T.CatmullRomCurve3([[sx - 2.2, 0.6, sz - 0.8], [sx - 7, 0.6, sz - 3.5], [sx - 11, 0.6, sz - 2.5], [sx - 15, 0.6, sz - 7], [sx - 19, 0.4, sz - 12], [sx - 22, 0.2, sz - 15]].map(([a, b, c]) => new T.Vector3(a, b, c)), false, 'centripetal');
+      K.mesh(new T.TubeGeometry(hc, 60, 0.62, 8), hoseMat, 0, 0, 0);
+      // the rotating head: local +x is the long arm
+      const head = new T.Group(); head.position.set(sx, 0, sz);
+      const hub = new T.Mesh(new T.CylinderGeometry(1.05, 1.2, 1.5, 20), yellow); hub.position.y = 2.75; head.add(hub);
+      const cap = new T.Mesh(new T.SphereGeometry(1.05, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), yellow); cap.position.y = 3.5; head.add(cap);
+      const armGeo = (len) => {
+        const c = new T.CatmullRomCurve3([new T.Vector3(0.6, 2.6, 0), new T.Vector3(len * 0.45, 2.3, 0), new T.Vector3(len - 0.6, 2.1, 0), new T.Vector3(len, 2.3, -0.3)]);
+        return new T.TubeGeometry(c, 24, 0.58, 10);
+      };
+      head.add(new T.Mesh(armGeo(R), yellow));
+      const stubArm = new T.Mesh(armGeo(stub), yellow); stubArm.rotation.y = Math.PI; head.add(stubArm);
+      // brass nozzles angled back against the rotation (they drive it)
+      for (const [len, sgn] of [[R, 1], [stub, -1]]) {
+        const n = new T.Mesh(new T.CylinderGeometry(0.28, 0.42, 1.5, 12), brass);
+        n.rotation.x = sgn * Math.PI / 2 - sgn * 0.5; n.position.set(sgn * len, 2.35, sgn * 0.75); head.add(n);
+        const b = new T.Mesh(new T.SphereGeometry(0.55, 14, 10), green); b.position.set(sgn * len, 2.3, 0); head.add(b);
+      }
+      // the wet trail behind the arm: three stacked sectors, darkest right behind it
+      const wetMat = (op) => new T.MeshBasicMaterial({ color: 0x0b1a10, transparent: true, opacity: op, depthWrite: false });
+      for (const [len, op] of [[SPR.wet * 1.4, 0.1], [SPR.wet, 0.12], [SPR.wet * 0.5, 0.12]]) {
+        const g = new T.RingGeometry(6.5, R + 0.8, 14, 1, -len, len); g.rotateX(-Math.PI / 2);
+        const m = new T.Mesh(g, wetMat(op)); m.position.y = 0.09; m.renderOrder = 1; head.add(m);
+        m.userData.noShadow = true;
+      }
+      K.add(head);
+      head.traverse((o) => { if (o.userData.noShadow) { o.castShadow = false; o.receiveShadow = false; } });
+      keep.push(head);
+      const armSeg = (t, r0, r1) => { const a = sprAngle(t), c = Math.cos(a), s = Math.sin(a); return { x1: sx + c * r0, z1: sz + s * r0, x2: sx + c * r1, z2: sz + s * r1 }; };
+      // soft rubbery bounce: the arm shoves cars rather than bouncing them back hard
+      K.mover({ type: 'capsule', r: 0.75, h: 3.2 }, (t) => armSeg(t, 1.8, R)).bounce = 0.12;
+      K.mover({ type: 'capsule', r: 0.6, h: 3.2 }, (t) => armSeg(t + Math.PI / SPR.w, 1.8, stub)).bounce = 0.12;
+      // (the wet trail is only a look: a moving water surface right behind the arm trapped cars that had
+      // just bumped into it, so the arm alone is the hazard)
+      A.spr = { head, hiss: 0, splash: [] };
     }
 
     // ---------------- watering can tipped over, spilling into mud on the path ----------------
@@ -1346,8 +1400,45 @@ export default {
     }
   },
 
+  // fixed-rate: cars the sprinkler arm touches throw up spray
+  tick(dt, time, game) {
+    if (!A || !A.spr) return;
+    const S = A.spr, a = sprAngle(time);
+    if (S.splash.length < 6) {
+      const c = Math.cos(a), s = Math.sin(a);
+      for (const e of game.cars) {
+        const car = e.car;
+        if (car.state !== 'drive') continue;
+        const dx = car.x - SPR.x, dz = car.z - SPR.z, along = dx * c + dz * s, side = -dx * s + dz * c;
+        if (along > 2 && along < SPR.R + 1 && Math.abs(side) < 2.4 && Math.random() < dt * 30) S.splash.push(car);
+      }
+    }
+  },
+
   animate(time, dt, game) {
     if (!A) return;
+    if (A.spr) {
+      const S = A.spr, a = sprAngle(time), c = Math.cos(a), s = Math.sin(a);
+      S.head.rotation.y = -a;
+      if (game && game.particles && dt > 0.001 && game.onScreen(SPR.x + c * 7, 0, SPR.z + s * 7, 0.35)) {
+        const P = game.particles;
+        S.jet = (S.jet || 0) + dt * 120;
+        while (S.jet > 1) {
+          S.jet--;
+          const long = Math.random() < 0.75, L = long ? SPR.R : -SPR.stub, k = long ? 1 : -1;
+          const sp = 13 + Math.random() * 7;
+          P.emit(SPR.x + c * L, 2.5, SPR.z + s * L, { vx: k * (-s * sp) + c * k * 3, vz: k * (c * sp) + s * k * 3, vy: 7, spread: 3, up: 3, grav: 34, color: 0xe8f7ff, size: 0.65, life: 0.8, alpha: 0.85, grow: 1.3 });
+        }
+        if (Math.random() < dt * 10) P.emit(SPR.x + c * SPR.R, 2.2, SPR.z + s * SPR.R, { vx: -s * 6, vz: c * 6, vy: 2, spread: 3, up: 1, grav: 1, color: 0xf2fbff, size: 2.8, life: 0.9, alpha: 0.14, grow: 2.2 });
+        for (const car of S.splash) P.emit(car.x, 0.6, car.z, { color: 0xd8efff, n: 3, size: 0.55, life: 0.45, spread: 10, up: 7, grav: 30, alpha: 0.85 });
+        S.hiss -= dt;
+        if (S.hiss <= 0 && game.sound.ctx && (game.state === 'race' || game.state === 'roundEnd')) {
+          S.hiss = 0.38;
+          game.sound.noiseBurst(0.45, { freq: 4200, q: 0.6, vol: 0.035, type: 'highpass', pan: game.panOf(SPR.x, SPR.z) });
+        }
+      }
+      S.splash.length = 0;
+    }
     if (A.wind) A.wind.value = time;
     if (A.carsU && game) {
       const v = A.carsU.value;

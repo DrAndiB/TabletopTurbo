@@ -15,6 +15,26 @@ const PAINT = 0x1d9a96; // spilt paint colour (teal)
 
 let A = null; // per-frame animation state
 
+// Random-orbit sander left running: it rests and buzzes beside the east straight, then 'walks' across the road
+// (s ~690) to the bench edge and back. Pure function of time; a fine vibration rides on top of the path.
+const SAND = { wx: 129, ex: 160.4, z: -6, r: 5.2, rest: 3.2, cross: 2.5 };
+function sanderPose(t) {
+  const P = 2 * (SAND.rest + SAND.cross), u = ((t % P) + P) % P;
+  const ease = (f) => f * f * f * (f * (f * 6 - 15) + 10);
+  let f, moving = false;
+  if (u < SAND.rest) f = 0;
+  else if (u < SAND.rest + SAND.cross) { f = ease((u - SAND.rest) / SAND.cross); moving = true; }
+  else if (u < 2 * SAND.rest + SAND.cross) f = 1;
+  else { f = 1 - ease((u - 2 * SAND.rest - SAND.cross) / SAND.cross); moving = true; }
+  // wander in small loops while it rests (less at the bench edge), plus the orbit buzz
+  const w = 1 - f * 0.6;
+  return {
+    x: SAND.wx + (SAND.ex - SAND.wx) * f + Math.cos(t * 1.9) * 0.9 * w + Math.sin(t * 53) * 0.08,
+    z: SAND.z + Math.sin(t * 1.4) * 1.3 + Math.cos(t * 59) * 0.08,
+    angle: 1.35 + Math.sin(t * 0.45) * 0.5, moving,
+  };
+}
+
 export default {
   id: 'workshop',
   name: 'Workbench Rally',
@@ -1981,6 +2001,49 @@ export default {
     flushDecals();
     flushAO();
 
+    // ---------------------------------------------------------------- moving hazard: a cordless random-orbit sander left running, walking across the east straight
+    {
+      const R = SAND.r;
+      const body = K.phys({ color: 0xe8661c, roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+      const rubber = K.std({ color: 0x1d1e20, roughness: 0.7 });
+      const greyP = K.plastic(0x3a3d42, 0.45);
+      const root = new T.Group();
+      const shake = new T.Group(); root.add(shake);
+      // sanding disc (grit printed, dust-extraction holes) on a black pad
+      const dc = TX.makeCanvas(256), dg = dc.getContext('2d');
+      dg.fillStyle = '#b8743a'; dg.beginPath(); dg.arc(128, 128, 128, 0, PI * 2); dg.fill();
+      const nr = K.rng(77);
+      for (let i = 0; i < 2600; i++) { dg.fillStyle = `rgba(${nr() < 0.5 ? '255,220,170' : '70,35,10'},${0.25 + nr() * 0.3})`; dg.fillRect(nr() * 256, nr() * 256, 2, 2); }
+      dg.fillStyle = '#2a1a10'; for (let i = 0; i < 8; i++) { const a = (i / 8) * PI * 2; dg.beginPath(); dg.arc(128 + Math.cos(a) * 78, 128 + Math.sin(a) * 78, 9, 0, PI * 2); dg.fill(); }
+      dg.beginPath(); dg.arc(128, 128, 12, 0, PI * 2); dg.fill();
+      const discMat = K.std({ map: TX.toTexture(dc, { wrap: false }), roughness: 0.95 });
+      const pad = new T.Mesh(new T.CylinderGeometry(R, R, 0.5, 40), [rubber, discMat, rubber]); pad.position.y = 0.6; shake.add(pad);
+      const padTop = new T.Mesh(new T.CylinderGeometry(R - 0.25, R, 0.6, 40), rubber); padTop.position.y = 1.15; shake.add(padTop);
+      // housing: a squat mushroom with a black skirt and a rubber palm grip
+      const hous = new T.Mesh(K.lathe([[R - 0.6, 0], [R - 0.4, 0.9], [R - 1.0, 2.2], [3.6, 3.4], [3.2, 4.6], [3.4, 5.4], [3.1, 6.2], [2.2, 6.9], [0.001, 7.1]], 40), body);
+      hous.position.y = 1.4; shake.add(hous);
+      const skirt = new T.Mesh(new T.CylinderGeometry(R - 0.45, R - 0.35, 0.7, 40), greyP); skirt.position.y = 1.75; shake.add(skirt);
+      const grip = new T.Mesh(new T.SphereGeometry(3.25, 28, 14, 0, PI * 2, 0, PI / 2), rubber); grip.scale.y = 0.55; grip.position.y = 7.0; shake.add(grip);
+      // speed dial + power switch
+      const dial = new T.Mesh(new T.CylinderGeometry(0.75, 0.75, 0.5, 16), greyP); dial.position.set(2.7, 6.1, 1.2); dial.rotation.z = -0.5; shake.add(dial);
+      const sw = new T.Mesh(new K.RoundedBoxGeometry(1.6, 0.7, 1.0, 2, 0.25), K.plastic(0xd8d8d0, 0.4)); sw.position.set(-1.0, 6.85, 2.2); sw.rotation.x = -0.4; shake.add(sw);
+      // label band
+      const lc = TX.makeCanvas(512, 64), lg = lc.getContext('2d');
+      lg.fillStyle = '#1d1e20'; lg.fillRect(0, 0, 512, 64);
+      lg.fillStyle = '#f4f1ea'; lg.font = '700 34px Rubik, sans-serif'; lg.fillText('ORBIT 125', 22, 45); lg.fillText('ORBIT 125', 278, 45);
+      lg.fillStyle = '#e8661c'; lg.fillRect(214, 22, 40, 20); lg.fillRect(470, 22, 40, 20);
+      const band = new T.Mesh(new T.CylinderGeometry(3.42, 3.62, 1.1, 40, 1, true), K.std({ map: TX.toTexture(lc), roughness: 0.5 })); band.position.y = 1.4 + 3.75; shake.add(band);
+      // battery pack at the back (cordless) and the dust port with a cloth bag
+      const batt = new T.Mesh(new K.RoundedBoxGeometry(5.0, 2.6, 3.6, 3, 0.5), greyP); batt.position.set(-5.6, 2.2, 0); shake.add(batt);
+      const battTop = new T.Mesh(new K.RoundedBoxGeometry(3.6, 0.4, 3.0, 2, 0.15), body); battTop.position.set(-5.8, 3.55, 0); shake.add(battTop);
+      const port = new T.Mesh(new T.CylinderGeometry(0.9, 1.0, 3.2, 16), greyP); port.rotation.z = PI / 2 - 0.25; port.position.set(-3.8, 2.4, -3.4); port.rotation.y = 0.5; shake.add(port);
+      const bag = new T.Mesh(new T.SphereGeometry(1, 20, 14), K.std({ color: 0x55626e, roughness: 0.95 })); bag.scale.set(2.8, 1.5, 1.8); bag.position.set(-7.0, 1.9, -4.6); bag.rotation.y = 0.5; shake.add(bag);
+      K.add(root); keep.push(root);
+      const shadow = K.contact(SAND.wx, SAND.z, R + 1.6, R + 1.2, 0.5); keep.push(shadow);
+      K.mover({ type: 'circle', r: R + 0.15, h: 8 }, (t) => { const q = sanderPose(t); return { x: q.x, z: q.z, angle: q.angle }; });
+      A.sander = { root, shake, shadow, buzz: 0, dust: 0 };
+    }
+
     // ---------------------------------------------------------------- merge static meshes (fewer draw calls)
     // Untextured materials are grouped into a few classes; their colours are baked into vertex colours.
     {
@@ -2059,8 +2122,33 @@ export default {
     }
   },
 
-  animate(time) {
-    if (!A || !A.motes) return;
+  animate(time, dt, game) {
+    if (!A) return;
+    if (A.sander) {
+      const S = A.sander, q = sanderPose(time);
+      S.root.position.set(q.x, 0, q.z); S.root.rotation.y = -q.angle;
+      S.shake.position.set(Math.sin(time * 97) * 0.06, Math.abs(Math.sin(time * 83)) * 0.05, Math.cos(time * 89) * 0.06);
+      S.shake.rotation.set(Math.sin(time * 71) * 0.012, 0, Math.cos(time * 67) * 0.012);
+      S.shadow.position.set(q.x, 0.035, q.z);
+      if (game && game.particles && dt > 0.001 && game.onScreen(q.x, 2, q.z, 0.2)) {
+        // fine dust squeezed out round the pad, a puff from the bag now and then
+        S.dust += dt * (q.moving ? 34 : 18);
+        while (S.dust > 1) {
+          S.dust--;
+          const a = Math.random() * Math.PI * 2;
+          game.particles.emit(q.x + Math.cos(a) * SAND.r, 0.6, q.z + Math.sin(a) * SAND.r, { vx: Math.cos(a) * 7, vz: Math.sin(a) * 7, spread: 3, up: 1.5, grav: 4, color: 0xe7c99a, size: 0.55, life: 0.6, alpha: 0.8, grow: 1.6 });
+        }
+        if (Math.random() < dt * 3) game.particles.emit(q.x, 1.5, q.z, { spread: 6, up: 2, grav: -0.5, color: 0xeedcbc, size: 2.4, life: 1.1, alpha: 0.18, grow: 2.2 });
+        S.buzz -= dt;
+        if (S.buzz <= 0 && game.sound.ctx && (game.state === 'race' || game.state === 'roundEnd')) {
+          S.buzz = 0.3;
+          const pan = game.panOf(q.x, q.z);
+          game.sound.noiseBurst(0.34, { freq: q.moving ? 1150 : 900, q: 5, vol: 0.06, type: 'bandpass', pan });
+          game.sound.tone(q.moving ? 128 : 112, 0.32, { type: 'sawtooth', vol: 0.018 });
+        }
+      }
+    }
+    if (!A.motes) return;
     const { g, base, n } = A.motes;
     const p = g.attributes.position.array;
     for (let i = 0; i < n; i++) {

@@ -17,6 +17,17 @@ const HOLE = [-37, 24, 5]; // lava-tube skylight
 
 let A = null; // per-frame animation state
 
+// Dust devil: a pure function of time. It drifts to and fro between the west infield and the drone field,
+// crossing the north-bound straight (s ~640-660) twice per cycle. Its footprint is loose, swirling sand.
+const DEVIL = { cx: -61, cz: -25, ax: 28, P: 18, R: 8.5 };
+function devilAt(t) {
+  const w = (2 * Math.PI) / DEVIL.P;
+  return {
+    x: DEVIL.cx + DEVIL.ax * Math.sin(w * t) + 2.2 * Math.sin(t * 0.83 + 1),
+    z: DEVIL.cz + 6 * Math.sin(t * 0.29 + 2) + 1.8 * Math.cos(t * 0.7),
+  };
+}
+
 export default {
   id: 'mars',
   name: 'Mars Rover Run',
@@ -1464,32 +1475,88 @@ export default {
 
     // ---------------------------------------------------------------- dust devil drifting through the west infield
     {
+      // alpha maps read luminance: draw white streaks on black
       const c = TX.makeCanvas(128, 256), g = c.getContext('2d'), rr = K.rng(66);
+      g.fillStyle = '#000'; g.fillRect(0, 0, 128, 256);
+      g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(0, 0, 128, 256);
       for (let i = 0; i < 160; i++) {
         const x = rr() * 128, y = rr() * 256, len = 20 + rr() * 60;
-        g.strokeStyle = `rgba(255,255,255,${0.08 + rr() * 0.2})`; g.lineWidth = 2 + rr() * 6;
+        g.strokeStyle = `rgba(255,255,255,${0.2 + rr() * 0.4})`; g.lineWidth = 2 + rr() * 6;
         for (const ox of [-128, 0, 128]) { g.beginPath(); g.moveTo(x + ox, y); g.lineTo(x + ox + len, y - len * 0.35); g.stroke(); }
       }
       // fade at the top and bottom
-      g.globalCompositeOperation = 'destination-in';
-      const fg = g.createLinearGradient(0, 0, 0, 256); fg.addColorStop(0, 'rgba(0,0,0,0)'); fg.addColorStop(0.25, 'rgba(0,0,0,1)'); fg.addColorStop(0.85, 'rgba(0,0,0,1)'); fg.addColorStop(1, 'rgba(0,0,0,0.2)');
+      const fg = g.createLinearGradient(0, 0, 0, 256); fg.addColorStop(0, 'rgba(0,0,0,1)'); fg.addColorStop(0.25, 'rgba(0,0,0,0)'); fg.addColorStop(0.85, 'rgba(0,0,0,0)'); fg.addColorStop(1, 'rgba(0,0,0,0.75)');
       g.fillStyle = fg; g.fillRect(0, 0, 128, 256);
       const tex = TX.toTexture(c);
       tex.repeat.set(2, 1);
-      const mat = new T.MeshBasicMaterial({ color: 0xd49a6a, alphaMap: tex, transparent: true, opacity: 0.55, depthWrite: false, side: T.DoubleSide });
+      const mat = new T.MeshBasicMaterial({ color: 0xe6b98c, alphaMap: tex, transparent: true, opacity: 0.85, depthWrite: false, side: T.DoubleSide });
       const prof = [[0.6, 0], [1.0, 1.5], [1.6, 4], [2.6, 8], [3.8, 12], [5.2, 16]];
       const dd = new T.Group();
       const outer = new T.Mesh(K.lathe(prof, 24), mat); dd.add(outer);
       const inner = new T.Mesh(K.lathe(prof.map(([a, b]) => [a * 0.6, b * 0.92]), 20), mat); dd.add(inner);
-      const skirtC = TX.makeCanvas(128), sg = skirtC.getContext('2d');
-      const sgr = sg.createRadialGradient(64, 64, 8, 64, 64, 64); sgr.addColorStop(0, 'rgba(255,255,255,0.7)'); sgr.addColorStop(1, 'rgba(255,255,255,0)');
-      sg.fillStyle = sgr; sg.fillRect(0, 0, 128, 128);
-      const skirt = new T.Mesh(new T.PlaneGeometry(9, 9), new T.MeshBasicMaterial({ color: 0xc88c5c, alphaMap: TX.toTexture(skirtC, { wrap: false }), transparent: true, opacity: 0.6, depthWrite: false }));
-      skirt.rotation.x = -PI / 2; skirt.position.y = 0.4; dd.add(skirt);
+      // swirling skirt of blown sand: spiral arms fading out to the edge of the zone that pushes rovers
+      const skirtC = TX.makeCanvas(256), sg = skirtC.getContext('2d');
+      sg.fillStyle = '#000'; sg.fillRect(0, 0, 256, 256);
+      const sgr = sg.createRadialGradient(128, 128, 10, 128, 128, 128); sgr.addColorStop(0, 'rgba(255,255,255,0.7)'); sgr.addColorStop(0.5, 'rgba(255,255,255,0.22)'); sgr.addColorStop(1, 'rgba(255,255,255,0)');
+      sg.fillStyle = sgr; sg.fillRect(0, 0, 256, 256);
+      sg.lineCap = 'round';
+      for (let arm = 0; arm < 5; arm++) {
+        for (let k = 0; k < 60; k++) {
+          const f = k / 60, a = arm * (TAU / 5) + f * 4.2, rad = 14 + f * 108;
+          sg.strokeStyle = `rgba(255,255,255,${0.55 * (1 - f) * (1 - f)})`; sg.lineWidth = 3 + 9 * (1 - f);
+          sg.beginPath(); sg.arc(128, 128, rad, a, a + 0.22); sg.stroke();
+        }
+      }
+      const skirt = new T.Mesh(new T.PlaneGeometry(DEVIL.R * 1.85, DEVIL.R * 1.85), new T.MeshBasicMaterial({ color: 0xc88c5c, alphaMap: TX.toTexture(skirtC, { wrap: false }), transparent: true, opacity: 0.75, depthWrite: false }));
+      skirt.rotation.x = -PI / 2; skirt.position.y = 0.5; dd.add(skirt);
+      dd.scale.setScalar(1.25);
       dd.renderOrder = 4;
       dd.traverse((o) => { o.castShadow = false; o.receiveShadow = false; o.renderOrder = 4; });
       K.group.add(dd); keep.push(dd);
-      A.devil = { dd, outer, inner, tex, gy };
+      A.devil = { dd, outer, inner, skirt, tex, gy, lastOn: false, puffT: 0 };
+      // the footprint is loose, swirling sand: a moving slick patch (moved every physics step in tick)
+      const p0 = devilAt(0);
+      A.devilSurf = K.surface('slick', { x: p0.x, z: p0.z, r: DEVIL.R * 0.8 });
+    }
+
+    // ---------------------------------------------------------------- moving hazard 2: a boulder breaks off the cliff band,
+    // drops to the foot, rolls south across the north road (s ~430) and settles into the soft sand of the infield
+    {
+      const BR = 2.4, bx = 34;
+      const zf = zFoot(bx), zTop = zf - 6.6, yTop = gy(bx, zTop), zA = zf - 1.6, zB = zf + 2.4, zStop = -50;
+      // phases: teeter on the cliff top, drop onto the talus, settle there in full view, roll down the talus
+      // (accelerating) and across the road (decelerating), rest, sink into the sand, hidden until the next one
+      const vMax = 20, a1 = (vMax * vMax) / (2 * (zB - zA)), t1 = vMax / a1, a2 = (vMax * vMax) / (2 * (zStop - zB)), t2 = vMax / a2;
+      const T0 = 1.1, T1 = T0 + 0.5, T2 = T1 + 1.1, T3 = T2 + t1, T4 = T3 + t2, T5 = T4 + 1.3, T6 = T5 + 0.8, P = 12.5, OFS = 3.1;
+      // x/z only (cheap, used by the physics every step)
+      const posXZ = (t) => {
+        const u = (((t + OFS) % P) + P) % P;
+        let z = zTop;
+        if (u < T0) z = zTop;
+        else if (u < T1) z = lerp(zTop, zA, (u - T0) / (T1 - T0));
+        else if (u < T2) z = zA;
+        else if (u < T3) { const k = u - T2; z = zA + 0.5 * a1 * k * k; }
+        else if (u < T4) { const k = u - T3; z = zB + vMax * k - 0.5 * a2 * k * k; }
+        else if (u < T6) z = zStop;
+        return { x: bx, z, u };
+      };
+      K.mover({ type: 'circle', r: BR, h: BR * 1.8 }, (t) => { const q = posXZ(t); return { x: q.x, z: q.z, angle: 0 }; });
+      const gA = gy(bx, zA), gStop = gy(bx, zStop), rollEnd = 1.6 + (zStop - zA) / BR;
+      const pose = (t) => {
+        const q = posXZ(t), u = q.u;
+        if (u < T0) { const w = u / T0; return { ph: 0, x: bx + Math.sin(u * 23) * 0.18 * w, y: yTop + BR * 0.85, z: zTop, roll: Math.sin(u * 17) * 0.1 * w, s: 1 }; }
+        if (u < T1) { const k = (u - T0) / (T1 - T0); return { ph: 1, x: bx, y: lerp(yTop, gA, k * k) + BR * 0.85, z: q.z, roll: k * 1.6, s: 1 }; }
+        if (u < T2) { const k = (u - T1) / (T2 - T1); return { ph: 2, x: bx + Math.sin(u * 19) * 0.12 * (1 - k), y: gA + BR * 0.85, z: zA, roll: 1.6 + Math.sin(u * 13) * 0.06 * (1 - k), s: 1 }; }
+        if (u < T4) return { ph: 3, x: bx, y: gy(bx, q.z) + BR * 0.85, z: q.z, roll: 1.6 + (q.z - zA) / BR, s: 1 };
+        if (u < T5) return { ph: 4, x: bx, y: gStop + BR * 0.85, z: zStop, roll: rollEnd, s: 1 };
+        if (u < T6) { const k = (u - T5) / (T6 - T5); return { ph: 5, x: bx, y: gStop + BR * 0.85 - k * k * BR * 1.9, z: zStop, roll: rollEnd, s: 1 - k * 0.2 }; }
+        return { ph: 6, x: bx, y: -20, z: zTop, roll: 0, s: 0.001 };
+      };
+      const m = new T.Mesh(rockGeo(2, 0.13, 913, 0.97, 0), rockMat);
+      m.scale.setScalar(BR);
+      const grp = new T.Group(); grp.add(m);
+      K.add(grp); keep.push(grp);
+      A.boulder = { grp, m, pose, BR, last: -1, trail: 0 };
     }
 
     // ---------------------------------------------------------------- airborne dust motes in the low sun
@@ -1590,17 +1657,80 @@ export default {
     }
   },
 
-  animate(time, dt) {
+  // fixed-rate: move the devil's slick footprint and swirl rovers caught in it
+  tick(dt, time, game) {
+    if (!A || !A.devilSurf) return;
+    const { x, z } = devilAt(time), R = DEVIL.R, S = A.devilSurf, r0 = R * 0.8;
+    S.x = x; S.z = z; S.bb[0] = x - r0; S.bb[1] = z - r0; S.bb[2] = x + r0; S.bb[3] = z + r0;
+    A.devilOnRoad = !game.kit.offRoad(x, z, R * 0.4);
+    for (const e of game.cars) {
+      const c = e.car;
+      if (c.state !== 'drive' || c.airborne) continue;
+      const dx = c.x - x, dz = c.z - z, d = Math.hypot(dx, dz);
+      if (d > R || d < 1e-3) continue;
+      const k = 1 - d / R, f = k * (2 - k); // strongest near the core
+      const tx = -dz / d, tz = dx / d; // clockwise swirl
+      c.vx += (tx * 58 + (dx / d) * 16) * f * dt;
+      c.vz += (tz * 58 + (dz / d) * 16) * f * dt;
+      c.w += 9 * f * dt;
+      if (!A.caught) A.caught = [];
+      if (A.caught.length < 4 && Math.random() < dt * 20) A.caught.push(c);
+    }
+  },
+
+  animate(time, dt, game) {
     if (!A) return;
     if (A.beacon) A.beacon.emissiveIntensity = Math.floor(time * 1.6) % 2 ? 0.25 : 2.2;
     if (A.devil) {
       const d = A.devil;
-      const x = -106 + Math.sin(time * 0.045) * 26 + Math.sin(time * 0.11 + 1) * 6;
-      const z = 16 + Math.sin(time * 0.033 + 2) * 30 + Math.cos(time * 0.09) * 5;
-      d.dd.position.set(x, d.gy(x, z), z);
-      d.outer.rotation.y = -time * 2.4; d.inner.rotation.y = -time * 3.6;
+      const { x, z } = devilAt(time);
+      const gy0 = d.gy(x, z);
+      d.dd.position.set(x, gy0, z);
+      d.outer.rotation.y = -time * 2.4; d.inner.rotation.y = -time * 3.6; d.skirt.rotation.z = time * 2.0;
       d.dd.rotation.z = Math.sin(time * 0.7) * 0.06; d.dd.rotation.x = Math.cos(time * 0.5) * 0.05;
       d.tex.offset.y = -time * 0.18; d.tex.offset.x = time * 0.05;
+      if (game && game.particles && dt > 0.001 && game.onScreen(x, 4, z, 0.15)) {
+        // sand whipped round the base (clockwise seen from above, like the funnel)
+        const R = DEVIL.R;
+        const n = Math.random() < dt * 26 ? 1 : 0;
+        for (let i = 0; i < n; i++) {
+          const a = Math.random() * Math.PI * 2, rr = R * (0.35 + Math.random() * 0.6);
+          const px = x + Math.cos(a) * rr, pz = z + Math.sin(a) * rr;
+          game.particles.emit(px, gy0 + 0.4, pz, { vx: -Math.sin(a) * 14, vz: Math.cos(a) * 14, spread: 2, up: 5, color: 0xd29a68, size: 1.6, life: 0.9, alpha: 0.4, grav: -1, grow: 2.2 });
+        }
+        // whoosh as it crosses the road
+        const onRoad = A.devilOnRoad;
+        if (onRoad && !d.lastOn && game.sound.ctx && (game.state === 'race' || game.state === 'roundEnd')) game.sound.noiseBurst(1.1, { freq: 380, q: 0.7, vol: 0.12, type: 'bandpass', pan: game.panOf(x, z) });
+        d.lastOn = onRoad;
+      }
+      // rovers caught in it throw up sand
+      if (game && A.caught) {
+        for (const c of A.caught) game.particles.emit(c.x, 0.6, c.z, { color: 0xcf8a52, n: 2, size: 1.6, life: 0.8, spread: 9, up: 6, grav: 2, grow: 2.4, alpha: 0.5 });
+        A.caught.length = 0;
+      }
+    }
+    if (A.boulder) {
+      const B = A.boulder, q = B.pose(time);
+      B.grp.position.set(q.x, q.y, q.z);
+      B.m.rotation.set(q.roll, 0, 0);
+      B.grp.scale.setScalar(q.s);
+      B.grp.visible = q.ph !== 6;
+      if (game && game.particles && dt > 0.001 && game.onScreen(q.x, 0, q.z, 0.3)) {
+        const P = game.particles, live = game.state === 'race' || game.state === 'roundEnd';
+        if (q.ph === 0 && Math.random() < dt * 9) P.emit(q.x + (Math.random() - 0.5) * 4, q.y - 1, q.z + 1.5, { vz: 4, up: 1, spread: 2, grav: 40, color: 0x9a4a2a, size: 0.45, life: 0.8, alpha: 0.9, grow: 1 });
+        if (q.ph === 0 && B.last !== 0 && live && game.sound.ctx) game.sound.noiseBurst(0.6, { freq: 200, q: 1, vol: 0.09, type: 'lowpass', pan: game.panOf(q.x, q.z) });
+        if (q.ph === 2 && B.last === 1) {
+          P.emit(q.x, q.y - B.BR * 0.6, q.z, { color: 0xc4784a, n: 22, size: 2.4, life: 1.6, spread: 14, up: 4, grav: 0.6, grow: 2.4, alpha: 0.5 });
+          if (live && game.sound.ctx) { game.sound.thud(55); game.sound.noiseBurst(0.7, { freq: 160, q: 0.8, vol: 0.16, type: 'lowpass', pan: game.panOf(q.x, q.z) }); }
+        }
+        if (q.ph === 2 && Math.random() < dt * 6) P.emit(q.x, q.y - B.BR * 0.5, q.z + 1, { color: 0xc98654, size: 1.4, life: 1.0, spread: 5, up: 1, grav: 0.3, grow: 2, alpha: 0.35 });
+        if (q.ph === 3) {
+          B.trail += dt * 28;
+          while (B.trail > 1) { B.trail--; P.emit(q.x + (Math.random() - 0.5) * 3, q.y - B.BR * 0.7, q.z - 1.5, { color: 0xc98654, size: 1.5, life: 1.2, spread: 4, up: 1.5, grav: 0.3, grow: 2.2, alpha: 0.4 }); }
+        }
+        if (q.ph === 5 && B.last === 4) P.emit(q.x, q.y - B.BR * 0.5, q.z, { color: 0xcf8a52, n: 14, size: 2.2, life: 1.3, spread: 8, up: 3, grav: 0.4, grow: 2.2, alpha: 0.45 });
+      }
+      B.last = q.ph;
     }
     if (A.motes) {
       const { g, base, n } = A.motes;

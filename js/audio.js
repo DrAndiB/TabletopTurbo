@@ -158,6 +158,45 @@ export class Sound {
   }
   click() { this.tone(1200, 0.04, { type: 'square', vol: 0.05 }); }
 
+  // filtered noise whose filter (and level) glide over time: whooshes and rushes
+  sweep(dur, { from = 500, to = 2000, q = 1.2, vol = 0.1, type = 'bandpass', pan = 0, attack = 0.1, when = 0 } = {}) {
+    if (!this.ensure()) return;
+    const ctx = this.ctx, t = ctx.currentTime + when;
+    const s = ctx.createBufferSource(); s.buffer = this.noise;
+    const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q;
+    f.frequency.setValueAtTime(from, t); f.frequency.exponentialRampToValueAtTime(to, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    let node = s.connect(f).connect(g);
+    if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-0.9, Math.min(0.9, pan)); node = node.connect(p); }
+    node.connect(this.sfx);
+    s.start(t, Math.random() * 1.2); s.stop(t + dur + 0.05);
+  }
+  // soft rush of air when a car tucks into a slipstream
+  whoosh(pan = 0, vol = 1) { this.sweep(0.75, { from: 380, to: 2400, q: 0.9, vol: 0.09 * vol, pan, attack: 0.25 }); }
+  // turbo start: a rising "fwoom" with a little engine yelp
+  turbo(pan = 0) {
+    this.sweep(0.9, { from: 260, to: 3200, q: 0.7, vol: 0.16, pan, attack: 0.06 });
+    this.tone(140, 0.55, { type: 'sawtooth', vol: 0.07, slideTo: 420, attack: 0.02 });
+  }
+  // bogged-down launch: a sputter and a short tyre squeal
+  bog(pan = 0) {
+    for (let i = 0; i < 4; i++) this.tone(62 + i * 3, 0.07, { type: 'square', vol: 0.07, when: i * 0.09 });
+    this.noiseBurst(0.5, { freq: 1700, q: 2.5, type: 'bandpass', vol: 0.12, pan });
+  }
+  // hard crash: a crunch on top of the bump
+  crunch(strength, pan = 0) {
+    const v = Math.min(0.32, 0.08 + strength * 0.004);
+    this.noiseBurst(0.22, { freq: 2600, q: 0.8, type: 'highpass', vol: v * 0.7, pan });
+    this.tone(150 + Math.random() * 40, 0.22, { type: 'triangle', vol: v, slideTo: 55 });
+  }
+  newBest() {
+    [659, 784, 988, 1319].forEach((f, i) => this.tone(f, 0.2, { type: 'square', vol: 0.1, when: i * 0.08 }));
+    this.tone(1319, 0.5, { type: 'triangle', vol: 0.08, when: 0.32 });
+  }
+
   // ---- small chiptune loop for menus
   startMusic() {
     this.wantMusic = true;

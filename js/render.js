@@ -179,7 +179,19 @@ export class GameRenderer {
     return out;
   }
 
+  // `shake` (table units, set by the game after big crashes) nudges the camera for this frame only,
+  // so gameplay checks that use the camera (who is on screen) never see it.
   render() {
+    const s = this.shake || 0;
+    if (s > 0.01) {
+      const cam = this.camera, t = performance.now() / 1000;
+      const ox = s * (Math.sin(t * 61.3) * 0.6 + Math.sin(t * 37.1 + 2.1) * 0.4);
+      const oz = s * (Math.sin(t * 53.7 + 1.3) * 0.6 + Math.sin(t * 29.3 + 0.4) * 0.4);
+      cam.position.x += ox; cam.position.z += oz; cam.updateMatrixWorld();
+      this.composer.render();
+      cam.position.x -= ox; cam.position.z -= oz; cam.updateMatrixWorld();
+      return;
+    }
     this.composer.render();
   }
 }

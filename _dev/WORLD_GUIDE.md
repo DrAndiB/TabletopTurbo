@@ -68,6 +68,18 @@ export default {
 - `K.track.edgePoints(side, spacing, extra)` — points along the road edges (side −1 left, +1 right).
 - `K.offRoad(x, z, margin)` — true if a point is clear of the road.
 - Textures (`K.TX`): `woodTextures`, `ginghamTextures`, `feltTextures`, `mottledTextures`, `brushedMetalTextures`, `paint(w, h, fn)`, `makeCanvas`, `toTexture(canvas, {repeat, srgb, wrap})`, `noiseField`, `normalFromHeight`, `labelTexture`. Canvas 2D drawing (text, shapes, gradients) is great for labels, paper, printed patterns. Fonts available to canvas: "Lilita One", "Rubik", Georgia, system fonts.
+- Moving hazards: `K.mover(shape, fn)` adds a kinematic collider. `shape` = `{type: 'circle', r, h}`,
+  `{type: 'box', hw, hd, h}` or `{type: 'capsule', r, h}`; `fn(t)` is a pure function of simulation time `t`
+  (seconds) returning `{x, z, angle}` (circle/box) or `{x1, z1, x2, z2}` (capsule). The engine moves it every
+  physics step and cars/pushable objects it hits get shoved with its surface velocity. Sync the visual in
+  `animate(time, dt, game)` with the same `fn(game.time)`. Make movers telegraphed and fair (periodic, visible
+  before they arrive, never parked on the racing line for long).
+- `tick(dt, time, game)` (optional world function) runs at the fixed physics rate (120 Hz) during countdown/race:
+  use it for force zones such as water currents, wind or a fan (e.g. `for (const e of game.cars) { const c = e.car; if (c.state === 'drive' && inside(c.x, c.z)) { c.vx += fx * dt; c.vz += fz * dt; } }`).
+  Keep it cheap. (`animate` only runs when frames are rendered; `tick` also runs in test simulations.)
+- World options: `gravity: 0.6` scales gravity (Mars); `wake: {color}` sets boat foam colour.
+- Vehicles: `sports | formula | rally | truck | rover | boat`. Boats float at y = 0 (waterline), drift through
+  turns, bob and bank, and leave a foam wake instead of skid marks.
 - Physics: `K.circle(x, z, r, h)`, `K.box(x, z, halfW, halfD, angle, h)`, `K.capsule(x1, z1, x2, z2, r, h)` — `h` = height; a car in the air above `h` passes over.
   `K.surface(kind, {poly} | {x, z, r})` — kinds: `slick` (spins, e.g. milk/oil/ink), `sticky` (jam/glue/paint), `slow` (sand/sawdust/grass), `rough`, `water` (puddles).
   `K.hole(x, z, r)` — cars (and pushable objects) fall in and respawn.

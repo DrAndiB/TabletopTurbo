@@ -1270,7 +1270,168 @@ export default {
       K.instances(new T.IcosahedronGeometry(1, 0), K.std({ color: 0xcfc6b8, roughness: 1 }), list, { cast: false });
     }
 
+    // ======================= moving hazard: an oscillating desk fan in the east infield, gusting across the east straight =======================
+    {
+      const enamel = K.phys({ color: 0x8ccdb6, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.08 });
+      const cream = K.phys({ color: 0xf2e9d3, roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+      const chrome = K.metal(0xe8eaee, 0.14);
+      const bladeMat = K.phys({ color: 0x9fd8e8, roughness: 0.2, transmission: 0, transparent: true, opacity: 0.88, clearcoat: 1, clearcoatRoughness: 0.05, side: T.DoubleSide });
+      const { x: fx, z: fz } = FANP;
+      // weighted base, three piano-key switches, chrome stem
+      const base = K.mesh(K.lathe([[0.001, 0], [5.4, 0], [5.7, 0.35], [5.6, 1.1], [4.6, 2.0], [2.2, 2.5], [1.1, 2.6], [0.001, 2.6]], 48), enamel, fx, 0, fz);
+      for (let i = 0; i < 3; i++) K.mesh(new K.RoundedBoxGeometry(1.0, 0.6, 1.5, 2, 0.2), cream, fx - 1.2 + i * 1.2, 1.95, fz + 4.1, { rx: -0.45 });
+      K.mesh(new T.CylinderGeometry(0.62, 0.75, 10.6, 18), chrome, fx, 7.6, fz);
+      K.mesh(new T.CylinderGeometry(1.25, 1.25, 0.9, 20), enamel, fx, 12.6, fz);
+      // USB cable to a little power bank lying beside it
+      const pbx = fx - 15, pbz = fz + 9;
+      const cord = new T.CatmullRomCurve3([new T.Vector3(fx - 4.6, 0.3, fz + 1.5), new T.Vector3(fx - 8, 0.3, fz + 3.5), new T.Vector3(fx - 9, 0.3, fz + 8.5), new T.Vector3(fx - 11, 0.3, fz + 10.5), new T.Vector3(pbx + 4.1, 0.6, pbz + 0.4)]);
+      K.mesh(new T.TubeGeometry(cord, 40, 0.28, 8), K.plastic(0xf2efe8, 0.5), 0, 0, 0);
+      const pbC = TX.makeCanvas(256, 128), pbg = pbC.getContext('2d');
+      pbg.fillStyle = '#2b2f36'; pbg.fillRect(0, 0, 256, 128);
+      pbg.fillStyle = '#8ccdb6'; pbg.font = '700 34px Rubik, sans-serif'; pbg.fillText('POWER', 22, 58); pbg.fillStyle = '#c9ced6'; pbg.font = '22px Rubik, sans-serif'; pbg.fillText('10000 mAh', 24, 92);
+      for (let i = 0; i < 4; i++) { pbg.fillStyle = i < 3 ? '#7fe3a8' : '#3d434b'; pbg.fillRect(176 + i * 16, 50, 10, 10); }
+      const pbTop = K.std({ map: TX.toTexture(pbC, { wrap: false }), roughness: 0.4, metalness: 0.3 });
+      const pbSide = K.std({ color: 0x2b2f36, roughness: 0.4, metalness: 0.3 });
+      K.mesh(new K.RoundedBoxGeometry(8, 1.5, 4.2, 3, 0.5), [pbSide, pbSide, pbTop, pbSide, pbSide, pbSide], pbx, 0.75, pbz, { ry: 0.25 });
+      AO(pbx, pbz, 5, 2.8, 0.4, 0.25);
+      K.circle(pbx, pbz, 3, 1.5);
+      K.circle(fx, fz, 5.6, 3);
+      AO(fx, fz, 7, 7, 0.58);
+
+      // the oscillating head: local +z is the direction it blows
+      const head = new T.Group(); head.position.set(fx, 14.2, fz);
+      const motor = new T.Mesh(K.lathe([[0.001, -5.6], [1.6, -5.4], [2.5, -4.6], [2.9, -3.0], [2.9, -0.6], [2.3, 0.4], [0.001, 0.6]], 32), enamel);
+      motor.rotation.x = Math.PI / 2; head.add(motor);
+      const nose = new T.Mesh(new T.CylinderGeometry(0.5, 0.5, 2.6, 12), chrome); nose.rotation.x = Math.PI / 2; nose.position.z = 1.4; head.add(nose);
+      const knob = new T.Mesh(new T.CylinderGeometry(0.45, 0.45, 1.2, 12), cream); knob.position.set(0, 3.2, -3.4); head.add(knob);
+      // wire guard (front dome + flat back), merged into one chrome mesh
+      const GZ = 3.9, GR = 6.4;
+      const guard = new T.Group(); guard.position.z = GZ; head.add(guard);
+      const ringAt = (rad, z, tube) => { const m = new T.Mesh(new T.TorusGeometry(rad, tube, 6, 56), chrome); m.position.z = z; guard.add(m); };
+      ringAt(GR, 0, 0.26); ringAt(GR - 0.1, -1.5, 0.16);
+      for (const [rad, z] of [[5.4, 0.55], [4.2, 1.05], [2.9, 1.45], [1.6, 1.7]]) { ringAt(rad, z, 0.09); ringAt(rad, -1.5 - z * 0.35, 0.08); }
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+        for (const [z0, z1, r0] of [[1.75, 0, 1.0], [-1.5 - 0.6, -1.5, 1.0]]) {
+          const p0 = new T.Vector3(ca * r0, sa * r0, z0), p1 = new T.Vector3(ca * GR, sa * GR, z1);
+          const len = p0.distanceTo(p1);
+          const m = new T.Mesh(new T.CylinderGeometry(0.07, 0.07, len, 4), chrome);
+          m.position.copy(p0).add(p1).multiplyScalar(0.5);
+          m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), p1.clone().sub(p0).normalize());
+          guard.add(m);
+        }
+      }
+      for (let i = 0; i < 4; i++) { // side clips
+        const a = (i / 4) * Math.PI * 2 + 0.4;
+        const m = new T.Mesh(new T.BoxGeometry(0.5, 0.5, 1.9), chrome); m.position.set(Math.cos(a) * GR, Math.sin(a) * GR, -0.75); guard.add(m);
+      }
+      mergeByMaterial(guard);
+      // badge on the front of the guard
+      const bc = TX.makeCanvas(128), bg = bc.getContext('2d');
+      bg.fillStyle = '#c8302a'; bg.beginPath(); bg.arc(64, 64, 62, 0, PI * 2); bg.fill();
+      bg.strokeStyle = '#f2e9d3'; bg.lineWidth = 6; bg.beginPath(); bg.arc(64, 64, 52, 0, PI * 2); bg.stroke();
+      bg.fillStyle = '#f2e9d3'; bg.font = '700 30px Rubik, sans-serif'; bg.textAlign = 'center'; bg.fillText('ZEPHYR', 64, 74);
+      const badge = new T.Mesh(new T.CylinderGeometry(1.15, 1.15, 0.25, 28), [chrome, K.std({ map: TX.toTexture(bc, { wrap: false }), roughness: 0.4, metalness: 0.2 }), chrome]);
+      badge.rotation.x = Math.PI / 2; badge.position.z = GZ + 1.95; head.add(badge);
+      // blades spinning on the nose, plus a faint motion-blur disc
+      const rotor = new T.Group(); rotor.position.z = GZ - 0.25; head.add(rotor);
+      const bs = new T.Shape();
+      bs.moveTo(0.7, -0.6); bs.bezierCurveTo(2.5, -1.6, 5.4, -1.9, 5.7, -0.2); bs.bezierCurveTo(5.9, 1.4, 3.6, 1.7, 0.7, 0.6); bs.closePath();
+      const bladeGeo = new T.ExtrudeGeometry(bs, { depth: 0.08, bevelEnabled: false, curveSegments: 10 });
+      for (let i = 0; i < 4; i++) { const m = new T.Mesh(bladeGeo, bladeMat); m.rotation.set(0, 0, (i / 4) * Math.PI * 2); const piv = new T.Group(); piv.add(m); m.rotation.x = 0.38; piv.rotation.z = (i / 4) * Math.PI * 2; m.rotation.z = 0; rotor.add(piv); }
+      rotor.add(new T.Mesh(new T.CylinderGeometry(0.9, 0.9, 0.9, 16).rotateX(Math.PI / 2), cream));
+      const blur = new T.Mesh(new T.CircleGeometry(5.8, 40), new T.MeshBasicMaterial({ color: 0xcfeef5, transparent: true, opacity: 0.16, depthWrite: false }));
+      blur.position.z = GZ - 0.2; head.add(blur);
+      // two ribbon streamers tied to the top of the guard: they always show which way it blows
+      const ribbons = [];
+      for (const [col, ox] of [[0xe8402e, -1.1], [0xf5c21b, 1.1]]) {
+        const g = new T.PlaneGeometry(0.55, 9, 1, 14);
+        const m = new T.Mesh(g, K.phys({ color: col, roughness: 0.6, side: T.DoubleSide, sheen: 0.4 }));
+        m.position.set(ox, GR - 0.4, GZ + 0.6); head.add(m);
+        ribbons.push({ g, base: g.attributes.position.array.slice(), ph: ox * 3 });
+      }
+      K.add(head);
+      blur.castShadow = false;
+      FAN = { head, rotor, ribbons, caught: [], hum: 0, bits: 0 };
+    }
+
     flushPencils();
     flushAO();
   },
+
+  // fixed-rate: the fan's gust shoves cars (and paper balls) along its cone
+  tick(dt, time, game) {
+    if (!FAN) return;
+    const th = fanAngle(time);
+    const gust = (x, z) => {
+      const dx = x - FANP.x, dz = z - FANP.z, d = Math.hypot(dx, dz);
+      if (d > FANP.range || d < 5) return 0;
+      const da = wrapAngle(Math.atan2(dz, dx) - th);
+      if (Math.abs(da) > FANP.half) return 0;
+      return (1 - (da / FANP.half) ** 2) * (d < 18 ? 1 : 1 - ((d - 18) / (FANP.range - 18)) * 0.65);
+    };
+    for (const e of game.cars) {
+      const c = e.car;
+      if (c.state !== 'drive' || c.y > 3) continue;
+      const s = gust(c.x, c.z);
+      if (!s) continue;
+      const dx = c.x - FANP.x, dz = c.z - FANP.z, d = Math.hypot(dx, dz), ux = dx / d, uz = dz / d;
+      c.x += ux * 17 * s * dt; c.z += uz * 17 * s * dt; // the gust drifts the light car sideways
+      c.vx += ux * 110 * s * dt; c.vz += uz * 110 * s * dt;
+      c.w += Math.sign(Math.cos(c.angle) * uz - Math.sin(c.angle) * ux) * 5 * s * dt; // nose swings downwind
+      if (FAN.caught.length < 4 && Math.random() < dt * 25) FAN.caught.push(c);
+    }
+    for (const b of game.physics.dynamics) {
+      if (b.state !== 'live') continue;
+      const s = gust(b.x, b.z);
+      if (!s) continue;
+      const dx = b.x - FANP.x, dz = b.z - FANP.z, d = Math.hypot(dx, dz);
+      b.vx += (dx / d) * 60 * s * dt; b.vz += (dz / d) * 60 * s * dt;
+    }
+  },
+
+  animate(time, dt, game) {
+    if (!FAN) return;
+    const th = fanAngle(time);
+    FAN.head.rotation.y = Math.PI / 2 - th;
+    FAN.rotor.rotation.z = -time * 31;
+    for (const rb of FAN.ribbons) {
+      const p = rb.g.attributes.position.array, b = rb.base;
+      for (let i = 0; i < p.length; i += 3) {
+        const l = 4.5 - b[i + 1]; // 0 at the knot, 9 at the tail
+        const f = l / 9;
+        p[i] = b[i] + Math.sin(l * 1.3 - time * 26 + rb.ph) * 0.45 * f;
+        p[i + 1] = -f * 0.8 + Math.sin(l * 0.9 - time * 19 + rb.ph) * 0.5 * f;
+        p[i + 2] = l * 0.98;
+      }
+      rb.g.attributes.position.needsUpdate = true;
+      rb.g.computeVertexNormals();
+    }
+    if (!game || !game.particles || dt < 0.001) return;
+    const ux = Math.cos(th), uz = Math.sin(th);
+    if (!game.onScreen(FANP.x + ux * 12, 0, FANP.z + uz * 12, 0.3)) { FAN.caught.length = 0; return; }
+    const hx = FANP.x + ux * 5.5, hz = FANP.z + uz * 5.5;
+    // paper bits and dust streaming out of the fan
+    FAN.bits += dt * 22;
+    while (FAN.bits > 1) {
+      FAN.bits--;
+      const sp = 26 + Math.random() * 16, side = (Math.random() - 0.5) * 2;
+      const col = [0xffffff, 0xf7f1dc, 0xfff27a, 0xffb3c8, 0x9fd8ff][Math.floor(Math.random() * 5)];
+      game.particles.emit(hx - uz * side * 3, 9 + Math.random() * 9, hz + ux * side * 3, { vx: ux * sp - uz * side * 4, vz: uz * sp + ux * side * 4, vy: -3, spread: 4, up: 3, grav: 9, color: col, size: 0.45, life: 1.0, alpha: 0.95, grow: 1 });
+    }
+    if (Math.random() < dt * 8) game.particles.emit(hx, 12, hz, { vx: ux * 30, vz: uz * 30, vy: -4, spread: 5, up: 1, grav: 0, color: 0xe9f4ff, size: 2.6, life: 0.7, alpha: 0.14, grow: 2.2 });
+    for (const c of FAN.caught) game.particles.emit(c.x, 0.5, c.z, { vx: ux * 12, vz: uz * 12, color: 0xf6f3ea, n: 2, size: 0.4, life: 0.5, spread: 6, up: 3, grav: 12, alpha: 0.9 });
+    FAN.caught.length = 0;
+    // a soft whirr while it is in view
+    FAN.hum -= dt;
+    if (FAN.hum <= 0 && game.sound.ctx && (game.state === 'race' || game.state === 'roundEnd')) {
+      FAN.hum = 0.42;
+      game.sound.noiseBurst(0.5, { freq: 260 + Math.abs(Math.sin(time * 0.84)) * 200, q: 0.8, vol: 0.05, type: 'bandpass', pan: game.panOf(FANP.x, FANP.z) });
+    }
+  },
 };
+
+// Oscillating desk fan: head angle is a pure function of time (0 = blowing east, +x).
+const FANP = { x: 113, z: -6, base: 0.3, sweep: 0.7, P: 7.5, half: 0.3, range: 40 };
+let FAN = null;
+function fanAngle(t) { return FANP.base + FANP.sweep * Math.sin((2 * Math.PI * t) / FANP.P); }

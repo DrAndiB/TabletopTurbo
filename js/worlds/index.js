@@ -5,8 +5,9 @@ import pool from './pool.js';
 import garden from './garden.js';
 import workshop from './workshop.js';
 import mars from './mars.js';
+import watertable from './watertable.js';
 
-const ALL = [breakfast, desk, pool, garden, workshop, mars];
+const ALL = [breakfast, desk, pool, garden, workshop, mars, watertable];
 // Worlds still under construction can be listed here: they stay out of the menu but load with ?world=<id>.
 const IN_PROGRESS = new Set([]);
 export const WORLDS = ALL.filter((w) => !IN_PROGRESS.has(w.id));

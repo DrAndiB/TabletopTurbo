@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tabletop Turbo: Andreas Braun</title>
-<meta name="description" content="A tabletop racing game for the browser: tiny toy cars on a breakfast table, a study desk, a pool table, a garden and a workbench, and toy rovers on a Mars diorama. Up to four players on one keyboard, plus gamepads and computer drivers.">
+<meta name="description" content="A tabletop racing game for the browser: tiny toy cars on a breakfast table, a study desk, a pool table, a garden and a workbench, toy rovers on a Mars diorama and speedboats on a water play table. Up to four players on one keyboard, plus gamepads and computer drivers.">
 <link rel="canonical" href="https://andreasbraun.lu/demos/tabletop-turbo/">
 <meta property="og:title" content="Tabletop Turbo">
-<meta property="og:description" content="Tiny toy cars racing across a breakfast table, a desk, a pool table, a garden and a workbench, plus toy rovers on a Mars diorama. Up to four players on one keyboard.">
+<meta property="og:description" content="Tiny toy cars racing across a breakfast table, a desk, a pool table, a garden and a workbench, plus rovers on a Mars diorama and speedboats on a water table. Up to four players on one keyboard.">
 <meta property="og:url" content="https://andreasbraun.lu/demos/tabletop-turbo/">
 <meta property="og:image" content="https://andreasbraun.lu/demos/tabletop-turbo/img/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -24,6 +24,12 @@
 
 <div id="hud" class="hidden" aria-live="polite">
   <div id="chips"></div>
+  <div id="tt" class="tt" hidden>
+    <div class="tt-head"><span id="tt-lap">Lap 1</span><span class="tt-tag">Time trial</span></div>
+    <div class="tt-cur" id="tt-cur">0:00.00</div>
+    <div class="tt-row"><span>Last</span><b id="tt-last">–</b></div>
+    <div class="tt-row best"><span>Best</span><b id="tt-best">–</b></div>
+  </div>
   <div id="msg" class="msg"></div>
   <div id="flash"></div>
 </div>
@@ -58,7 +64,7 @@
 
     <div class="lobby-grid">
       <div class="col">
-        <h3>1 · Pick a table</h3>
+        <h3 id="worlds-h">1 · Pick a table</h3>
         <div id="world-list" class="world-list"></div>
       </div>
       <div class="col">
@@ -69,7 +75,7 @@
         <h3>3 · Rules</h3>
         <div class="opts">
           <div class="opt-row"><span>Mode</span>
-            <div class="seg"><button data-opt="mode" data-val="h2h">Head-to-head</button><button data-opt="mode" data-val="race">Race</button></div>
+            <div class="seg modes"><button data-opt="mode" data-val="h2h">Head-to-head</button><button data-opt="mode" data-val="race">Race</button><button data-opt="mode" data-val="tt">Time trial</button><button data-opt="mode" data-val="champ">Championship</button></div>
           </div>
           <p class="opt-help" data-mode-help>Head-to-head: the screen follows the leader. Drop off its edge and you're out. Last car on screen scores a point.</p>
           <div class="opt-row" id="opt-points"><span>Points to win</span>
@@ -78,7 +84,10 @@
           <div class="opt-row" id="opt-laps"><span>Laps</span>
             <div class="seg"><button data-opt="laps" data-val="3">3</button><button data-opt="laps" data-val="5">5</button><button data-opt="laps" data-val="8">8</button></div>
           </div>
-          <div class="opt-row"><span>CPU drivers</span>
+          <div class="opt-row" id="opt-catchup"><span>Catch-up</span>
+            <div class="seg"><button data-opt="catchup" data-val="off">Off</button><button data-opt="catchup" data-val="mild">Mild</button><button data-opt="catchup" data-val="strong">Strong</button></div>
+          </div>
+          <div class="opt-row" id="opt-skill"><span>CPU drivers</span>
             <div class="seg"><button data-opt="skill" data-val="easy">Easy</button><button data-opt="skill" data-val="normal">Normal</button><button data-opt="skill" data-val="hard">Hard</button></div>
           </div>
           <div class="opt-row"><span>Graphics</span>
@@ -127,6 +136,45 @@
     <div class="stack row">
       <button id="btn-again" class="btn big yellow">Again <kbd>Enter</kbd></button>
       <button id="btn-menu" class="btn">Menu</button>
+    </div>
+  </div>
+</section>
+
+<!-- Championship standings (between tables) -->
+<section id="screen-standings" class="screen">
+  <div class="panel small-panel champ-panel">
+    <p class="champ-kicker" id="standings-kicker">Championship</p>
+    <h2>Standings</h2>
+    <p class="champ-sub" id="standings-sub"></p>
+    <div class="standings-head"><span></span><span>Driver</span><span>This race</span><span>Total</span></div>
+    <ol id="standings-list" class="standings"></ol>
+    <div class="next-up"><span class="thumb" id="next-thumb"></span><span class="nu-text"><small>Next table</small><b id="next-name"></b></span></div>
+    <div class="stack row">
+      <button id="btn-next" class="btn big yellow">Next race <kbd>Enter</kbd></button>
+      <button id="btn-champ-quit" class="btn">Quit</button>
+    </div>
+  </div>
+</section>
+
+<!-- Championship final -->
+<section id="screen-podium" class="screen">
+  <div class="panel small-panel champ-panel podium-panel">
+    <p class="champ-kicker">Championship final</p>
+    <svg class="trophy" viewBox="0 0 64 64" width="88" height="88" aria-hidden="true">
+      <path d="M19 13H9c0 9 4 15 12 16M45 13h10c0 9-4 15-12 16" fill="none" stroke="#1f1a17" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M18 7h28v15c0 9-6 16-14 16S18 31 18 22z" fill="#ffc93c" stroke="#1f1a17" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M24 12v10c0 4 2 7 5 9" fill="none" stroke="#fff3c4" stroke-width="3" stroke-linecap="round"/>
+      <path d="M28 38h8v7h-8z" fill="#e8a91c" stroke="#1f1a17" stroke-width="3.5" stroke-linejoin="round"/>
+      <rect x="18" y="45" width="28" height="11" rx="3" fill="#e23b2e" stroke="#1f1a17" stroke-width="3.5"/>
+      <path d="M26 50.5h12" stroke="#ffc93c" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <h2 id="podium-title">Winner!</h2>
+    <p class="champ-sub" id="podium-sub"></p>
+    <div class="podium" id="podium"></div>
+    <ol id="podium-list" class="standings"></ol>
+    <div class="stack row">
+      <button id="btn-champ-again" class="btn big yellow">Again <kbd>Enter</kbd></button>
+      <button id="btn-champ-menu" class="btn">Menu</button>
     </div>
   </div>
 </section>
