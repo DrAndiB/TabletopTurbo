@@ -555,6 +555,7 @@ $('#btn-champ-again').onclick = () => { sound.click(); startRace(); };
 $('#btn-champ-menu').onclick = () => { sound.click(); quitToMenu(); };
 $('#btn-sound').onclick = () => { sound.ensure(); sound.setMuted(!sound.muted); updateSoundBtn(); };
 $('#btn-fs').onclick = () => toggleFullscreen();
+$('#btn-pause').onclick = () => { sound.click(); togglePause(); };
 function updateSoundBtn() { $('#btn-sound').textContent = sound.muted ? '🔇' : '🔊'; $('#btn-sound').setAttribute('aria-label', sound.muted ? 'Sound off' : 'Sound on'); }
 updateSoundBtn();
 function toggleFullscreen() {
