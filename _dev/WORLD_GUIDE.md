@@ -5,7 +5,7 @@ classic "tiny toy cars on household furniture" games. Up to four toy cars race o
 camera follows the leader and anyone who drops off the screen edge is out. The **worlds are the star**:
 each must look like a believable miniature diorama photographed with a tilt-shift lens.
 
-Game folder: `/home/claude/drandib.github.io/demos/tabletop-turbo/`
+Game folder: `demos/tabletop-turbo/` in the website repo (DrAndiB/DrAndiB.github.io). Test tools: `_dev/tools/` (see `_dev/README.md`).
 - `js/worlds/<id>.js` — one file per world (**the only file you edit**)
 - `js/worlds/breakfast.js` — the finished reference world. Read it first; match or beat its quality.
 - `js/kit.js` — helpers passed to `build(K)` (read it)
@@ -116,8 +116,8 @@ export default {
 - World build should take < 2 s on a laptop (pixel loops over 1024² textures cost ~100 ms each).
 
 ## Testing (headless Chromium with software WebGL — slow, so render with quality=low)
-A static server is already running on http://localhost:8123 (repo root). Scratch dir:
-`SP=/tmp/claude-0/-home-claude/575ce221-dc04-530a-b398-6fa73515d0e1/scratchpad`
+Serve the repo root on http://localhost:8123 (`python3 -m http.server 8123` from the repo root). Tools:
+`SP=demos/tabletop-turbo/_dev/tools` (`tt.py`, `shot.py`, `simcheck.js`, `trk.py`, `checks/*.js`); screenshots go to `$TT_OUT` (default `./out`).
 Prefix every screenshot name with your world id so you don't overwrite other people's files.
 
 1. Top-down overview of the whole world (layout check):
