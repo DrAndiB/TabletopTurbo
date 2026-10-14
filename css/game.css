@@ -253,20 +253,102 @@ body:not([data-screen="none"]) #touch { display: none; }
 .pod-2 .pod-block { height: 74px; }
 .pod-3 .pod-block { height: 52px; }
 .podium + .standings { margin-top: 0; border-top: var(--line) solid var(--ink); padding-top: 10px; }
+.podium + .standings li:first-child { background: var(--paper); }
 @media (prefers-reduced-motion: reduce) { .podium-panel .trophy { animation: none; } }
 
-/* thirteen tables: compact tiles (thumbnail + name), the selected table's description below */
-.world-list, .world-list.champ { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+/* ---------- tables grouped by cup: compact tiles (thumbnail + name), the selected table's description below ---------- */
+.world-list, .world-list.champ { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.cup-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .world-card { display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 5px; border-radius: 12px; }
-.world-card .thumb, .world-card .thumb { width: 100%; height: auto; aspect-ratio: 16 / 10; border-radius: 8px; grid-row: auto; }
+.world-card .thumb { width: 100%; height: auto; aspect-ratio: 16 / 10; border-radius: 8px; grid-row: auto; }
 .world-card .wname { font-size: 14.5px; line-height: 1.08; align-self: stretch; display: block; text-align: center; padding: 0 2px 2px; }
 .world-card .wblurb { display: none; }
-.world-card .wbest { display: block; width: max-content; margin: 3px auto 0; font-size: 10.5px; padding: 0 6px; }
+.world-card .wbest { display: block; width: max-content; max-width: 100%; margin: 3px auto 0; font-size: 10.5px; padding: 0 6px; }
 .world-blurb { margin: 8px 2px 0; font-size: 13px; line-height: 1.35; color: var(--ink-2); min-height: 2.7em; }
 .world-blurb b { color: var(--ink); }
-@media (max-width: 860px) { .world-list, .world-list.champ { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* cup label above each row: name pill, difficulty chilis, one-line blurb, trophy if won */
+.cup-head { display: flex; align-items: center; gap: 7px; margin: 0 0 6px; min-width: 0; }
+.cup-tag { flex: none; font-family: var(--display); font-size: 15px; line-height: 1; color: #fff; background: var(--cc); border: 2px solid var(--ink); border-radius: 999px; padding: 3px 10px 2px; -webkit-text-stroke: 1px rgba(0,0,0,.3); paint-order: stroke fill; white-space: nowrap; box-shadow: 0 2px 0 var(--ink); }
+.cup-blurb { flex: 1; min-width: 0; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cup-won { flex: none; display: inline-flex; }
+.cup-won .trophy-ico { width: 24px; height: 24px; }
+.chilis { flex: none; display: inline-flex; align-items: center; }
+.chili { width: 15px; height: 15px; margin-right: -2px; }
+.chili .c-body { fill: #e23b2e; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
+.chili .c-stem { fill: none; stroke: #2a9a4f; stroke-width: 2.2; stroke-linecap: round; }
+.chili.off { opacity: .22; filter: grayscale(1); }
+
+/* championship: cup selector */
+.cup-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+.cup-list[hidden] { display: none; }
+.cup-card { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 11px 4px 7px; border: var(--line) solid var(--ink); border-radius: 12px; background: var(--paper); box-shadow: 0 3px 0 var(--ink); text-align: center; }
+.cup-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 6px; background: var(--cc); }
+.cup-card .trophy-ico { width: 44px; height: 44px; }
+.cup-name { font-family: var(--display); font-size: 15px; line-height: 1.05; }
+.cup-count { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); line-height: 15px; }
+.cup-card.selected { background: var(--yellow); transform: translateY(1px); }
+.cup-card:hover:not(.selected) { background: #fff; }
+.cup-card:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+/* trophies (cup selector, cup rows, podium): medal colours on a base in the cup's colour */
+.trophy-ico { display: block; overflow: visible; }
+.trophy-ico path, .trophy-ico rect { stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; stroke-linecap: round; }
+.trophy-ico .t-handles { fill: none; }
+.trophy-ico .t-body { fill: var(--m1); }
+.trophy-ico .t-shine { fill: none; stroke: var(--m3); stroke-width: 3; }
+.trophy-ico .t-stem { fill: var(--m2); }
+.trophy-ico .t-base { fill: var(--base, var(--red)); }
+.trophy-ico .t-plate { fill: none; stroke: var(--m1); stroke-width: 2.5; }
+.m-gold { --m1: #ffc93c; --m2: #e8a91c; --m3: #fff3c4; }
+.m-silver { --m1: #d4dce5; --m2: #9eabb9; --m3: #ffffff; }
+.m-bronze { --m1: #df9150; --m2: #aa622a; --m3: #f9d2a8; }
+.m-none { --m1: #f1e7d1; --m2: #e3d6bc; --m3: #f1e7d1; }
+.trophy-ico.m-none { opacity: .38; }
+.trophy-ico.m-none path, .trophy-ico.m-none rect { stroke-dasharray: 5 3.5; }
+.trophy-ico.m-none .t-shine, .trophy-ico.m-none .t-plate { stroke-dasharray: none; }
+.medal-word { display: inline-block; font-weight: 800; color: var(--ink); background: var(--m1); border: 2px solid var(--ink); border-radius: 999px; padding: 0 7px; line-height: 1.35; }
+
+/* podium: the trophy won, and the award ribbon */
+.podium-trophy .trophy { width: 88px; height: 88px; margin: 4px auto 0; }
+.podium-award { margin: 8px auto 2px; display: grid; justify-items: center; gap: 1px; width: max-content; max-width: 100%; background: var(--m1); border: var(--line) solid var(--ink); border-radius: 16px; padding: 5px 16px 6px; box-shadow: 0 3px 0 var(--ink); }
+.podium-award[hidden] { display: none; }
+.podium-award b { font-family: var(--display); font-weight: 400; font-size: 21px; line-height: 1.15; }
+.podium-award small { font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+.podium-award.m-none { background: var(--paper); box-shadow: none; border-style: dashed; border-width: 2px; }
+.podium-award.m-none b { font-size: 18px; }
+
+@media (max-width: 860px) {
+  .lobby .cup-head { margin-top: 2px; }
+}
 @media (max-height: 760px) and (min-width: 861px) {
   .world-card { grid-template-columns: none; }
   .world-card .thumb { width: 100%; height: auto; }
   .world-card .wname { font-size: 13.5px; }
+  .world-list, .world-list.champ { gap: 8px; }
+  .cup-head { margin-bottom: 5px; }
+  .cup-card { padding-top: 10px; }
+  .cup-card .trophy-ico { width: 38px; height: 38px; }
+}
+/* phones: still four tiles per cup, smaller type */
+@media (max-width: 560px) {
+  #screen-lobby { padding: 10px; }
+  .panel.lobby { padding-left: 12px; padding-right: 12px; max-height: calc(100dvh - 20px); }
+  .cup-row { gap: 5px; }
+  .world-card { padding: 3px; gap: 3px; border-width: 2px; border-radius: 10px; }
+  .world-card .thumb { border-radius: 6px; border-width: 1.5px; }
+  .world-card .wname { font-size: 11.5px; padding: 0 0 1px; overflow-wrap: anywhere; }
+  .world-card .wbest { font-size: 9.5px; padding: 0 4px; }
+  .world-card .wbl { display: none; }
+  .wnum { width: 21px; height: 21px; font-size: 12px; line-height: 18px; left: -5px; top: -5px; }
+  .cup-tag { font-size: 13.5px; padding: 3px 8px 2px; }
+  .chili { width: 13px; height: 13px; }
+  .cup-blurb { font-size: 11.5px; }
+  .cup-list { gap: 5px; }
+  .cup-card { padding: 9px 2px 6px; border-width: 2px; border-radius: 10px; }
+  .cup-card .trophy-ico { width: 34px; height: 34px; }
+  .cup-name { font-size: 13px; width: min-content; }
+  .cup-card .chili { width: 10px; height: 10px; margin-right: -1px; }
+  .cup-count { font-size: 9.5px; letter-spacing: .03em; }
+  .podium-award b { font-size: 18px; }
 }

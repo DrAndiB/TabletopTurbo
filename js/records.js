@@ -1,4 +1,5 @@
 // Time-trial records: best lap per world plus a compact ghost of that lap, kept in localStorage.
+// Also the championship trophies (best finish per cup), further down.
 // Ghost = samples at GHOST_HZ of position (0.05-unit steps) and heading (1/1000 rad), stored as
 // int16 deltas in base64, so a 25 s lap is ~5 KB.
 const KEY = 'tabletop-turbo.best.v1.';
@@ -24,6 +25,42 @@ export function saveBest(worldId, rec) {
 
 export function clearBest(worldId) {
   try { localStorage.removeItem(KEY + worldId); } catch (e) { /* ignore */ }
+}
+
+// Championship trophies: the best finish per cup ('all' = Grand Tour), kept in one localStorage entry
+// { <cupId>: { place: 1|2|3, races, t } }. place 1 = gold, 2 = silver, 3 = bronze.
+const TROPHY_KEY = 'tabletop-turbo.trophies.v1';
+export const MEDALS = { 1: 'gold', 2: 'silver', 3: 'bronze' };
+
+export function loadTrophies() {
+  try {
+    const r = JSON.parse(localStorage.getItem(TROPHY_KEY) || 'null');
+    if (!r || typeof r !== 'object') return {};
+    const out = {};
+    for (const [k, v] of Object.entries(r)) if (v && MEDALS[v.place]) out[k] = v;
+    return out;
+  } catch (e) { return {}; }
+}
+
+// medal for a cup, or null
+export function cupMedal(cupId, trophies = loadTrophies()) {
+  const r = trophies[cupId];
+  return r ? MEDALS[r.place] : null;
+}
+
+// Record a finish; only places 1-3 earn a trophy and only a better place replaces the stored one.
+// -> { place, medal, prev (previous best place or null), improved, saved }
+export function awardTrophy(cupId, place, races) {
+  const all = loadTrophies();
+  const prev = all[cupId] ? all[cupId].place : null;
+  const medal = MEDALS[place] || null;
+  const improved = !!medal && (prev == null || place < prev);
+  let saved = false;
+  if (improved) {
+    all[cupId] = { place, races, t: Date.now() };
+    try { localStorage.setItem(TROPHY_KEY, JSON.stringify(all)); saved = true; } catch (e) { /* storage unavailable */ }
+  }
+  return { place, medal, prev, improved, saved };
 }
 
 // samples: flat array [x, y, z, angle, x, y, z, angle, ...]

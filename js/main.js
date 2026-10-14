@@ -4,18 +4,22 @@ import { Input } from './input.js';
 import { Sound } from './audio.js';
 import { Game, ordinal } from './game.js';
 import { Hud } from './hud.js';
-import { WORLDS, worldById } from './worlds/index.js';
+import { WORLDS, CUPS, worldById, cupById, cupWorlds } from './worlds/index.js';
 import { PLAYER_COLORS } from './util.js';
-import { formatTime, loadBest } from './records.js';
+import { formatTime, loadBest, loadTrophies, awardTrophy, MEDALS } from './records.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const SETTINGS_KEY = 'tabletop-turbo.settings.v1';
 const MODES = ['h2h', 'race', 'tt', 'champ'];
+// championships are raced per cup; the "Grand Tour" visits every table, cup after cup
+const GRAND_TOUR = { id: 'all', name: 'Grand Tour', blurb: 'Every table, cup after cup', color: '#4a413a' };
+const CUP_IDS = [...CUPS.map((c) => c.id), GRAND_TOUR.id];
 
 const defaults = {
   world: WORLDS[0].id,
   mode: 'h2h',
+  cup: CUPS[0].id,
   points: 5,
   laps: 3,
   skill: 'normal',
@@ -31,6 +35,7 @@ function loadSettings() {
       const out = { ...defaults, ...s, slots: s.slots.map((x) => (x.type === 'pad' ? { type: 'cpu' } : x)) };
       if (!MODES.includes(out.mode)) out.mode = defaults.mode;
       if (!['off', 'mild', 'strong'].includes(out.catchup)) out.catchup = defaults.catchup;
+      if (!CUP_IDS.includes(out.cup)) out.cup = defaults.cup;
       return out;
     }
   } catch (e) { /* ignore */ }
@@ -54,7 +59,7 @@ let screen = 'title';
 let loadedWorld = null;
 let lastT = performance.now();
 let fpsAcc = 0, fpsN = 0, fpsCheckDone = false;
-let champ = null; // championship in progress: {ids, index, drivers, totals, names, last}
+let champ = null; // championship in progress: {cup, ids, index, drivers, totals, wins, names, last, award}
 
 function showScreen(name) {
   screen = name;
@@ -81,7 +86,7 @@ const MODE_HELP = {
   h2h: 'Head-to-head: the screen follows the leader. Drop off its edge and you\'re out. Last car on screen scores a point.',
   race: 'Race: a set number of laps, first across the line wins. The view frames the human drivers.',
   tt: 'Time trial: just you, no CPU cars, as many laps as you like. Beat your best lap and chase its ghost. Esc to stop.',
-  champ: 'Championship: one race on every table in turn, 10 · 6 · 3 · 1 points per finish. Most points takes the trophy.',
+  champ: 'Championship: race every table of a cup in turn, 10 · 6 · 3 · 1 points per finish. Finish in the top three to win a gold, silver or bronze trophy.',
 };
 
 function slotHint(i, s) {
@@ -100,29 +105,125 @@ function ttSlot() {
   return i;
 }
 
+// ---------- cups and trophies ----------
+const MEDAL_NAME = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze' };
+function cupInfo(id) { return (id === GRAND_TOUR.id ? GRAND_TOUR : cupById(id)) || GRAND_TOUR; }
+// the tables a championship of this cup visits, in order (tables still being built are skipped)
+function champIds(id) {
+  const ws = id === GRAND_TOUR.id ? WORLDS : cupWorlds(cupById(id));
+  return (ws.length ? ws : WORLDS).map((w) => w.id);
+}
+// lobby rows: one per cup that has a playable table, plus any table that is not in a cup yet
+function menuGroups() {
+  const groups = CUPS.map((cup) => ({ cup, worlds: cupWorlds(cup) })).filter((g) => g.worlds.length);
+  const inCup = new Set(CUPS.flatMap((c) => c.worlds));
+  const rest = WORLDS.filter((w) => !inCup.has(w.id));
+  if (rest.length) groups.push({ cup: { id: 'more', name: 'More tables', level: 0, blurb: '', color: '#4a413a' }, worlds: rest });
+  return groups;
+}
+function medalOf(trophies, cupId) { return trophies[cupId] ? MEDALS[trophies[cupId].place] : null; }
+// little trophy drawn in the medal's colours (null: not won yet, a pale outline) on a base in the cup's colour
+function trophySvg(medal, color, cls = '') {
+  return `<svg class="trophy-ico m-${medal || 'none'}${cls ? ' ' + cls : ''}" viewBox="0 0 64 64" aria-hidden="true" style="--base:${color || 'var(--red)'}">`
+    + '<path class="t-handles" d="M19 13H9c0 9 4 15 12 16M45 13h10c0 9-4 15-12 16"/>'
+    + '<path class="t-body" d="M18 7h28v15c0 9-6 16-14 16S18 31 18 22z"/>'
+    + '<path class="t-shine" d="M24 12v10c0 4 2 7 5 9"/>'
+    + '<path class="t-stem" d="M28 38h8v7h-8z"/>'
+    + '<rect class="t-base" x="18" y="45" width="28" height="11" rx="3"/>'
+    + '<path class="t-plate" d="M26 50.5h12"/></svg>';
+}
+// difficulty: 1-4 chili peppers
+function chilis(level) {
+  if (!level) return '';
+  let s = '';
+  for (let i = 1; i <= 4; i++) {
+    s += `<svg class="chili${i > level ? ' off' : ''}" viewBox="0 0 20 20" aria-hidden="true">`
+      + '<path class="c-body" d="M4.8 7.2C3.6 12.4 7.6 17.4 16.2 17.6c1.3 0 1.5-1.1.4-1.6C12 13.8 10.6 10.6 10.6 7.2z"/>'
+      + '<path class="c-stem" d="M3.8 7.8c1.8-1.8 5.6-2 7.6-.3M7.6 6.3c-.2-2 .8-3.6 2.9-4.1"/></svg>';
+  }
+  return `<span class="chilis" role="img" aria-label="Difficulty ${level} of 4" title="Difficulty ${level} of 4">${s}</span>`;
+}
+
+function worldTile(w, num) {
+  const champMode = settings.mode === 'champ';
+  const b = document.createElement('button');
+  b.className = 'world-card' + (settings.world === w.id && !champMode ? ' selected' : '');
+  const best = loadBest(w.id);
+  const bestTag = best ? `<span class="wbest" title="Your best time-trial lap"><span class="wbl">Best </span>${formatTime(best.t)}</span>` : '';
+  b.innerHTML = `<span class="thumb" style="background-image:url(img/${w.id}.jpg)">${num ? `<span class="wnum">${num}</span>` : ''}</span><span class="wname">${w.name}${bestTag}</span><span class="wblurb">${w.blurb}</span>`;
+  if (champMode) b.setAttribute('aria-disabled', 'true');
+  b.title = `${w.name}: ${w.blurb}`;
+  b.onclick = () => { if (settings.mode === 'champ') return; sound.click(); settings.world = w.id; saveSettings(); renderLobby(); };
+  return b;
+}
+
 function renderLobby() {
   const mode = settings.mode;
-  // worlds
+  const champMode = mode === 'champ';
+  const trophies = loadTrophies();
+  const cupId = settings.cup;
+  // championship: pick a cup (or the Grand Tour)
+  const cl = $('#cup-list');
+  cl.innerHTML = '';
+  cl.hidden = !champMode;
+  if (champMode) {
+    for (const cup of [...CUPS, GRAND_TOUR]) {
+      const count = cup === GRAND_TOUR ? WORLDS.length : cupWorlds(cup).length;
+      if (!count) continue;
+      const medal = medalOf(trophies, cup.id);
+      const b = document.createElement('button');
+      b.className = 'cup-card' + (cup.id === cupId ? ' selected' : '') + (medal ? ' won' : '');
+      b.style.setProperty('--cc', cup.color);
+      b.setAttribute('aria-pressed', String(cup.id === cupId));
+      b.innerHTML = `${trophySvg(medal, cup.color)}<span class="cup-name">${cup.name}</span>${cup.level ? chilis(cup.level) : `<span class="cup-count">all ${count}</span>`}`;
+      b.title = `${cup.name}: ${cup.blurb}${medal ? ` · your best: ${MEDAL_NAME[medal]}` : ''}`;
+      b.onclick = () => { sound.click(); settings.cup = cup.id; saveSettings(); renderLobby(); };
+      cl.appendChild(b);
+    }
+  }
+  // tables, one row per cup (championship: the chosen cup's tables, numbered in race order)
   const wl = $('#world-list');
   wl.innerHTML = '';
-  wl.classList.toggle('champ', mode === 'champ');
-  $('#worlds-h').innerHTML = mode === 'champ' ? `1 · The tables <span class="sub">all ${WORLDS.length}, in this order</span>` : '1 · Pick a table';
-  WORLDS.forEach((w, i) => {
-    const b = document.createElement('button');
-    b.className = 'world-card' + (settings.world === w.id && mode !== 'champ' ? ' selected' : '');
-    const best = loadBest(w.id);
-    const bestTag = best ? `<span class="wbest" title="Your best time-trial lap">Best ${formatTime(best.t)}</span>` : '';
-    b.innerHTML = `<span class="thumb" style="background-image:url(img/${w.id}.jpg)">${mode === 'champ' ? `<span class="wnum">${i + 1}</span>` : ''}</span><span class="wname">${w.name}${bestTag}</span><span class="wblurb">${w.blurb}</span>`;
-    if (mode === 'champ') b.setAttribute('aria-disabled', 'true');
-    b.title = `${w.name}: ${w.blurb}`;
-    b.onclick = () => { if (settings.mode === 'champ') return; sound.click(); settings.world = w.id; saveSettings(); renderLobby(); };
-    wl.appendChild(b);
-  });
-  // the tiles only show names: describe the selected table underneath
-  const sel = WORLDS.find((w) => w.id === settings.world) || WORLDS[0];
-  $('#world-blurb').innerHTML = mode === 'champ'
-    ? `One race on each of the ${WORLDS.length} tables, in this order.`
-    : `<b>${sel.name}</b> · ${sel.blurb}`;
+  wl.classList.toggle('champ', champMode);
+  let groups = menuGroups();
+  if (champMode && cupId !== GRAND_TOUR.id) {
+    const only = groups.filter((g) => g.cup.id === cupId);
+    if (only.length) groups = only;
+  }
+  const heads = !champMode || groups.length > 1;
+  let n = 0;
+  for (const g of groups) {
+    const box = document.createElement('div');
+    box.className = 'cup-group';
+    box.style.setProperty('--cc', g.cup.color);
+    if (heads) {
+      const medal = medalOf(trophies, g.cup.id);
+      const head = document.createElement('div');
+      head.className = 'cup-head';
+      head.innerHTML = `<span class="cup-tag">${g.cup.name}</span>${chilis(g.cup.level)}<span class="cup-blurb">${g.cup.blurb}</span>`
+        + (medal ? `<span class="cup-won" title="Your best in the ${g.cup.name}: ${MEDAL_NAME[medal]}">${trophySvg(medal, g.cup.color)}</span>` : '');
+      box.appendChild(head);
+    }
+    const row = document.createElement('div');
+    row.className = 'cup-row';
+    for (const w of g.worlds) row.appendChild(worldTile(w, champMode ? ++n : 0));
+    box.appendChild(row);
+    wl.appendChild(box);
+  }
+  if (champMode) {
+    const cup = cupInfo(cupId);
+    const count = champIds(cup.id).length;
+    const medal = medalOf(trophies, cup.id);
+    const soon = cup.worlds && count < cup.worlds.length ? ' More tables coming soon.' : '';
+    $('#worlds-h').innerHTML = '1 · Pick a cup <span class="sub">top three wins a trophy</span>';
+    $('#world-blurb').innerHTML = `<b>${cup.name}</b> · ${cup.blurb}. ${count === 1 ? '1 race.' : `${count} races, in this order.`}${soon}`
+      + (medal ? ` Your best: <span class="medal-word m-${medal}">${MEDAL_NAME[medal]}</span>` : '');
+  } else {
+    // the tiles only show names: describe the selected table underneath
+    const sel = WORLDS.find((w) => w.id === settings.world) || WORLDS[0];
+    $('#worlds-h').innerHTML = '1 · Pick a table';
+    $('#world-blurb').innerHTML = `<b>${sel.name}</b> · ${sel.blurb}`;
+  }
   // players
   const pl = $('#player-list');
   pl.innerHTML = '';
@@ -261,11 +362,12 @@ function restartCurrent() {
 // ---------- championship ----------
 function startChampionship() {
   const drivers = buildDrivers();
+  const cup = cupInfo(settings.cup).id;
   champ = {
-    ids: WORLDS.map((w) => w.id), index: 0, drivers,
+    cup, ids: champIds(cup), index: 0, drivers,
     totals: Object.fromEntries(drivers.map((d) => [d.color, 0])),
     wins: Object.fromEntries(drivers.map((d) => [d.color, 0])),
-    names: {}, last: [],
+    names: {}, last: [], award: undefined,
   };
   return runChampRace();
 }
@@ -278,7 +380,7 @@ async function runChampRace() {
   await ensureWorld(id);
   game.startMatch({ drivers: champ.drivers, mode: 'race', laps: settings.laps, skill: settings.skill, catchup: settings.catchup });
   afterStart();
-  hud.flash(`Championship · race ${champ.index + 1} of ${champ.ids.length}`, '#ffc93c');
+  hud.flash(`${cupInfo(champ.cup).name} · race ${champ.index + 1} of ${champ.ids.length}`, '#ffc93c');
 }
 
 function scoreChampRace(standings) {
@@ -305,7 +407,7 @@ function showStandings() {
   if (champ.index >= champ.ids.length - 1) return showPodium();
   const w = worldById(champ.ids[champ.index]);
   const next = worldById(champ.ids[champ.index + 1]);
-  $('#standings-kicker').textContent = `Championship · race ${champ.index + 1} of ${champ.ids.length}`;
+  $('#standings-kicker').textContent = `${cupInfo(champ.cup).name} · race ${champ.index + 1} of ${champ.ids.length}`;
   $('#standings-sub').textContent = `after ${w.name}`;
   const list = $('#standings-list');
   list.innerHTML = '';
@@ -329,12 +431,40 @@ function nextChampRace() {
   runChampRace();
 }
 
+// The best-placed human driver takes a trophy for the cup (1st gold, 2nd silver, 3rd bronze);
+// the best result per cup is kept. CPU-only championships award nothing (null).
+function champAward(rows) {
+  const humans = new Set(champ.drivers.filter((d) => d.type !== 'cpu').map((d) => d.color));
+  const i = rows.findIndex((r) => humans.has(r.color));
+  if (i < 0) return null;
+  return { ...awardTrophy(champ.cup, i + 1, champ.ids.length), who: rows[i], solo: humans.size === 1 };
+}
+
 function showPodium() {
   const rows = champTable();
   const champion = rows[0];
+  const cup = cupInfo(champ.cup);
+  if (champ.award === undefined) champ.award = champAward(rows);
+  const a = champ.award;
+  $('#podium-kicker').textContent = `${cup.name} final`;
+  $('#podium-trophy').innerHTML = trophySvg(a && a.medal ? a.medal : 'gold', cup.color, 'trophy');
   $('#podium-title').textContent = `${champion.name} wins!`;
   $('#podium-title').style.setProperty('--pc', champion.hex);
-  $('#podium-sub').textContent = `${champ.ids.length} tables · ${rows.reduce((a, r) => a + r.wins, 0)} races`;
+  const aw = $('#podium-award');
+  aw.hidden = !a;
+  if (a && a.medal) {
+    const M = MEDAL_NAME[a.medal];
+    const prev = a.prev ? MEDAL_NAME[MEDALS[a.prev]].toLowerCase() : '';
+    const note = a.improved ? (prev ? `New best: up from ${prev}.` : 'A new trophy for the shelf.') : `Your best here: ${prev}.`;
+    aw.className = 'podium-award m-' + a.medal;
+    aw.innerHTML = `<b>${a.solo ? `${M} in the ${cup.name}!` : `${a.who.name} takes ${a.medal} in the ${cup.name}!`}</b><small>${note}</small>`;
+  } else if (a) {
+    aw.className = 'podium-award m-none';
+    const best = a.prev ? ` Your best here: ${MEDAL_NAME[MEDALS[a.prev]].toLowerCase()}.` : '';
+    aw.innerHTML = `<b>${ordinal(a.place)} place${a.solo ? '' : ` for ${a.who.name}`}</b><small>Finish in the top three to win a trophy.${best}</small>`;
+  }
+  const n = champ.ids.length, laps = settings.laps;
+  $('#podium-sub').textContent = `${n} table${n === 1 ? '' : 's'} · ${laps} lap${laps === 1 ? '' : 's'} each`;
   // podium blocks: 2nd, 1st, 3rd
   const pod = $('#podium');
   pod.innerHTML = '';
@@ -532,6 +662,7 @@ function frame(now) {
   } else if (params.get('autostart')) {
     if (params.get('p')) params.get('p').split(',').forEach((t, i) => { settings.slots[i] = { type: t }; });
     if (params.get('mode')) settings.mode = params.get('mode');
+    if (CUP_IDS.includes(params.get('cup'))) settings.cup = params.get('cup');
     settings.world = w;
     await startRace();
   } else {
@@ -545,6 +676,7 @@ function frame(now) {
     window.__tt.start = startRace;
     window.__tt.screen = () => screen;
     window.__tt.champ = () => champ;
+    window.__tt.trophies = loadTrophies;
     window.__tt.lobby = () => { showScreen('lobby'); renderLobby(); };
     window.__tt.ready = true;
   } else requestAnimationFrame(frame);

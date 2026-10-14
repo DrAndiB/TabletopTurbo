@@ -65,6 +65,7 @@
     <div class="lobby-grid">
       <div class="col">
         <h3 id="worlds-h">1 · Pick a table</h3>
+        <div id="cup-list" class="cup-list" role="group" aria-label="Cups" hidden></div>
         <div id="world-list" class="world-list"></div>
         <p id="world-blurb" class="world-blurb"></p>
       </div>
@@ -160,16 +161,10 @@
 <!-- Championship final -->
 <section id="screen-podium" class="screen">
   <div class="panel small-panel champ-panel podium-panel">
-    <p class="champ-kicker">Championship final</p>
-    <svg class="trophy" viewBox="0 0 64 64" width="88" height="88" aria-hidden="true">
-      <path d="M19 13H9c0 9 4 15 12 16M45 13h10c0 9-4 15-12 16" fill="none" stroke="#1f1a17" stroke-width="3.5" stroke-linecap="round"/>
-      <path d="M18 7h28v15c0 9-6 16-14 16S18 31 18 22z" fill="#ffc93c" stroke="#1f1a17" stroke-width="3.5" stroke-linejoin="round"/>
-      <path d="M24 12v10c0 4 2 7 5 9" fill="none" stroke="#fff3c4" stroke-width="3" stroke-linecap="round"/>
-      <path d="M28 38h8v7h-8z" fill="#e8a91c" stroke="#1f1a17" stroke-width="3.5" stroke-linejoin="round"/>
-      <rect x="18" y="45" width="28" height="11" rx="3" fill="#e23b2e" stroke="#1f1a17" stroke-width="3.5"/>
-      <path d="M26 50.5h12" stroke="#ffc93c" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>
+    <p class="champ-kicker" id="podium-kicker">Championship final</p>
+    <div id="podium-trophy" class="podium-trophy"></div>
     <h2 id="podium-title">Winner!</h2>
+    <p id="podium-award" class="podium-award" hidden></p>
     <p class="champ-sub" id="podium-sub"></p>
     <div class="podium" id="podium"></div>
     <ol id="podium-list" class="standings"></ol>
