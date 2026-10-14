@@ -6,10 +6,21 @@ export class Sound {
     try { this.muted = localStorage.getItem('tabletop-turbo.muted') === '1'; } catch (e) { /* ignore */ }
     this.engines = [];
     this.musicOn = false;
+    this.wantMusic = false;
+    // Browsers only allow audio after a click or key press: create the context on the first one.
+    this.unlocked = false;
+    const unlock = () => {
+      this.unlocked = true;
+      for (const ev of ['pointerdown', 'keydown', 'touchstart']) window.removeEventListener(ev, unlock, true);
+      this.ensure();
+      if (this.wantMusic) this.startMusic();
+    };
+    for (const ev of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(ev, unlock, true);
   }
 
   ensure() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return true; }
+    if (!this.unlocked) return false;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     const ctx = (this.ctx = new AC());
@@ -149,6 +160,7 @@ export class Sound {
 
   // ---- small chiptune loop for menus
   startMusic() {
+    this.wantMusic = true;
     if (this.musicOn || !this.ensure()) return;
     this.musicOn = true;
     const ctx = this.ctx;
@@ -185,5 +197,5 @@ export class Sound {
     const g = ctx.createGain(); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
     s.connect(f).connect(g).connect(this.music); s.start(t, Math.random()); s.stop(t + 0.06);
   }
-  stopMusic() { this.musicOn = false; clearTimeout(this.musicTimer); }
+  stopMusic() { this.wantMusic = false; this.musicOn = false; clearTimeout(this.musicTimer); }
 }

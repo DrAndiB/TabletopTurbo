@@ -185,18 +185,20 @@ export class Game {
     if (racing) { this.raceTime += dt; this.roundTime += dt; }
 
     // controls
+    const allCars = this.cars.map((x) => x.car);
     for (const e of this.cars) {
       const c = e.car;
-      if (e.ai) {
-        e.ai.update(dt, this.cars.map((x) => x.car), { speedMul: this.aiSpeedMul(e) });
+      if (e.finished && this.mode === 'race') {
+        // cool-down lap: finished cars keep rolling on autopilot instead of parking on the racing line
+        if (!e.cooldown) e.cooldown = e.ai || new AIDriver(c, this.track, this.physics, 'easy', 90 + e.colorIndex);
+        e.cooldown.update(dt, allCars, { speedMul: 0.7 });
+      } else if (e.ai) {
+        e.ai.update(dt, allCars, { speedMul: this.aiSpeedMul(e) });
       } else {
         const ctl = this.input.read(e.driver);
         c.throttle = ctl.throttle; c.brake = ctl.brake; c.steer = ctl.steer;
       }
-      if (!racing || e.out || e.finished && this.mode === 'race') {
-        if (!racing) { c.revs = c.throttle; c.throttle = 0; c.brake = 0; c.steer = 0; }
-        if (e.finished) { c.throttle = 0; c.brake = 0.4; c.steer = 0; }
-      }
+      if (!racing) { c.revs = c.throttle; c.throttle = 0; c.brake = 0; c.steer = 0; }
     }
     for (const e of this.cars) {
       if (e.out) continue;
@@ -338,8 +340,15 @@ export class Game {
         this.hud.flash(`${e.name} is out!`, e.color.hex);
       }
     }
-    const still = this.aliveCars();
+    let still = this.aliveCars();
+    // every human is out but several CPU cars remain: give the round to the leading CPU after a short moment
+    const hasHumans = this.cars.some((e) => e.human);
+    if (hasHumans && still.length > 1 && !still.some((e) => e.human)) {
+      this.cpuOnlyT = (this.cpuOnlyT || 0) + STEP;
+      if (this.cpuOnlyT > 2.2) still = [this.leader(still)];
+    } else this.cpuOnlyT = 0;
     if (still.length <= 1) {
+      this.cpuOnlyT = 0;
       const w = still[0] || null;
       this.state = 'roundEnd';
       this.roundEndT = 2.6;

@@ -56,7 +56,7 @@ export class GameRenderer {
     setMaxAnisotropy(Math.min(8, r.capabilities.getMaxAnisotropy()));
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(30, 16 / 9, 5, 2500);
+    this.camera = new THREE.PerspectiveCamera(30, 16 / 9, 12, 2500);
     this.elevation = THREE.MathUtils.degToRad(62); // camera pitch above the table
     this.viewWidth = 92; // table units visible across the screen centre
     this.target = new THREE.Vector3();

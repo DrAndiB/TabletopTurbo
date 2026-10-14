@@ -1,6 +1,7 @@
-// World 5: a full-size 9-ft pool table in a dim games room at night. A chalk-drawn serpentine road on
-// green felt, three cues lying between the lanes, pushable pool balls that can be knocked into the
-// pockets, a beer-mat jump over spilt cola, blue chalk dust and two side pockets for anyone running wide.
+// World 5: a full-size 9-ft pool table in a dim games room at night, lit by a three-shade billiard lamp.
+// A chalk-drawn serpentine road (kerbs, arrows, grid boxes) on green felt, three cues lying between the
+// lanes, ten pushable pool balls that can be knocked into the leather-and-net pockets, a beer-mat jump
+// over spilt cola, slippery blue chalk dust, and two side pockets waiting for anyone running wide.
 
 const TRACK = [
   [-72, 47], [-28, 47.5], [0, 52], [28, 47.5], [92, 47], [105.64, 39.12], [105.64, 23.38], [92, 15.5], [48, 15],
@@ -40,9 +41,9 @@ export default {
     sticky: { color: 0x2a1206, size: 0.7, life: 0.45, up: 3, grav: 35, alpha: 0.95, grow: 1, rate: 2 },
   },
   lighting: {
-    sunDir: [-0.2, 1, -0.3], sunColor: 0xffdcae, sunIntensity: 1.95,
-    hemiSky: 0x8c7a62, hemiGround: 0x140d08, hemiIntensity: 0.32,
-    envIntensity: 0.3, exposure: 1.06, background: 0x060504, shadowRadius: 4,
+    sunDir: [-0.2, 1, -0.3], sunColor: 0xffdcae, sunIntensity: 1.15,
+    hemiSky: 0x8c7a62, hemiGround: 0x140d08, hemiIntensity: 0.24,
+    envIntensity: 0.26, exposure: 1.08, background: 0x050403, shadowRadius: 4,
   },
 
   async build(K) {
@@ -136,7 +137,7 @@ export default {
       for (const tt of [t, n]) tt.repeat.set(1 / 26, 1 / 26);
       return { map: t, normalMap: n };
     })();
-    const feltMat = K.std({ map: felt.map, normalMap: felt.normalMap, normalScale: V2(0.7), roughness: 0.97, color: 0xffffff, envMapIntensity: 0.4 });
+    const feltMat = K.phys({ map: felt.map, normalMap: felt.normalMap, normalScale: V2(0.7), roughness: 0.97, color: 0xffffff, envMapIntensity: 0.4, sheen: 0.55, sheenRoughness: 0.55, sheenColor: new T.Color(0x5fae7c) });
     feltMat.onBeforeCompile = (sh) => {
       sh.uniforms.uPk = { value: pocketU };
       sh.uniforms.uMacro = { value: macroTex };
@@ -241,10 +242,36 @@ export default {
     // pockets: leather cups with a rolled leather rim where they cut the rail
     {
       const leather = K.phys({ color: 0x24140b, roughness: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.4, sheen: 0.6, sheenColor: new T.Color(0x6a4a30), side: T.DoubleSide });
-      const inner = K.std({ color: 0x150c07, roughness: 0.85, side: T.DoubleSide });
+      // pocket liner: stitched leather collar (v 0..0.25 of the lathe), then a crocheted net bag
+      const pc = TX.makeCanvas(128, 256); const pg = pc.getContext('2d');
+      const pgr = pg.createLinearGradient(0, 0, 0, 256);
+      pgr.addColorStop(0, '#020101'); pgr.addColorStop(0.55, '#0b0705'); pgr.addColorStop(0.75, '#120a05'); pgr.addColorStop(0.76, '#1c110a'); pgr.addColorStop(1, '#2c1a0e');
+      pg.fillStyle = pgr; pg.fillRect(0, 0, 128, 256);
+      // net: diagonal cords
+      pg.lineWidth = 2.2;
+      for (let i = -8; i < 16; i++) for (const d of [1, -1]) {
+        pg.strokeStyle = 'rgba(120,96,70,0.55)';
+        pg.beginPath(); pg.moveTo(i * 16, 0); pg.lineTo(i * 16 + d * 192, 192); pg.stroke();
+      }
+      const fade = pg.createLinearGradient(0, 0, 0, 192); fade.addColorStop(0, 'rgba(2,1,1,0.92)'); fade.addColorStop(0.7, 'rgba(2,1,1,0.25)'); fade.addColorStop(1, 'rgba(2,1,1,0)');
+      pg.fillStyle = fade; pg.fillRect(0, 0, 128, 192);
+      // leather collar: grain + stitching
+      const nr0 = K.rng(91);
+      for (let i = 0; i < 700; i++) { pg.fillStyle = nr0() < 0.5 ? 'rgba(0,0,0,0.25)' : 'rgba(255,220,180,0.06)'; pg.fillRect(nr0() * 128, 194 + nr0() * 62, 2, 2); }
+      pg.strokeStyle = 'rgba(200,170,120,0.5)'; pg.lineWidth = 2; pg.setLineDash([6, 5]);
+      pg.beginPath(); pg.moveTo(0, 204); pg.lineTo(128, 204); pg.stroke();
+      pg.beginPath(); pg.moveTo(0, 248); pg.lineTo(128, 248); pg.stroke();
+      pg.setLineDash([]);
+      const pocketTex = TX.toTexture(pc);
+      pocketTex.repeat.set(4, 1);
+      const inner = K.std({ map: pocketTex, color: 0x9a9a9a, roughness: 0.7, envMapIntensity: 0.3, side: T.DoubleSide });
       const rimGeos = [];
       for (const p of POCKETS) {
         const cup = K.lathe([[p.r - 0.18, RAIL_Y + 0.05], [p.r - 0.18, -1.0], [p.r - 0.5, -7], [p.r - 1.4, -12.4], [0.01, -13]], 32);
+        // the liner only rises above the cloth where it lines the cushion/rail cut-out; on the
+        // playing-surface side the pocket simply opens at felt level
+        const cp = cup.attributes.position;
+        for (let i = 0; i < cp.count; i++) if (cp.getY(i) > 0 && Math.abs(p.x + cp.getX(i)) < HX - 0.05 && Math.abs(p.z + cp.getZ(i)) < HZ - 0.05) cp.setY(i, -0.03);
         K.mesh(cup, inner, p.x, 0, p.z, { cast: true });
         // rim arc over the rail
         const pts = [];
@@ -301,18 +328,45 @@ export default {
       const nr = K.rng(4);
       for (let i = 0; i < 2500; i++) { g.fillStyle = nr() < 0.5 ? 'rgba(0,0,0,0.18)' : 'rgba(255,220,200,0.05)'; g.fillRect(nr() * 512, nr() * 340, 2, 2); }
       K.mesh(new T.PlaneGeometry(400, 266), K.std({ map: TX.toTexture(rc, { wrap: false }), roughness: 1 }), 0, -75.7, 6, { rx: -PI / 2, cast: false });
+      // two bar stools waiting at the ends of the table (seen past the short rails)
+      {
+        const vinyl = K.phys({ color: 0x4a1410, roughness: 0.36, clearcoat: 0.5, clearcoatRoughness: 0.25, sheen: 0.3, sheenColor: new T.Color(0x8a4a3a) });
+        const chrome = K.metal(0xd8dade, 0.18);
+        const seatGeo = K.lathe([[0.01, 0], [14.5, 0], [17.3, 0.9], [18.5, 2.9], [18.7, 5.6], [18.1, 7.8], [16.3, 9.0], [8, 9.5], [0.01, 9.6]], 40);
+        const pipeGeo = new T.TorusGeometry(18.55, 0.45, 6, 48);
+        const legGeo = new T.CylinderGeometry(0.9, 0.9, 1, 10);
+        const ringGeo = new T.TorusGeometry(17, 0.85, 8, 40);
+        const up = new T.Vector3(0, 1, 0);
+        for (const [sx, sz, rot] of [[-171, 14, 0.4], [173, -24, 1.1]]) {
+          const top = -13.3;
+          K.mesh(seatGeo, vinyl, sx, top, sz);
+          K.mesh(pipeGeo, vinyl, sx, top + 5.6, sz, { rx: PI / 2 });
+          K.mesh(new T.CylinderGeometry(13, 13, 2.2, 32), chrome, sx, top - 1.1, sz);
+          for (let i = 0; i < 4; i++) {
+            const a = rot + i * PI / 2;
+            const p0 = new T.Vector3(sx + Math.cos(a) * 10, top - 2, sz + Math.sin(a) * 10);
+            const p1 = new T.Vector3(sx + Math.cos(a) * 19, -76, sz + Math.sin(a) * 19);
+            const d = p1.clone().sub(p0);
+            const leg = K.mesh(legGeo, chrome, (p0.x + p1.x) / 2, (p0.y + p1.y) / 2, (p0.z + p1.z) / 2);
+            leg.scale.y = d.length();
+            leg.quaternion.setFromUnitVectors(up, d.normalize());
+          }
+          K.mesh(ringGeo, chrome, sx, -50, sz, { rx: PI / 2, scale: 0.92 });
+        }
+      }
       // the table's own shadow on the rug
       const sh = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.75, alphaMap: TX.blobShadowTexture(), depthWrite: false }));
       sh.rotation.x = -PI / 2; sh.scale.set(OX * 2.7, OZ * 2.9, 1); sh.position.set(-8, -75.5, -10); sh.renderOrder = 1;
       K.group.add(sh);
     }
 
-    // the lamp's warm pool of light (the directional light carries the shadows)
+    // the three-shade billiard lamp: three warm pools of light along the table (the directional light
+    // carries the shadows); the far corners and the room fall off into darkness
     {
-      for (const x of [-64, 64]) {
-        const spot = new T.SpotLight(0xffc27a, 1.7, 0, 0.78, 1.0, 0);
-        spot.position.set(x, 150, -4);
-        spot.target.position.set(x * 0.8, 0, 0);
+      for (const x of [-84, 0, 84]) {
+        const spot = new T.SpotLight(0xffc483, 1.35, 0, 0.84, 1.0, 0);
+        spot.position.set(x, 100, -3);
+        spot.target.position.set(x, 0, -1);
         spot.castShadow = false;
         K.group.add(spot, spot.target);
       }
@@ -421,7 +475,7 @@ export default {
       const c = TX.makeCanvas(256, 128); const g = c.getContext('2d');
       g.fillStyle = '#1d4c9c'; g.fillRect(0, 0, 128, 128);
       g.fillStyle = '#f2efe4'; g.fillRect(0, 44, 128, 40);
-      g.fillStyle = '#1d4c9c'; g.font = '700 22px Rubik, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('KISS', 64, 65);
+      g.fillStyle = '#1d4c9c'; g.font = '700 22px Rubik, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('CHALK', 64, 65);
       g.fillStyle = '#d9c46a'; for (const [x, y] of [[20, 22], [108, 22], [20, 106], [108, 106]]) { g.beginPath(); g.arc(x, y, 5, 0, 6.283); g.fill(); }
       g.strokeStyle = 'rgba(120,170,240,0.6)'; g.lineWidth = 3; g.strokeRect(3, 3, 122, 122);
       // top: blue chalk, worn into a hollow by the cue tip
@@ -491,7 +545,7 @@ export default {
         for (let k = 0; k < 8; k++) { g.fillStyle = '#efe9f4'; const x = (k + 0.5) * W / 8, y = Y(139.5); g.beginPath(); g.moveTo(x, y - 9); g.lineTo(x + 2.6, y); g.lineTo(x, y + 9); g.lineTo(x - 2.6, y); g.closePath(); g.fill(); }
       }
       band(145, 147, '#111111'); // rubber bumper
-      return TX.toTexture(c, { wrap: false });
+      return c;
     };
     const cueGeo = (() => {
       const prof = [[0.01, 0], [0.5, 0.04], [0.63, 0.25], [0.64, 1.25], [0.665, 1.3], [0.665, 3.1], [0.65, 3.15], [0.66, 30], [0.82, 72], [1.0, 72.05], [1.0, 74.8],
@@ -503,17 +557,26 @@ export default {
       g.rotateZ(Math.atan2(1.45 - 0.64, 147)); // lies on the felt at both ends
       return g;
     })();
+    // all cues share one texture atlas (64 px column each) and one merged mesh
+    const cueList = [];
     const cue = (x0, z0, x1, z1, design) => {
       const ang = Math.atan2(z1 - z0, x1 - x0), len = Math.hypot(x1 - x0, z1 - z0);
-      const m = new T.Mesh(cueGeo, K.phys({ map: cueTex(design), roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.15 }));
-      m.scale.x = len / 147;
-      m.position.set(x0, 0.64, z0); m.rotation.y = -ang;
-      m.rotation.x = r.range(0, 6.28) * 0; // keep the points visible
-      K.add(m);
+      cueList.push({ x0, z0, ang, len, design });
       K.capsule(x0 + Math.cos(ang) * 1, z0 + Math.sin(ang) * 1, x1 - Math.cos(ang) * 1, z1 - Math.sin(ang) * 1, 1.15, 2.6);
       for (let i = 0; i < 6; i++) { const t = (i + 0.5) / 6; AO(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, len / 12 + 1, 0.9 + t * 0.9, 0.42, ang); }
       for (const t of [0.05, 0.3, 0.55, 0.8, 0.98]) warnRoad('cue', x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 1.5);
-      return m;
+    };
+    const flushCues = () => {
+      const n = cueList.length;
+      const atlas = TX.makeCanvas(64 * n, 2048); const ag = atlas.getContext('2d');
+      const geos = cueList.map((c, i) => {
+        ag.drawImage(cueTex(c.design), i * 64, 0);
+        const g = cueGeo.clone();
+        const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, (i + 0.02 + uv.getX(k) * 0.96) / n);
+        g.applyMatrix4(new T.Matrix4().compose(new T.Vector3(c.x0, 0.64, c.z0), new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), -c.ang), new T.Vector3(c.len / 147, 1, 1)));
+        return g;
+      });
+      K.add(new T.Mesh(K.BufferGeometryUtils.mergeGeometries(geos, false), K.phys({ map: TX.toTexture(atlas, { wrap: false }), roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.15 })));
     };
 
     // ---- wood for the rack, pencil, bowl ----
@@ -526,8 +589,9 @@ export default {
     // =====================================================================================
     // ---- three cues lying between the lanes ----
     cue(91, 31.6, -56, 34.2, { seed: 1, shaft: '#e6cb98', fore: '#d6b277', points: '#16100c', v1: '#f2eee2', v2: '#a8261c', wrap: '#1b1b1d', sleeve: '#1a110c', ring: '#c8a24a' });
-    cue(-17, 0.6, 124, 1.6, { seed: 2, shaft: '#e9d1a2', fore: '#5e2412', points: '#efe6d0', v1: '#141414', v2: '#d8c08a', wrap: '#1d2c55', sleeve: '#4a1a0c', ring: '#e8e8ea' });
+    cue(-17, 0.6, 117, 1.4, { seed: 2, shaft: '#e9d1a2', fore: '#5e2412', points: '#efe6d0', v1: '#141414', v2: '#d8c08a', wrap: '#1d2c55', sleeve: '#4a1a0c', ring: '#e8e8ea' });
     cue(95, -31.4, -40, -33.2, { seed: 3, shaft: '#e2c690', fore: '#dcbc86', points: null, wrap: '#1d1d1d', sleeve: '#0f3d26', ring: '#d4b04c', label: '#e8d38a', text: '19 oz' });
+    flushCues();
 
     // ---- the rack at the foot spot, ten balls racked (10-ball), back row empty ----
     {
@@ -569,6 +633,16 @@ export default {
       pushBall(13, -9.5, -59.9);                                   // at the north side pocket
       p = pl(sAt(-110, 12), -5.8); pushBall(14, p.x, p.z);         // west sweeper, inside
       p = pl(sAt(35, -14), 5.6); pushBall(15, p.x, p.z);           // north-middle lane
+      // more loose balls resting against the cushions (pushable, far enough from the racing line)
+      pushBall(3, 56, 60.5);
+      pushBall(9, -84, -60.5);
+      pushBall(5, -124.1, 30);
+      pushBall(1, 121.2, -57.6);
+      // balls that already went down, lying in the bottom of four pockets
+      staticBall(2, -1.2, 65.6, -10);
+      staticBall(7, 1.0, -69.0, -10);
+      staticBall(12, 130.6, -67.4, -10);
+      staticBall(4, -130.6, -67.2, -10);
     }
 
     // ---- pushable chalk cubes on the road edges ----
@@ -600,6 +674,7 @@ export default {
       // a wet ring from a glass
       mg.strokeStyle = 'rgba(110,70,30,0.35)'; mg.lineWidth = 8; mg.beginPath(); mg.arc(150, 110, 70, 0.5, 5.6); mg.stroke();
       const matTex = TX.toTexture(mc, { wrap: false });
+      matTex.center.set(0.5, 0.5); matTex.rotation = PI; // read upright from the camera
       const coasterSide = K.std({ color: 0xe0d2b0, roughness: 0.9 });
       const coasterTop = K.std({ map: matTex, roughness: 0.85 });
       const coasterGeo = new K.RoundedBoxGeometry(10.2, 0.28, 10.2, 1, 0.12);
@@ -622,11 +697,12 @@ export default {
         decal('arrow', q.x, q.z, 9, 3.2, q.angle);
       }
       // the spill: across the road just beyond the jump
-      const colaMat = K.phys({ color: 0x1c0802, roughness: 0.03, clearcoat: 1, clearcoatRoughness: 0.01, transparent: true, opacity: 0.86, envMapIntensity: 1.6 });
+      const colaMat = K.phys({ color: 0x3a1206, roughness: 0.03, clearcoat: 1, clearcoatRoughness: 0.01, transparent: true, opacity: 0.88, envMapIntensity: 1.6 });
       const sp = track.place(sR + 14, -0.5);
       const spill = K.spill(sp.x, sp.z, 6.7, colaMat, { lump: 0.32, stretch: 1.3, angle: sp.angle + 0.15, y: 0.12, thick: 0.12, n: 56 });
-      // thin reddish-brown film soaking into the felt around the puddle
-      const halo = K.flatShape(spill.poly.map(([x, z]) => [sp.x + (x - sp.x) * 1.14, sp.z + (z - sp.z) * 1.14]), K.std({ color: 0x06120a, roughness: 0.7, transparent: true, opacity: 0.6, depthWrite: false }), 0.045);
+      // amber meniscus where the film thins out, then the wet, darkened felt around it
+      K.flatShape(spill.poly.map(([x, z]) => [sp.x + (x - sp.x) * 1.05, sp.z + (z - sp.z) * 1.05]), K.std({ color: 0x8a4214, roughness: 0.15, transparent: true, opacity: 0.55, depthWrite: false }), 0.055).renderOrder = 1;
+      const halo = K.flatShape(spill.poly.map(([x, z]) => [sp.x + (x - sp.x) * 1.16, sp.z + (z - sp.z) * 1.16]), K.std({ color: 0x0a1c10, roughness: 0.6, transparent: true, opacity: 0.42, depthWrite: false }), 0.045);
       // lamp reflections make it read as liquid
       for (const [a, b, sx, sz, op] of [[-1.5, -1.2, 5.5, 1.1, 0.32], [2.2, 1.6, 2.6, 0.6, 0.26], [-3.6, 2.2, 1.4, 0.4, 0.22]]) {
         const hl = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ color: 0xfff1dc, transparent: true, opacity: op, alphaMap: TX.blobShadowTexture(), depthWrite: false }));
@@ -658,12 +734,21 @@ export default {
         const prof = [[0.01, 0], [3.4, 0], [3.9, 0.2], [4.05, 1.4], [4.25, 9.6], [3.95, 9.6], [3.75, 1.6], [0.01, 1.3]].map(([a, b]) => [a * G, b * G]);
         const glassGeo = K.lathe(prof, 40);
         const grp = new T.Group();
-        const gm = new T.Mesh(glassGeo, K.glass(0xf4f8ff, 0.13, { envMapIntensity: 1.2 }));
+        const gm = new T.Mesh(glassGeo, K.glass(0xe8f4ee, 0.075, { envMapIntensity: 0.75, side: T.FrontSide }));
         gm.renderOrder = 2;
         grp.add(gm);
-        // remaining cola inside, lying flat in the lower half
-        const lq = new T.Mesh(new T.CylinderGeometry(3.6, 3.5, 6.5, 24, 1, false, 0, PI), K.phys({ color: 0x2a0f04, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.85 }));
-        lq.position.y = 4.8; lq.rotation.y = PI / 2; grp.add(lq);
+        // inner wall (back faces) a touch darker so the far wall reads through the near one
+        const gIn = new T.Mesh(glassGeo, K.glass(0xc8dcd2, 0.06, { envMapIntensity: 0.4, side: T.BackSide }));
+        gIn.renderOrder = 1; grp.add(gIn);
+        // heavy glass base: a greenish solid disc
+        const base = new T.Mesh(new T.CylinderGeometry(3.7, 3.85, 1.25, 32), K.phys({ color: 0xbfd8c8, roughness: 0.05, transparent: true, opacity: 0.32, clearcoat: 1, envMapIntensity: 1.2 }));
+        base.position.y = 0.66; base.renderOrder = 1; grp.add(base);
+        // the last of the cola, lying in the low side of the glass (local +z is world down here)
+        const lqm = K.phys({ color: 0x2e0f05, roughness: 0.04, clearcoat: 1, transparent: true, opacity: 0.72, depthWrite: false });
+        const lq = new T.Mesh(new T.PlaneGeometry(5.4, 6.4), lqm);
+        lq.position.set(0, 4.6, 2.55); lq.rotation.y = PI; lq.renderOrder = 1; grp.add(lq);
+        const lqs = new T.Mesh(new T.CylinderGeometry(3.72, 3.72, 6.4, 24, 1, true, -0.81, 1.62), lqm);
+        lqs.position.y = 4.6; lqs.renderOrder = 1; grp.add(lqs);
         grp.rotation.order = 'YXZ';
         grp.rotation.y = PI / 2 - gAng; grp.rotation.x = PI / 2; // axis along gAng, mouth towards the road
         grp.position.set(gp.x - Math.cos(gAng) * 4.8, 4.2, gp.z - Math.sin(gAng) * 4.8);
@@ -675,7 +760,7 @@ export default {
       }
       // ice cubes and a lemon slice spilled out (two cubes can be pushed around)
       {
-        const iceMat = K.phys({ color: 0xf4fbff, roughness: 0.02, transparent: true, opacity: 0.3, clearcoat: 1, clearcoatRoughness: 0.01, envMapIntensity: 3.2, depthWrite: false, side: T.DoubleSide });
+        const iceMat = K.phys({ color: 0xe6f3fa, roughness: 0.06, transparent: true, opacity: 0.26, clearcoat: 1, clearcoatRoughness: 0.01, envMapIntensity: 2.2, depthWrite: false, side: T.DoubleSide });
         const iceGeo = new K.RoundedBoxGeometry(2.0, 1.7, 2.0, 2, 0.5);
         const spots = [[1.4, -3.2, true], [3.6, 2.4, false], [-1.8, 3.6, false], [5.5, -1.0, true]];
         for (const [a, b, push] of spots) {
@@ -689,7 +774,7 @@ export default {
         lg.fillStyle = '#f2d23a'; lg.beginPath(); lg.arc(64, 64, 63, 0, 6.283); lg.fill();
         lg.fillStyle = '#fbf3c2'; lg.beginPath(); lg.arc(64, 64, 56, 0, 6.283); lg.fill();
         for (let i = 0; i < 9; i++) { const a0 = i / 9 * 6.283 + 0.06, a1 = (i + 1) / 9 * 6.283 - 0.06; lg.fillStyle = '#f4dd5a'; lg.beginPath(); lg.moveTo(64 + Math.cos((a0 + a1) / 2) * 6, 64 + Math.sin((a0 + a1) / 2) * 6); lg.arc(64, 64, 52, a0, a1); lg.closePath(); lg.fill(); }
-        const lemon = K.mesh(new T.CylinderGeometry(2.6, 2.6, 0.5, 28), [K.std({ color: 0xf0cf2a, roughness: 0.5 }), K.phys({ map: TX.toTexture(lc, { wrap: false }), roughness: 0.3, clearcoat: 0.6 }), K.std({ color: 0xf0cf2a })], gp.x + 6, 0.3, gp.z + 5.5, { ry: 0.5 });
+        const lemon = K.mesh(new T.CylinderGeometry(2.6, 2.6, 0.5, 28), [K.std({ color: 0xf0cf2a, roughness: 0.5 }), K.std({ map: TX.toTexture(lc, { wrap: false }), roughness: 0.55, envMapIntensity: 0.5 }), K.std({ color: 0xf0cf2a })], gp.x + 6, 0.3, gp.z + 5.5, { ry: 0.5 });
         keep.push(lemon);
         AO(gp.x + 6, gp.z + 5.5, 2.8, 2.8, 0.3);
       }
@@ -753,7 +838,12 @@ export default {
       const yR = RAIL_Y + 0.1;
       for (let i = 0; i < 4; i++) for (let k = 0; k < (i === 1 ? 3 : i === 3 ? 2 : 1); k++) coins.push({ x: 22 + i * 3.4, y: yR + k * 0.22, z: 73 + r.range(-0.2, 0.2), ry: r() * 6, color: i % 2 ? 0xd9b45a : 0xc8ccd2 });
       coins.push({ x: -40, y: 0.11, z: 22, ry: 1, color: 0xd9b45a }, { x: -38, y: 0.11, z: 23.2, ry: 2, color: 0xc8ccd2 }, { x: 116, y: 0.11, z: 4, ry: 2, color: 0xb87348 });
-      K.instances(new T.CylinderGeometry(1.2, 1.2, 0.2, 28), coinMat, coins, { colors: true });
+      // a few more dropped coins in the felt between the lanes
+      for (const [x, z, n] of [[40, 27.6, 2], [42.4, 28.4, 1], [74, -5.2, 1], [-6, -40.5, 1]]) {
+        for (let k = 0; k < n; k++) coins.push({ x: x + k * 0.5, y: 0.11 + k * 0.21, z: z + k * 0.3, ry: r() * 6, rx: k ? 0.04 : 0, color: r.pick([0xd9b45a, 0xc8ccd2, 0xb87348]) });
+        warnRoad('coin', x, z, 0.8);
+      }
+      K.instances(new T.CylinderGeometry(1.2, 1.2, 0.2, 28), coinMat, coins, { colors: true, cast: false });
       chalkCube(-95, 73.1, { y: RAIL_Y, ry: 0.3 });
       chalkCube(136.6, 30, { y: RAIL_Y, ry: 1.1 });
       chalkCube(-120, 73.4, { y: RAIL_Y, ry: 2.2 });
@@ -766,6 +856,23 @@ export default {
         K.mesh(K.lathe([[0.01, 1.05], [3.0, 1.05], [3.45, 9.5], [3.72, 11.6], [0.01, 11.6]], 36), ale, x, RAIL_Y, z);
         const foam = K.mesh(new T.CylinderGeometry(3.95, 3.75, 2.2, 36), K.phys({ color: 0xfaf3e0, roughness: 0.75, sheen: 1, sheenColor: new T.Color(0xffffff) }), x, RAIL_Y + 12.7, z);
         AO(x, z, 4.4, 4.4, 0.5, 0, RAIL_Y + 0.06);
+      }
+      // a longneck of the same made-up ale as the beer mat, standing on the north rail
+      {
+        const x = -70, z = -73.1;
+        const bottle = K.lathe([[0.01, 0], [2.7, 0], [3.05, 0.4], [3.1, 1.0], [3.1, 13.5], [2.9, 15], [2.2, 16.6], [1.45, 18.2], [1.3, 21.6], [1.48, 21.9], [1.48, 22.9], [1.2, 23.2], [0.01, 23.2]], 36);
+        K.mesh(bottle, K.phys({ color: 0x1f4d22, roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.03, transparent: true, opacity: 0.86, envMapIntensity: 1.3 }), x, RAIL_Y, z).renderOrder = 2;
+        const lc = TX.makeCanvas(512, 128); const lg = lc.getContext('2d');
+        lg.fillStyle = '#efe4c8'; lg.fillRect(0, 0, 512, 128);
+        lg.fillStyle = '#8c1d1d'; lg.fillRect(0, 0, 512, 14); lg.fillRect(0, 114, 512, 14);
+        lg.fillStyle = '#8c1d1d'; lg.font = '58px "Lilita One", Impact, sans-serif'; lg.textAlign = 'center'; lg.textBaseline = 'middle';
+        lg.fillText('OLD 8', 128, 54); lg.fillText('OLD 8', 384, 54);
+        lg.fillStyle = '#1b1b1b'; lg.font = '700 20px Rubik, sans-serif'; lg.fillText('RAIL ALE · 5.2%', 128, 96); lg.fillText('RAIL ALE · 5.2%', 384, 96);
+        K.mesh(new T.CylinderGeometry(3.16, 3.16, 6.2, 36, 1, true), K.std({ map: TX.toTexture(lc, { wrap: false }), roughness: 0.6 }), x, RAIL_Y + 7.4, z, { ry: 0.6 });
+        const foil = K.metal(0xc9a24a, 0.3);
+        K.mesh(new T.CylinderGeometry(1.36, 1.5, 1.6, 24, 1, true), foil, x, RAIL_Y + 19.6, z);
+        K.mesh(new T.CylinderGeometry(1.55, 1.55, 0.55, 21), foil, x, RAIL_Y + 23.4, z);
+        AO(x, z, 3.8, 3.8, 0.5, 0, RAIL_Y + 0.06);
       }
       // bowl of peanuts on the north rail + shells on the felt
       {
@@ -805,18 +912,43 @@ export default {
       K.box(x, z, 7.3, 3.55, ang, 0.8);
       AO(x, z, 8.2, 4.4, 0.45, ang);
       // soft screen glow on the felt
-      const gl = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ color: 0x4a78d0, transparent: true, opacity: 0.07, alphaMap: TX.blobShadowTexture(), depthWrite: false, blending: T.AdditiveBlending }));
-      gl.rotation.order = 'YXZ'; gl.rotation.y = -ang; gl.rotation.x = -PI / 2; gl.scale.set(30, 20, 1); gl.position.set(x, 0.09, z); gl.renderOrder = 2;
+      const gl = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ color: 0x4a78d0, transparent: true, opacity: 0.035, alphaMap: TX.blobShadowTexture(), depthWrite: false, blending: T.AdditiveBlending }));
+      gl.rotation.order = 'YXZ'; gl.rotation.y = -ang; gl.rotation.x = -PI / 2; gl.scale.set(24, 15, 1); gl.position.set(x, 0.09, z); gl.renderOrder = 2;
       K.group.add(gl);
       warnRoad('phone', x - 7, z, 1); warnRoad('phone', x + 7, z + 3.5, 1); warnRoad('phone', x - 7, z + 3.5, 1);
       // a couple of coins and a chalk cube in the north strip
       chalkCube(28, -60.7, { ry: 0.5 });
     }
 
+    // ---- the table-hire ticket, folded once, left between the north lanes ----
+    {
+      const x = 16, z = -38.1, ang = 0.06;
+      const c = TX.makeCanvas(512, 192); const g = c.getContext('2d');
+      g.fillStyle = '#f4efe0'; g.fillRect(0, 0, 512, 192);
+      g.fillStyle = '#2a2a2e'; g.font = '700 30px Rubik, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+      g.fillText('THE CORNER POCKET', 24, 34);
+      g.font = '400 22px "Courier New", monospace';
+      g.fillText('TABLE 3 .......... 2 HRS', 24, 78); g.fillText('2x OLD 8 ALE ..... PAID', 24, 108); g.fillText('PEANUTS ........... 1', 24, 138);
+      g.fillText('21:12  -  23:12', 24, 168);
+      g.strokeStyle = 'rgba(40,40,40,0.4)'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(16, 56); g.lineTo(496, 56); g.stroke(); g.setLineDash([]);
+      g.fillStyle = 'rgba(120,80,40,0.12)'; g.beginPath(); g.arc(420, 120, 50, 0, 6.283); g.fill();
+      const tex = TX.toTexture(c, { wrap: false });
+      // two panels meeting at a soft tent-shaped fold across the middle
+      const geo = new T.PlaneGeometry(10.5, 3.9, 8, 1);
+      const pp = geo.attributes.position;
+      for (let i = 0; i < pp.count; i++) { const u = pp.getX(i) / 5.25; pp.setZ(i, 0.55 * (1 - Math.abs(u)) ** 1.5); }
+      geo.computeVertexNormals();
+      geo.rotateX(-PI / 2);
+      const tk = K.mesh(geo, K.std({ map: tex, roughness: 0.85, side: T.DoubleSide }), x, 0.05, z, { ry: -ang });
+      keep.push(tk);
+      AO(x, z, 5.6, 2.4, 0.3, ang);
+      warnRoad('ticket', x - 5.2, z - 2, 0.5); warnRoad('ticket', x + 5.2, z + 2, 0.5); warnRoad('ticket', x - 5.2, z + 2, 0.5);
+    }
+
     // ---- the bridge rest lying along the east cushion (brass head at the north end) ----
     {
       const brass = K.metal(0xc9a14a, 0.28);
-      const x = 120.2, z0 = -47, z1 = 47;
+      const x = 122.4, z0 = -47, z1 = 47;
       const shaft = K.mesh(new T.CylinderGeometry(0.62, 0.78, z1 - z0 - 3, 16), K.phys({ color: 0x2a1a10, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2, map: railWood.map }), x, 0.78, (z0 + z1) / 2 + 1.5, { rx: PI / 2 });
       K.mesh(new T.CylinderGeometry(0.8, 0.8, 1.6, 16), K.std({ color: 0x111111, roughness: 0.6 }), x, 0.8, z1 + 0.5, { rx: PI / 2 });
       K.mesh(new T.CylinderGeometry(0.72, 0.72, 2.4, 16), brass, x, 0.75, z0 + 1.2, { rx: PI / 2 });
@@ -859,8 +991,16 @@ export default {
       const pp = capG.attributes.position;
       for (let i = 0; i < pp.count; i++) { const a = Math.atan2(pp.getZ(i), pp.getX(i)); const k = 1 + 0.06 * Math.cos(a * 21); if (Math.hypot(pp.getX(i), pp.getZ(i)) > 1) { pp.setX(i, pp.getX(i) * k); pp.setZ(i, pp.getZ(i) * k); } }
       capG.computeVertexNormals();
-      K.mesh(capG, K.metal(0xb83228, 0.35), 118, 0.3, 57, { ry: 0.3 });
-      K.mesh(capG, K.metal(0xd9b84a, 0.3), -118, 0.3, -30, { rx: PI, ry: 0.3 });
+      const capC = TX.makeCanvas(128); const ccg = capC.getContext('2d');
+      ccg.fillStyle = '#b02a24'; ccg.fillRect(0, 0, 128, 128);
+      ccg.strokeStyle = '#f3ead8'; ccg.lineWidth = 7; ccg.beginPath(); ccg.arc(64, 64, 44, 0, 6.283); ccg.stroke();
+      ccg.fillStyle = '#f3ead8'; ccg.beginPath();
+      for (let i = 0; i < 10; i++) { const a = -PI / 2 + i * PI / 5, rr2 = i % 2 ? 11 : 27; ccg.lineTo(64 + Math.cos(a) * rr2, 64 + Math.sin(a) * rr2); }
+      ccg.closePath(); ccg.fill();
+      const capTop = K.std({ map: TX.toTexture(capC, { wrap: false }), metalness: 0.6, roughness: 0.35 });
+      const liner = K.std({ color: 0xd9d0b4, roughness: 0.7 });
+      K.mesh(capG, [K.metal(0xb83228, 0.35), capTop, liner], 118, 0.3, 57, { ry: 0.3 });
+      K.mesh(capG, [K.metal(0xd9b84a, 0.3), K.metal(0xd9b84a, 0.3), liner], -118, 0.3, -30, { rx: PI, ry: 0.3 });
       AO(118, 57, 1.8, 1.8, 0.35); AO(-118, -30, 1.8, 1.8, 0.35);
     }
 
@@ -875,15 +1015,40 @@ export default {
         const row = Math.floor(k / 2), col = k % 2;
         const q = track.place(s0 - row * 7.5 - col * 2.5, (col === 0 ? -1 : 1) * 3.2);
         decal('box', q.x, q.z, 6.0, 3.6, q.angle, 0.074);
+        const nq = track.place(s0 - row * 7.5 - col * 2.5 - 2.2, (col === 0 ? -1 : 1) * 5.8);
+        decal('n' + (k + 1), nq.x, nq.z, 1.8, 1.8, 0, 0.075);
       }
       const w1 = track.place(s0 + 1, -9.4); decal('wstart', w1.x, w1.z, 9.5, 3.0, 0, 0.074);
       const w2 = track.place(s0 + 1, 11.2); decal('wfinish', w2.x, w2.z, 9.5, 3.0, 0, 0.074);
       // title in the west infield
       decal('title', -63, 25, 38, 9.5, -0.04, 0.074);
       // chevrons on the outside of the hairpins
-      decal('chev', 120, 31, 12, 4.2, -PI / 2, 0.074);
-      decal('chev', 120, -31, 12, 4.2, -PI / 2, 0.074);
+      decal('chev', 116.2, 31, 12, 4.2, -PI / 2, 0.074);
+      decal('chev', 116.2, -31, 12, 4.2, -PI / 2, 0.074);
       decal('chev', -42, 0, 11, 4, -PI / 2, 0.074);
+      // direction arrows in each lane of the serpentine (so nobody heads the wrong way)
+      for (const [x, z] of [[52, 47.4], [62, 15.4], [72, -15.8], [44, -49.4], [-104, 18]]) {
+        const q = track.at(sAt(x, z));
+        decal('arrow', q.x, q.z, 7, 2.3, q.angle, 0.074);
+      }
+      // chalk kerbs on the inside of the hairpins
+      {
+        const step = 2.5;
+        let k = 0;
+        for (let s = 0; s < L; s += step) {
+          let c = 0; for (const d of [-6, -3, 0, 3, 6]) c += track.at(s + d).curv; c /= 5;
+          if (Math.abs(c) < 1 / 24) { k = 0; continue; }
+          const q = track.place(s, Math.sign(c) * 5.95);
+          decal(k % 2 ? 'kr' : 'kw', q.x, q.z, step * 0.96, 1.5, q.angle, 0.073);
+          k++;
+        }
+      }
+      // doodles and warnings in the spare felt
+      decal('noshort', -78, -30, 22, 6.2, -0.05, 0.074);
+      decal('car', -94, -16, 9, 9, 0.15, 0.074);
+      decal('mind', -21.5, 60.2, 18, 4.5, 0, 0.074);
+      decal('flat', 80, -59.6, 13, 4.2, 0, 0.074);
+      for (const [x, z] of [[-78, -30], [-94, -16], [-29, 60.2], [-21.5, 60.2], [-13, 60.2], [80, -59.6], [86, -59.6], [74, -59.6]]) warnRoad('doodle', x, z, 1.5);
       // blue chalk smudges and scuffs scattered on the felt, off the road
       const placed = [];
       let tries = 0;
@@ -965,6 +1130,28 @@ export default {
         for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(60,110,205,${0.2 + nr() * 0.5})`; g.beginPath(); g.arc(w / 2 + nr.gauss() * w * 0.22, h / 2 + nr.gauss() * h * 0.2, 0.8 + nr() * 2.2, 0, 6.283); g.fill(); }
       });
       cell('blue2', 896, 188, 128, 128, (w, h) => smudge(w, h, '60,110,205', 22, 0.35));
+      // kids' chalk doodles and warnings
+      const circ = (cx, cy, rad, n = 18) => Array.from({ length: n + 1 }, (_, i) => [cx + Math.cos(i / n * 6.283) * rad, cy + Math.sin(i / n * 6.283) * rad]);
+      cell('car', 48, 96, 160, 160, () => {
+        chalkStroke([[22, 104], [26, 84], [58, 76], [76, 56], [112, 55], [130, 76], [148, 82], [150, 104], [22, 104]], 4.5, '255,255,255', 0.8);
+        chalkStroke([[82, 60], [80, 76], [124, 76]], 3, '255,255,255', 0.6);
+        chalkStroke(circ(52, 106, 13), 4.5); chalkStroke(circ(120, 106, 13), 4.5);
+        for (const y of [64, 82, 98]) chalkStroke([[2, y], [16, y]], 3.5, '255,255,255', 0.55);
+        chalkText('7', 104, 90, 18, '255,255,255');
+      });
+      cell('noshort', 0, 416, 340, 96, (w, h) => chalkText('NO SHORTCUTS!', w / 2, h / 2 + 3, 44, '255,255,255', '"Lilita One", Impact, sans-serif', 400));
+      cell('flat', 340, 416, 300, 96, (w, h) => chalkText('FLAT OUT!', w / 2, h / 2 + 3, 62, '255,255,255', '"Lilita One", Impact, sans-serif', 400));
+      cell('mind', 640, 416, 384, 96, (w, h) => {
+        chalkText('MIND THE POCKET', 150, h / 2 + 3, 37, '255,255,255', '"Lilita One", Impact, sans-serif', 400);
+        chalkStroke([[318, h / 2], [372, h / 2]], 6); chalkStroke([[350, 30], [374, h / 2], [350, 66]], 6);
+      });
+      // racing kerbs: hatched chalk blocks, white and red
+      const kerb = (col) => (w, h) => {
+        for (let i = 0; i < 22; i++) { const x = 8 + i * (w - 16) / 21; chalkStroke([[x - 5, h - 7], [x + 5, 7]], 5.5, col, 0.8); }
+        chalkStroke([[5, 7], [w - 5, 7]], 4, col, 0.7); chalkStroke([[5, h - 7], [w - 5, h - 7]], 4, col, 0.7);
+      };
+      cell('kw', 208, 160, 128, 48, kerb('250,250,245'));
+      cell('kr', 336, 160, 128, 48, kerb('232,84,72'));
       cell('dots', 896, 316, 128, 100, (w, h) => { for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(70,120,210,${0.2 + nr() * 0.5})`; g.beginPath(); g.arc(w / 2 + nr.gauss() * 18, h / 2 + nr.gauss() * 14, 1 + nr() * 3, 0, 6.283); g.fill(); } });
       // chalk grain over everything
       const nf = TX.noiseField(256, { seed: 15, period: 48, oct: 3 });

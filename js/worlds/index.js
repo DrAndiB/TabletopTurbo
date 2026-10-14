@@ -5,7 +5,5 @@ import pool from './pool.js';
 import garden from './garden.js';
 import workshop from './workshop.js';
 
-// Beta: pool and workshop are still stubs, so they are left out of the menu for now.
-export const WORLDS = [breakfast, desk, garden];
-void pool; void workshop;
+export const WORLDS = [breakfast, desk, pool, garden, workshop];
 export function worldById(id) { return WORLDS.find((w) => w.id === id) || WORLDS[0]; }

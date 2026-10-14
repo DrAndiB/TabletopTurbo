@@ -174,3 +174,20 @@ body:not([data-screen="none"]) #touch { display: none; }
   #chips { gap: 5px; top: 58px; }
 }
 @media (prefers-reduced-motion: reduce) { .boot-car, .msg.pop, .flash-item { animation: none; } }
+
+/* lobby: keep the Start button in view while the lists scroll */
+.panel.lobby { padding-bottom: 0; }
+.panel.lobby .panel-foot { position: sticky; bottom: 0; background: var(--cream); padding-bottom: 16px; z-index: 2; }
+.world-list { gap: 8px; }
+.world-card { padding: 6px 8px; }
+@media (max-height: 760px) and (min-width: 861px) {
+  .world-card { grid-template-columns: 88px 1fr; }
+  .world-card .thumb { width: 88px; height: 55px; }
+  .world-card .wname { font-size: 18px; }
+  .world-card .wblurb { font-size: 12.5px; }
+  .panel h3 { margin: 10px 0 8px; }
+}
+/* small screens: the sound/fullscreen buttons would sit on top of the menu panels */
+@media (max-width: 600px) {
+  body[data-screen="lobby"] #corner, body[data-screen="controls"] #corner, body[data-screen="results"] #corner { display: none; }
+}

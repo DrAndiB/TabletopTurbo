@@ -18,7 +18,7 @@ let A = null; // per-frame animation state
 export default {
   id: 'workshop',
   name: 'Workbench Rally',
-  blurb: 'Sandpaper road on a scarred workbench: plank jump, oil slick, wet paint and sawdust.',
+  blurb: 'Sunlit workbench: sandpaper road, plank jump, oil slick, wet paint, a hole to dodge.',
   vehicle: 'rally',
   seed: 5,
   track: { points: TRACK, width: 14, startS: 45 },
@@ -36,9 +36,9 @@ export default {
     rough: { color: 0xb8bcc2, size: 0.45, life: 0.35, up: 6, grav: 40, alpha: 0.9, grow: 1, rate: 1.2 },
   },
   lighting: {
-    sunDir: SUN, sunColor: 0xffd7a2, sunIntensity: 3.0,
-    hemiSky: 0xb4c2d8, hemiGround: 0x5e4630, hemiIntensity: 0.6,
-    envIntensity: 0.42, exposure: 1.0, background: 0x1b1611, shadowRadius: 2.5,
+    sunDir: SUN, sunColor: 0xffd29a, sunIntensity: 3.5,
+    hemiSky: 0xa9bbd8, hemiGround: 0x5a4430, hemiIntensity: 0.5,
+    envIntensity: 0.34, exposure: 1.0, background: 0x1b1611, shadowRadius: 2.5,
   },
 
   async build(K) {
@@ -259,41 +259,64 @@ export default {
     };
 
     // ---------------------------------------------------------------- shared materials
-    const chrome = K.metal(0xe2e5ea, 0.14);
-    const steel = K.metal(0xb4b9c0, 0.32);
+    // Metals get the room environment as their own envMap so they can reflect more strongly than the
+    // scene-wide environment intensity (which is kept low so the bench itself doesn't look washed out).
+    const ENV = K.group.parent ? K.group.parent.environment : null;
+    const shiny = (m, k) => { if (ENV) { m.envMap = ENV; m.envMapIntensity = k; } return m; };
+    const chrome = shiny(K.metal(0xc6cbd2, 0.07), 1.0);
+    const steel = shiny(K.metal(0xb4b9c0, 0.32), 1.1);
     const darkSteel = K.metal(0x55595f, 0.4);
-    const brass = K.metal(0xc9a24a, 0.3);
+    const brass = shiny(K.metal(0xc9a24a, 0.3), 1.2);
     const blackRubber = K.std({ color: 0x1c1c1e, roughness: 0.75 });
     const brushed = TX.brushedMetalTextures({ size: 256, seed: 17 });
     const sawSteel = K.metal(0xd2d6dc, 0.25, { roughnessMap: brushed.roughnessMap, normalMap: brushed.normalMap, normalScale: V2(0.3) });
-    const pine = TX.woodTextures({ size: 512, seed: 61, planks: 1, base: 0xd9b27a, dark: 0xb07f45, light: 0xecd2a2, ringFreq: 9, gap: 0, roughBase: 0.72, grainContrast: 1.3 });
+    const pine = TX.woodTextures({ size: 512, seed: 61, planks: 1, base: 0xd2a468, dark: 0xa06c36, light: 0xe8c890, ringFreq: 11, gap: 0, roughBase: 0.72, grainContrast: 1.5, poreContrast: 1.3 });
     for (const t of Object.values(pine)) { t.rotation = PI / 2; t.center.set(0.5, 0.5); }
     const pineMat = K.std({ map: pine.map, normalMap: pine.normalMap, roughnessMap: pine.roughnessMap, normalScale: V2(0.5) });
     const endGrain = (() => {
       const c = TX.paint(128, 128, (x, y, u, v, o) => {
         const d = Math.hypot(u - 0.1, v + 0.35) * 26;
         const ring = 0.5 + 0.5 * Math.sin(d * 6.283);
-        const k = 0.78 + ring * 0.12 + Math.random() * 0.06;
+        const hn = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; const k = 0.78 + ring * 0.12 + (hn - Math.floor(hn)) * 0.06;
         o[0] = 205 * k; o[1] = 160 * k; o[2] = 105 * k;
       });
       return K.std({ map: TX.toTexture(c), roughness: 0.85 });
     })();
 
+    // corrugated kraft cardboard
+    const kraft = (() => {
+      const c = TX.paint(256, 256, (x, y, u, v, o) => {
+        const hn = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453, n = hn - Math.floor(hn);
+        const k = 0.95 + Math.sin(x * 0.52) * 0.02 + (n - 0.5) * 0.07 + Math.sin(x * 0.03 + y * 0.011) * 0.03;
+        o[0] = 200 * k; o[1] = 152 * k; o[2] = 98 * k;
+      });
+      const g = c.getContext('2d'), rr = K.rng(12);
+      for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${rr() < 0.5 ? '90,60,30' : '235,210,170'},${0.12 + rr() * 0.2})`; g.fillRect(rr() * 256, rr() * 256, 1, 1 + rr() * 5); }
+      return TX.toTexture(c);
+    })();
+
     // ---------------------------------------------------------------- the workbench
     // butcher block: 12 glued strips of maple/beech per 46-unit tile, straight edge grain, butt joints
     const BB = (() => {
-      const S = 1024, NS = 12, sw = S / NS, HS = 512;
+      // 12 glued strips of mixed beech / maple / oak per tile, straight edge grain, a few butt joints,
+      // then years of wear: scratches, gouges, dents and oily patches (also written into the height field)
+      const S = 1024, NS = 16, sw = S / NS, HS = 512;
       const rr = K.rng(808);
-      const tones = [[192, 146, 94], [198, 152, 98], [186, 140, 90], [204, 158, 104], [190, 144, 92], [180, 134, 86], [196, 150, 96]];
+      const tones = [[186, 142, 94], [176, 132, 87], [196, 155, 106], [168, 124, 81], [182, 138, 90], [200, 160, 112], [162, 119, 78], [190, 148, 98], [178, 140, 98]];
+      const mid = [182, 140, 94];
+      const tone = () => { const t = tones[Math.floor(rr() * tones.length)], k = 0.95 + rr() * 0.07; return [0, 1, 2].map((c) => (mid[c] + (t[c] - mid[c]) * 0.65) * k * (c === 2 ? 0.95 + rr() * 0.06 : 1)); };
       const strips = [];
       for (let i = 0; i < NS; i++) {
-        const tone = () => { const t = tones[Math.floor(rr() * tones.length)], k = 0.93 + rr() * 0.1; return [t[0] * k, t[1] * k, t[2] * k]; };
+        const nj = rr() < 0.5 ? 0 : rr() < 0.8 ? 1 : 2;
+        const joints = [];
+        for (let k = 0; k < nj; k++) joints.push(60 + rr() * (S - 120));
+        joints.sort((a, b) => a - b);
         strips.push({
-          c0: tone(), c1: tone(), joint: rr() < 0.22 ? 120 + rr() * 780 : -1000,
+          joints, cols: [tone(), tone(), tone()],
           f: [0.55 + rr() * 0.5, 1.3 + rr() * 0.9, 2.9 + rr() * 1.6], ph: [rr() * 6.28, rr() * 6.28, rr() * 6.28],
           wn: 1 + Math.floor(rr() * 3), wa: 1 + rr() * 3, wp: rr() * 6.28,
-          tn: [1 + Math.floor(rr() * 2), 2 + Math.floor(rr() * 3)], tp: [rr() * 6.28, rr() * 6.28], ta: [rr() * 0.07, rr() * 0.05],
-          streak: rr() < 0.45 ? [rr() * sw, rr() * S, 60 + rr() * 160] : null,
+          tn: [1 + Math.floor(rr() * 2), 2 + Math.floor(rr() * 3)], tp: [rr() * 6.28, rr() * 6.28], ta: [rr() * 0.08, rr() * 0.06],
+          streak: rr() < 0.5 ? [rr() * sw, rr() * S, 80 + rr() * 220] : null,
           knot: rr() < 0.3 ? [10 + rr() * (sw - 20), rr() * S] : null,
         });
       }
@@ -308,29 +331,124 @@ export default {
         const g1 = Math.sin(gx * st.f[0] * TAU / 4 + st.ph[0]), g2 = Math.sin(gx * st.f[1] * TAU / 4 + st.ph[1]), g3 = Math.sin(gx * st.f[2] * TAU / 4 + st.ph[2]);
         let line = Math.max(0, g1 - 0.84) * 5 + Math.max(0, g2 - 0.88) * 4.5 + Math.max(0, g3 - 0.93) * 3.5;
         const hn = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453, n = hn - Math.floor(hn);
+        // long streaky fibres along the strip
+        const fib = Math.sin(lx * 2.7 + Math.sin(y * 0.021 + i) * 1.5) * Math.sin(y * 0.009 + lx * 0.4 + i * 3) * 0.035;
         const pore = n > 0.985 ? 0.25 : 0;
-        const tone = 1 + Math.sin(yy * TAU * st.tn[0] + st.tp[0]) * st.ta[0] + Math.sin(yy * TAU * st.tn[1] + st.tp[1]) * st.ta[1] + (n - 0.5) * 0.05;
-        const after = y > st.joint;
-        const col = after ? st.c1 : st.c0;
+        const tone = 1 + Math.sin(yy * TAU * st.tn[0] + st.tp[0]) * st.ta[0] + Math.sin(yy * TAU * st.tn[1] + st.tp[1]) * st.ta[1] + (n - 0.5) * 0.06 + fib;
+        let seg = 0;
+        for (const j of st.joints) if (y > j) seg++;
+        const col = st.cols[seg];
         let k = tone * (1 - Math.min(0.32, line * 0.3) - pore);
         let hh = 0.6 - line * 0.25 - pore;
-        // finger joint between the two pieces of a strip
-        if (st.joint > 0) { const zig = st.joint + (Math.abs(((lx / sw) * 6) % 2 - 1) - 0.5) * 16; if (Math.abs(y - zig) < 1.3) { k *= 0.6; hh = 0.1; } }
-        if (st.streak) { const [sx, sy, sl] = st.streak; const dy = ((y - sy) % S + S) % S; if (dy < sl && Math.abs(lx - sx - dy * 0.02) < 1.6) k *= 0.82; }
-        if (st.knot) { const dx = lx - st.knot[0], dy = y - st.knot[1]; const d = dx * dx / 16 + dy * dy / 64; if (d < 1) { k *= 0.55 + 0.4 * d; hh -= 0.2; } }
+        // straight butt joint between two lengths of board
+        for (const j of st.joints) { const d = Math.abs(y - j); if (d < 1) { k *= 0.7; hh = 0.2; } else if (d < 2.5) k *= 0.94; }
+        if (st.streak) { const [sx, sy, sl] = st.streak; const dy = ((y - sy) % S + S) % S; if (dy < sl && Math.abs(lx - sx - dy * 0.02) < 2) k *= 0.8; }
+        if (st.knot) { const dx = lx - st.knot[0], dy = y - st.knot[1]; const d = dx * dx / 16 + dy * dy / 64; if (d < 1) { k *= 0.5 + 0.45 * d; hh -= 0.2; } }
         // glue lines
-        if (fu < 0.012 || fu > 0.988) { k *= 0.72; hh = 0.15; } else if (fu < 0.03 || fu > 0.97) k *= 0.94;
+        if (fu < 0.012 || fu > 0.988) { k *= 0.68; hh = 0.15; } else if (fu < 0.03 || fu > 0.97) k *= 0.93;
         o[0] = Math.min(255, col[0] * k); o[1] = Math.min(255, col[1] * k); o[2] = Math.min(255, col[2] * k);
         if (!(x & 1) && !(y & 1)) h[(y >> 1) * HS + (x >> 1)] = hh;
       });
+      // wear, drawn on top of the wood and cut into the height field
+      const g = c.getContext('2d');
+      g.lineCap = 'round';
+      const cut = (x0, y0, x1, y1, depth, wid = 1) => {
+        const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0));
+        for (let t = 0; t <= n; t++) {
+          const x = x0 + (x1 - x0) * t / n, y = y0 + (y1 - y0) * t / n;
+          for (let w = -wid + 1; w < wid; w++) {
+            const xi = (((Math.round(x / 2) + w) % HS) + HS) % HS, yi = ((Math.round(y / 2) % HS) + HS) % HS;
+            h[yi * HS + xi] = Math.min(h[yi * HS + xi], 0.6 - depth);
+          }
+        }
+      };
+      const stroke = (x0, y0, x1, y1, col, w) => {
+        g.strokeStyle = col; g.lineWidth = w;
+        for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { g.beginPath(); g.moveTo(x0 + ox, y0 + oy); g.lineTo(x1 + ox, y1 + oy); g.stroke(); }
+      };
+      // fine scratches, mostly fresh (light) with some dirty ones
+      for (let i = 0; i < 300; i++) {
+        const x = rr() * S, y = rr() * S, a = rr() < 0.35 ? (rr() - 0.5) * 0.5 : rr() * PI, l = 8 + rr() * rr() * 120;
+        const x1 = x + Math.cos(a) * l, y1 = y + Math.sin(a) * l;
+        const light = rr() < 0.65;
+        stroke(x, y, x1, y1, light ? `rgba(255,236,200,${0.12 + rr() * 0.22})` : `rgba(55,32,14,${0.12 + rr() * 0.22})`, 0.6 + rr() * 1.1);
+        cut(x, y, x1, y1, 0.12 + rr() * 0.15);
+      }
+      // a few deep gouges and chisel slips
+      for (let i = 0; i < 12; i++) {
+        const x = rr() * S, y = rr() * S, a = rr() * PI, l = 14 + rr() * 50;
+        const x1 = x + Math.cos(a) * l, y1 = y + Math.sin(a) * l;
+        stroke(x, y, x1, y1, 'rgba(250,226,186,0.45)', 4.5);
+        stroke(x, y, x1, y1, 'rgba(70,40,16,0.55)', 1.8);
+        cut(x, y, x1, y1, 0.45, 2);
+      }
+      // dents (hammer misses) and small burns
+      for (let i = 0; i < 40; i++) {
+        const x = rr() * S, y = rr() * S, rad = 2 + rr() * 6;
+        const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, 'rgba(60,34,14,0.35)'); gr.addColorStop(1, 'rgba(60,34,14,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(x, y, rad, 0, 6.28); g.fill();
+        const cx = Math.round(x / 2), cy = Math.round(y / 2), rh = Math.ceil(rad / 2);
+        for (let dy = -rh; dy <= rh; dy++) for (let dx = -rh; dx <= rh; dx++) {
+          const d = Math.hypot(dx, dy) / rh; if (d > 1) continue;
+          const xi = ((cx + dx) % HS + HS) % HS, yi = ((cy + dy) % HS + HS) % HS;
+          h[yi * HS + xi] -= (1 - d * d) * 0.35;
+        }
+      }
       const map = TX.toTexture(c);
-      const normalMap = TX.toTexture(TX.normalFromHeight(h, HS, HS, 1.4), { srgb: false });
-      return { map, normalMap };
+      const normalMap = TX.toTexture(TX.normalFromHeight(h, HS, HS, 1.6), { srgb: false });
+      // roughness: oily, hand-polished patches vs dry raw wood
+      const nf = TX.noiseField(128, { seed: 23, period: 3, oct: 4 });
+      const rc = TX.paint(128, 128, (x, y, u, v, o) => { const t = nf[y * 128 + x]; o[0] = o[1] = o[2] = 255 * Math.min(0.85, Math.max(0.32, 0.92 - t * 0.75)); });
+      const roughnessMap = TX.toTexture(rc, { srgb: false });
+      return { map, normalMap, roughnessMap };
     })();
     const HOLE = (() => { const p = track.place(931, -13.2); return { x: p.x, z: p.z, r: 4.6 }; })();
+    // Flat bench surface as a grid of small quads with a round hole (HOLE): the cells around the hole are
+    // replaced by a fan between the block's boundary vertices and the circle, so there are no T-junctions.
+    const BENCH_TOP = (x0, x1, z0, z1, hr, uvFn) => {
+      const cs = 8, nx = Math.ceil((x1 - x0) / cs), nz = Math.ceil((z1 - z0) / cs);
+      const gx = (i) => Math.min(x1, x0 + i * cs), gz = (j) => Math.min(z1, z0 + j * cs);
+      const bi = Math.floor((HOLE.x - x0) / cs) - 1, bj = Math.floor((HOLE.z - z0) / cs) - 1;
+      const P = [];
+      const tri = (a, b, c) => {
+        // keep every triangle facing up
+        const cr = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+        if (cr >= 0) P.push(a, b, c); else P.push(a, c, b);
+      };
+      const v = (x, z) => [x, 0, z];
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        if (i >= bi && i < bi + 3 && j >= bj && j < bj + 3) continue;
+        const a = v(gx(i), gz(j)), b = v(gx(i + 1), gz(j)), c = v(gx(i + 1), gz(j + 1)), d = v(gx(i), gz(j + 1));
+        tri(a, b, c); tri(a, c, d);
+      }
+      // boundary of the 3x3 block, walked once around
+      const O = [];
+      for (let k = 0; k < 3; k++) O.push(v(gx(bi + k), gz(bj)));
+      for (let k = 0; k < 3; k++) O.push(v(gx(bi + 3), gz(bj + k)));
+      for (let k = 0; k < 3; k++) O.push(v(gx(bi + 3 - k), gz(bj + 3)));
+      for (let k = 0; k < 3; k++) O.push(v(gx(bi), gz(bj + 3 - k)));
+      const ang = O.map((o) => Math.atan2(o[2] - HOLE.z, o[0] - HOLE.x));
+      const ring = (a) => v(HOLE.x + Math.cos(a) * hr, HOLE.z + Math.sin(a) * hr);
+      for (let k = 0; k < O.length; k++) {
+        const a0 = ang[k];
+        let a1 = ang[(k + 1) % O.length];
+        while (a1 - a0 > PI) a1 -= 2 * PI;
+        while (a1 - a0 < -PI) a1 += 2 * PI;
+        const I = [0, 1, 2, 3].map((t) => ring(a0 + (a1 - a0) * t / 3));
+        const A = O[k], Bv = O[(k + 1) % O.length];
+        tri(A, I[0], I[1]); tri(A, I[1], Bv); tri(Bv, I[1], I[2]); tri(Bv, I[2], I[3]);
+      }
+      const pos = new Float32Array(P.length * 3), nrm = new Float32Array(P.length * 3), uv = new Float32Array(P.length * 2);
+      P.forEach((p, k) => { pos.set(p, k * 3); nrm.set([0, 1, 0], k * 3); uv.set(uvFn(p[0], p[2]), k * 2); });
+      const geo = new T.BufferGeometry();
+      geo.setAttribute('position', new T.BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new T.BufferAttribute(nrm, 3));
+      geo.setAttribute('uv', new T.BufferAttribute(uv, 2));
+      return geo;
+    };
     {
       const TILE = 46;
-      const benchMat = K.std({ map: BB.map, normalMap: BB.normalMap, normalScale: V2(0.55), roughness: 0.6 });
+      const benchMat = K.std({ map: BB.map, normalMap: BB.normalMap, normalScale: V2(0.7), roughnessMap: BB.roughnessMap, roughness: 1 });
       const bev = 0.6;
       const sh = new T.Shape();
       sh.moveTo(B.minX + bev, -(B.minZ + bev)); sh.lineTo(B.maxX - bev, -(B.minZ + bev)); sh.lineTo(B.maxX - bev, -(B.maxZ - bev)); sh.lineTo(B.minX + bev, -(B.maxZ - bev)); sh.closePath();
@@ -345,9 +463,29 @@ export default {
         else if (nz >= nx) uv.setXY(i, 0.01 + (y / TILE) * 0.5, x / TILE);
         else uv.setXY(i, z / TILE, y / TILE * 3);
       }
-      const top = new T.Mesh(g, benchMat);
-      top.receiveShadow = true; top.castShadow = true;
-      K.group.add(top);
+      // The flat top is rebuilt as a finely subdivided grid: one huge cap triangle spanning the whole bench
+      // gives imprecise depth after clipping, and the thin road/tape ribbons 0.03 above it then flicker away.
+      {
+        const keepIdx = [];
+        for (let t = 0; t < pos.count; t += 3) {
+          let cap = true;
+          for (let k = 0; k < 3; k++) if (pos.getY(t + k) < -0.001 || nrm.getY(t + k) < 0.99) cap = false;
+          if (!cap) keepIdx.push(t, t + 1, t + 2);
+        }
+        const body = new T.BufferGeometry();
+        for (const name of ['position', 'normal', 'uv']) {
+          const src = g.attributes[name], it = src.itemSize, arr = new Float32Array(keepIdx.length * it);
+          keepIdx.forEach((v, k) => { for (let c = 0; c < it; c++) arr[k * it + c] = src.array[v * it + c]; });
+          body.setAttribute(name, new T.BufferAttribute(arr, it));
+        }
+        g.dispose();
+        const bodyM = new T.Mesh(body, benchMat);
+        bodyM.receiveShadow = true; bodyM.castShadow = true;
+        K.group.add(bodyM);
+      }
+      const topM = new T.Mesh(BENCH_TOP(B.minX + bev, B.maxX - bev, B.minZ + bev, B.maxZ - bev, HOLE.r + bev, (x, z) => [z / TILE, x / TILE]), benchMat);
+      topM.receiveShadow = true; topM.castShadow = true;
+      K.group.add(topM);
       // under-frame: apron, legs, lower shelf
       const frameMat = K.std({ map: pine.map, color: 0xb8936a, roughness: 0.7 });
       const mx = (B.minX + B.maxX) / 2, mz = (B.minZ + B.maxZ) / 2;
@@ -412,13 +550,7 @@ export default {
         g.fillStyle = 'rgba(20,12,5,0.75)'; g.beginPath(); g.arc(px(x), pz(z), (0.18 + rr() * 0.35) * sx, 0, 6.28); g.fill();
       }
       const ov = TX.toTexture(c, { wrap: false });
-      const sh = new T.Shape();
-      sh.moveTo(B.minX, -B.minZ); sh.lineTo(B.maxX, -B.minZ); sh.lineTo(B.maxX, -B.maxZ); sh.lineTo(B.minX, -B.maxZ); sh.closePath();
-      const hp = new T.Path(); hp.absarc(HOLE.x, -HOLE.z, HOLE.r + 0.2, 0, PI * 2, true); sh.holes.push(hp);
-      const og = new T.ShapeGeometry(sh, 32);
-      og.rotateX(-PI / 2);
-      const p = og.attributes.position, uv = og.attributes.uv;
-      for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) - B.minX) / BW, 1 - (p.getZ(i) - B.minZ) / BD);
+      const og = BENCH_TOP(B.minX + 0.6, B.maxX - 0.6, B.minZ + 0.6, B.maxZ - 0.6, HOLE.r + 0.6, (x, z) => [(x - B.minX) / BW, 1 - (z - B.minZ) / BD]);
       const m = new T.Mesh(og, K.std({ map: ov, transparent: true, depthWrite: false, roughness: 0.75, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
       m.position.y = 0.006; m.receiveShadow = true; m.renderOrder = 0;
       K.group.add(m);
@@ -426,13 +558,14 @@ export default {
 
     // ---------------------------------------------------------------- garage floor far below
     {
-      const cc = TX.mottledTextures({ size: 512, a: 0x8e8a83, b: 0x7d7972, c: 0x99948b, seed: 71, period: 6, speck: 0.08, bump: 0.8 });
-      for (const t of Object.values(cc)) t.repeat.set(9, 9);
-      K.mesh(new T.PlaneGeometry(1800, 1800), K.std({ map: cc.map, normalMap: cc.normalMap, roughness: 0.92, color: 0xd8d4cc }), 0, -76, 0, { rx: -PI / 2, cast: false });
+      // sealed concrete: cloudy trowel marks with fine aggregate
+      const cc = TX.mottledTextures({ size: 512, a: 0x908c85, b: 0x7b7770, c: 0x9d988f, seed: 71, period: 4, speck: 0.05, bump: 0.6, pebbles: 700, pebbleColor: 0x8c8780 });
+      for (const t of Object.values(cc)) t.repeat.set(1800 / 90, 1800 / 90);
+      K.mesh(new T.PlaneGeometry(1800, 1800, 30, 30), K.std({ map: cc.map, normalMap: cc.normalMap, roughness: 0.92, color: 0xd8d4cc }), 0, -76, 0, { rx: -PI / 2, cast: false });
       const jg = [];
       for (let i = -3; i <= 3; i++) {
-        jg.push(new T.PlaneGeometry(1.2, 1800).rotateX(-PI / 2).translate(i * 150 + 40, 0, 0));
-        jg.push(new T.PlaneGeometry(1800, 1.2).rotateX(-PI / 2).translate(0, 0, i * 150 + 20));
+        jg.push(new T.PlaneGeometry(1.2, 1800, 1, 30).rotateX(-PI / 2).translate(i * 150 + 40, 0, 0));
+        jg.push(new T.PlaneGeometry(1800, 1.2, 30, 1).rotateX(-PI / 2).translate(0, 0, i * 150 + 20));
       }
       K.mesh(K.BufferGeometryUtils.mergeGeometries(jg), new T.MeshBasicMaterial({ color: 0x2c2a27, transparent: true, opacity: 0.55, depthWrite: false }), 0, -75.95, 0, { cast: false });
       // big oil stain where the car usually stands, east of the bench
@@ -445,18 +578,24 @@ export default {
       K.mesh(new T.PlaneGeometry(50, 40), om, -230, -75.9, -40, { rx: -PI / 2, cast: false });
       // things on the floor: a bucket, a shop vac, lumber offcuts, a cardboard box
       const bucket = K.lathe([[0.001, 0], [13, 0], [13.4, 0.6], [15.4, 36], [16.2, 36.6], [15.9, 37], [14.9, 36.2], [12.9, 1.4], [0.001, 1.2]], 40);
-      K.mesh(bucket, K.plastic(0xe9e6df, 0.5), -215, -76, 40, { cast: false });
-      K.mesh(new T.CylinderGeometry(15, 15, 0.5, 40), K.std({ color: 0x8a7f70, roughness: 0.9 }), -215, -50, 40, { cast: false });
+      K.mesh(bucket, K.plastic(0xe9e6df, 0.5), -262, -76, 52, { cast: false });
+      K.mesh(new T.CylinderGeometry(15, 15, 0.5, 40), K.std({ color: 0x8a7f70, roughness: 0.9 }), -262, -50, 52, { cast: false });
       const vac = K.lathe([[0.001, 0], [17, 0], [18, 2], [18, 30], [17, 32], [14, 34], [0.001, 34]], 40);
-      K.mesh(vac, K.plastic(0xe0b22a, 0.4), -220, -76, -60, { cast: false });
-      K.mesh(new T.CylinderGeometry(12, 13, 10, 32), K.plastic(0x2a2a2c, 0.5), -220, -37, -60, { cast: false });
-      K.mesh(new T.TorusGeometry(14, 2.2, 10, 32, PI * 1.5), K.plastic(0x2a2a2c, 0.5), -195, -73, -45, { rx: -PI / 2, cast: false });
+      K.mesh(vac, K.plastic(0xe0b22a, 0.4), -270, -76, -50, { cast: false });
+      K.mesh(new T.CylinderGeometry(12, 13, 10, 32), K.plastic(0x2a2a2c, 0.5), -270, -37, -50, { cast: false });
+      K.mesh(new T.TorusGeometry(14, 2.2, 10, 32, PI * 1.5), K.plastic(0x2a2a2c, 0.5), -238, -73, -30, { rx: -PI / 2, cast: false });
+      // offcuts and sawdust that fell off the bench
+      for (const [x, z, a, l] of [[-196, 20, 0.4, 26], [-205, -12, 1.9, 14], [193, 30, -0.3, 22], [205, 55, 1.2, 12], [-60, 140, 0.2, 30], [40, 150, -0.6, 18]]) K.mesh(new T.BoxGeometry(l, 1.9, 8.9), pineMat, x, -75, z, { ry: a, cast: false });
+      const dc = TX.makeCanvas(128); const dg = dc.getContext('2d'); const dr = K.rng(15);
+      for (let i = 0; i < 900; i++) { const a = dr() * 6.28, d = Math.pow(dr(), 0.7) * 60; dg.fillStyle = `rgba(${dr() < 0.5 ? '232,204,150' : '205,170,115'},${0.25 + dr() * 0.5})`; dg.fillRect(64 + Math.cos(a) * d, 64 + Math.sin(a) * d * 0.8, 1 + dr() * 2, 1 + dr() * 2); }
+      const dustM = K.std({ map: TX.toTexture(dc, { wrap: false }), transparent: true, depthWrite: false, roughness: 1 });
+      for (const [x, z, sz] of [[-195, 5, 34], [196, 40, 30], [-20, 135, 40]]) K.mesh(new T.PlaneGeometry(sz, sz), dustM, x, -75.92, z, { rx: -PI / 2, cast: false });
       for (let i = 0; i < 5; i++) K.mesh(new T.BoxGeometry(90 + i * 7, 3.8, 8.9), pineMat, 225 + i * 2, -74.1 + (i >= 3 ? 3.8 : 0), -80 + (i % 3) * 9.4, { ry: 0.02 * i, cast: false });
-      const cardboard = K.std({ color: 0xb48a58, roughness: 0.9 });
+      const cardboard = K.std({ map: kraft, color: 0xd8c8b0, roughness: 0.9 });
       K.mesh(new T.BoxGeometry(40, 30, 32), cardboard, 215, -61, 110, { ry: 0.3, cast: false });
       // the bench's shadow on the floor
       const shm = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55, alphaMap: TX.blobShadowTexture(), depthWrite: false }));
-      shm.rotation.x = -PI / 2; shm.scale.set(BW * 1.35, BD * 1.5, 1); shm.position.set(60, -75.85, -20);
+      shm.rotation.x = -PI / 2; shm.scale.set(BW * 1.35, BD * 1.5, 1); shm.position.set(60, -75.85, -20); shm.material.opacity = 0.28;
       K.group.add(shm);
     }
 
@@ -637,7 +776,7 @@ export default {
       for (let i = 0; i < 6; i++) {
         const x = -70 + i * 11, z = WALLZ + 8;
         fills.push({ x, y: 52.9 + 2.5 + i % 3, z, sx: 3.9, sy: 5 + (i % 3) * 2, sz: 3.9, color: [0xa8acb2, 0xc9a24a, 0x6f7276][i % 3] });
-        lids.push({ x, y: 52.9 + 11.2, z, color: [0xc8302a, 0xe0b030, 0x2f6fd6][i % 3] });
+        lids.push({ x, y: 52.9 + 11.2, z, color: [0x9a9ea5, 0xb89a50, 0x6f7276][i % 3] });
       }
       K.instances(new T.CylinderGeometry(1, 1, 1, 16), K.std({ color: 0xffffff, roughness: 0.5, metalness: 0.6 }), fills, { colors: true, cast: false });
       K.instances(new T.CylinderGeometry(3.9, 3.9, 1.3, 20), K.metal(0xffffff, 0.35), lids, { colors: true });
@@ -868,18 +1007,30 @@ export default {
       const bp = track.place(s1 + 12, 16.5);
       const ba = bp.angle + PI / 2 + 0.35;
       const box = new T.Group();
-      const boxC = TX.makeCanvas(256, 128); const bg = boxC.getContext('2d');
-      bg.fillStyle = '#c99a5c'; bg.fillRect(0, 0, 256, 128); bg.fillStyle = '#1f3f7a'; bg.fillRect(0, 0, 256, 34);
-      bg.fillStyle = '#fff'; bg.font = '700 24px Rubik, sans-serif'; bg.fillText('WOOD SCREWS', 14, 26);
-      bg.fillStyle = '#1f3f7a'; bg.font = '700 34px Rubik, sans-serif'; bg.fillText('4.0 × 40', 16, 78); bg.font = '20px Rubik, sans-serif'; bg.fillText('200 pcs  ·  zinc', 16, 110);
-      const boxSide = K.std({ map: TX.toTexture(boxC, { wrap: false }), roughness: 0.9 });
-      const card = K.std({ color: 0xc28f55, roughness: 0.92, side: T.DoubleSide });
+      // printed kraft carton: label on the outside faces, plain corrugated kraft inside
+      const boxC = TX.makeCanvas(512, 256); const bg = boxC.getContext('2d');
+      bg.drawImage(kraft.image, 0, 0, 512, 256);
+      bg.fillStyle = '#1f3f7a'; bg.fillRect(0, 0, 512, 62); bg.fillRect(0, 236, 512, 20);
+      bg.fillStyle = '#f4f1e8'; bg.font = '700 44px "Lilita One", Rubik, sans-serif'; bg.fillText('WOOD SCREWS', 22, 47);
+      bg.fillStyle = '#1f3f7a'; bg.font = '700 70px Rubik, sans-serif'; bg.fillText('4.0 × 40', 22, 140);
+      bg.font = '600 26px Rubik, sans-serif'; bg.fillText('200 pcs · zinc · countersunk', 22, 190); bg.fillText('PZ2', 22, 224);
+      // screw drawing
+      bg.save(); bg.translate(400, 150); bg.rotate(-0.5); bg.fillStyle = '#1f3f7a';
+      bg.fillRect(-70, -7, 120, 14); bg.beginPath(); bg.moveTo(50, -7); bg.lineTo(80, 0); bg.lineTo(50, 7); bg.fill();
+      bg.fillRect(-84, -20, 14, 40); bg.strokeStyle = '#c4975f'; bg.lineWidth = 3;
+      for (let x = -60; x < 60; x += 11) { bg.beginPath(); bg.moveTo(x, -7); bg.lineTo(x + 7, 7); bg.stroke(); }
+      bg.restore();
+      // scuffs and a torn corner
+      for (let i = 0; i < 40; i++) { bg.fillStyle = `rgba(235,215,180,${r() * 0.35})`; bg.fillRect(r() * 512, r() * 256, 2 + r() * 20, 1 + r() * 2); }
+      const boxSide = K.std({ map: TX.toTexture(boxC, { wrap: false }), roughness: 0.88 });
+      const card = K.std({ map: kraft, color: 0xe8d8c4, roughness: 0.92, side: T.DoubleSide });
       // box lying on its side, open end facing the road: local +x towards the road
       const bW = 10, bH = 6, bL = 9;
-      const bot = new T.Mesh(new T.BoxGeometry(bL, bH, 0.2), boxSide); bot.position.set(0, bH / 2, -bW / 2); box.add(bot);
-      const topP = new T.Mesh(new T.BoxGeometry(bL, bH, 0.2), boxSide); topP.position.set(0, bH / 2, bW / 2); box.add(topP);
+      const outside = (face) => { const arr = [card, card, card, card, card, card]; arr[face] = boxSide; return arr; };
+      const bot = new T.Mesh(new T.BoxGeometry(bL, bH, 0.2), outside(5)); bot.position.set(0, bH / 2, -bW / 2); box.add(bot);
+      const topP = new T.Mesh(new T.BoxGeometry(bL, bH, 0.2), outside(4)); topP.position.set(0, bH / 2, bW / 2); box.add(topP);
       const fl = new T.Mesh(new T.BoxGeometry(bL, 0.2, bW), card); fl.position.set(0, 0.1, 0); box.add(fl);
-      const ceil = new T.Mesh(new T.BoxGeometry(bL, 0.2, bW), card); ceil.position.set(0, bH - 0.1, 0); box.add(ceil);
+      const ceil = new T.Mesh(new T.BoxGeometry(bL, 0.2, bW), outside(2)); ceil.position.set(0, bH - 0.1, 0); box.add(ceil);
       const back = new T.Mesh(new T.BoxGeometry(0.2, bH, bW), card); back.position.set(-bL / 2, bH / 2, 0); box.add(back);
       const flap = new T.Mesh(new T.BoxGeometry(5, 0.15, bW), card); flap.position.set(bL / 2 + 2.4, 0.08, 0); box.add(flap);
       box.position.set(bp.x, 0, bp.z); box.rotation.y = -ba; K.add(box);
@@ -901,8 +1052,10 @@ export default {
     // ---------------------------------------------------------------- the bench vise in the north pocket
     {
       const VX = -87, VZ = -79;
-      const tone = TX.mottledTextures({ size: 256, a: 0x2d5ea2, b: 0x24508e, seed: 44, period: 5, bump: 1.4, speck: 0.12 });
-      const vMat = K.phys({ map: tone.map, normalMap: tone.normalMap, normalScale: V2(0.35), roughness: 0.38, metalness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.22 });
+      // hammertone enamel: fine dimpled paint, chipped to bare iron on the edges
+      const tone = TX.mottledTextures({ size: 256, a: 0x2f62a6, b: 0x2a5898, seed: 44, period: 24, bump: 0.6, speck: 0.04 });
+      for (const t of [tone.map, tone.normalMap]) t.repeat.set(2, 2);
+      const vMat = K.phys({ map: tone.map, normalMap: tone.normalMap, normalScale: V2(0.12), roughness: 0.42, metalness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.3 });
       const jawTex = (() => { const c = TX.paint(64, 64, (x, y, u, v, o) => { const k = ((x + y) % 8 < 2 || (x - y + 64) % 8 < 2) ? 0.55 : 1; o[0] = o[1] = o[2] = 200 * k; }); return TX.toTexture(c, { repeat: [3, 1] }); })();
       const jawMat = K.metal(0x9aa0a6, 0.4, { map: jawTex });
       const g = new T.Group();
@@ -927,9 +1080,9 @@ export default {
       const bar = new T.Mesh(new T.CylinderGeometry(0.65, 0.65, 23, 14), chrome); bar.rotation.z = PI / 2 - 0.35; bar.position.set(0, 7.2, 18); g.add(bar);
       for (const s of [-1, 1]) { const ball = new T.Mesh(new T.SphereGeometry(1.25, 16, 10), chrome); ball.position.set(s * 11.5 * Math.cos(0.35), 7.2 - s * 11.5 * Math.sin(0.35), 18); g.add(ball); }
       // a block of wood clamped upright, with a saw cut started
-      const wb = new T.Mesh(new K.RoundedBoxGeometry(11, 20, gap - 0.1, 2, 0.2), pineMat); wb.position.set(1, 18, -7.8 + 2.6 + gap / 2); g.add(wb);
-      const kerf = new T.Mesh(new T.BoxGeometry(0.25, 3, gap + 0.02), K.std({ color: 0x2a1a0c, roughness: 1 })); kerf.position.set(-1.5, 26.6, -7.8 + 2.6 + gap / 2); g.add(kerf);
-      const top = new T.Mesh(new T.PlaneGeometry(10.6, gap - 0.3), endGrain); top.rotation.x = -PI / 2; top.position.set(1, 28.02, -7.8 + 2.6 + gap / 2); g.add(top);
+      const wb = new T.Mesh(new K.RoundedBoxGeometry(11, 12, gap - 0.1, 2, 0.2), pineMat); wb.position.set(1, 15, -7.8 + 2.6 + gap / 2); g.add(wb);
+      const kerf = new T.Mesh(new T.BoxGeometry(0.25, 3, gap + 0.02), K.std({ color: 0x2a1a0c, roughness: 1 })); kerf.position.set(-1.5, 19.6, -7.8 + 2.6 + gap / 2); g.add(kerf);
+      const top = new T.Mesh(new T.PlaneGeometry(10.6, gap - 0.3), endGrain); top.rotation.x = -PI / 2; top.position.set(1, 21.02, -7.8 + 2.6 + gap / 2); g.add(top);
       g.position.set(VX, 0, VZ); g.rotation.y = 0.12;
       K.add(g);
       K.box(VX, VZ - 4, 7.5, 12, -0.12, 20);
@@ -957,7 +1110,7 @@ export default {
       const sP = 196;
       const sp = track.place(sP, 1.5);
       const canMat = K.metal(0xd4d7db, 0.3);
-      const paintMat = K.phys({ color: PAINT, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05 });
+      const paintMat = shiny(K.phys({ color: PAINT, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05 }), 0.9);
       const labelTex = (col, title) => {
         const c = TX.makeCanvas(512, 160);
         const g = c.getContext('2d');
@@ -1097,8 +1250,12 @@ export default {
       const cx = -100, cz = 54, ang = 0.03;
       const c = TX.makeCanvas(1024, 128);
       const g = c.getContext('2d');
-      g.fillStyle = '#f2a81c'; g.fillRect(0, 0, 1024, 128);
-      g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, 0, 1024, 10); g.fillRect(0, 118, 1024, 10);
+      // milled aluminium with a red printed band
+      const al = g.createLinearGradient(0, 0, 0, 128); al.addColorStop(0, '#d9dde1'); al.addColorStop(0.5, '#c4c9ce'); al.addColorStop(1, '#d4d8dc');
+      g.fillStyle = al; g.fillRect(0, 0, 1024, 128);
+      const lr = K.rng(21); for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${lr() < 0.5 ? '255,255,255' : '90,95,100'},0.12)`; g.fillRect(0, lr() * 128, 1024, 1); }
+      g.fillStyle = '#c4281e'; g.fillRect(200, 30, 300, 68); g.fillRect(572, 30, 250, 68);
+      g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(0, 0, 1024, 8); g.fillRect(0, 120, 1024, 8);
       for (const vx of [140, 512, 884]) {
         g.fillStyle = '#20262a'; g.fillRect(vx - 60, 26, 120, 76);
         const gr = g.createLinearGradient(0, 40, 0, 88); gr.addColorStop(0, '#d8f26a'); gr.addColorStop(1, '#8ccf2a');
@@ -1106,9 +1263,9 @@ export default {
         g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.ellipse(vx + 8, 60, 14, 9, 0, 0, 6.28); g.fill();
         g.fillStyle = '#20262a'; g.fillRect(vx - 22, 44, 3, 40); g.fillRect(vx + 19, 44, 3, 40);
       }
-      g.fillStyle = '#20262a'; g.font = '700 30px Rubik, sans-serif'; g.fillText('PRO-LEVEL', 238, 76); g.fillText('600 mm', 620, 76);
-      const top = K.std({ map: TX.toTexture(c, { wrap: false }), roughness: 0.4, metalness: 0.2 });
-      const side = K.std({ color: 0xe89c14, roughness: 0.4, metalness: 0.3 });
+      g.fillStyle = '#f4f1e8'; g.font = '700 34px Rubik, sans-serif'; g.fillText('PRO-LEVEL', 262, 77); g.fillText('600 mm', 640, 77);
+      const top = K.std({ map: TX.toTexture(c, { wrap: false }), roughness: 0.38, metalness: 0.45 });
+      const side = K.std({ color: 0xbfc4c9, roughness: 0.35, metalness: 0.6 });
       const lv = new T.Mesh(new T.BoxGeometry(60, 2.4, 6), [side, side, top, side, side, side]);
       lv.position.set(cx, 1.2, cz); lv.rotation.y = -ang; K.add(lv);
       for (const s of [-1, 1]) K.mesh(new K.RoundedBoxGeometry(2.2, 2.6, 6.2, 2, 0.5), blackRubber, cx + s * 30 * Math.cos(ang), 1.3, cz + s * 30 * Math.sin(ang), { ry: -ang });
@@ -1217,7 +1374,7 @@ export default {
     // ---------------------------------------------------------------- oil can tipped over + oil slick at the north-east corner
     {
       const sO = 612;
-      const oilMat = K.phys({ color: 0x241405, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.03, iridescence: 1, iridescenceIOR: 1.35, iridescenceThicknessRange: [200, 600], envMapIntensity: 1.5 });
+      const oilMat = (K.phys({ color: 0x3a2208, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.02, transparent: true, opacity: 0.9, iridescence: 0.7, iridescenceIOR: 1.35, iridescenceThicknessRange: [200, 600] }));
       const sp = track.place(sO, 3.6);
       const spill = K.spill(sp.x, sp.z, 6.2, oilMat, { lump: 0.32, stretch: 1.5, angle: sp.angle + 0.3, y: 0.12, thick: 0.08 });
       K.surface('slick', { poly: spill.poly });
@@ -1226,7 +1383,8 @@ export default {
         // dark soaked rim and a thin-film rainbow sheen on top
         let mx = 0, mz = 0; for (const [x, z] of spill.poly) { mx += x; mz += z; } mx /= spill.poly.length; mz /= spill.poly.length;
         const grow = (d) => spill.poly.map(([x, z]) => { const dx = x - mx, dz = z - mz, l = Math.hypot(dx, dz) || 1; return [x + dx / l * d, z + dz / l * d]; });
-        const rimM = K.flatShape(grow(0.9), new T.MeshBasicMaterial({ color: 0x1a0f05, transparent: true, opacity: 0.55, depthWrite: false }), 0.075);
+        const rimM = K.flatShape(grow(1.8), new T.MeshBasicMaterial({ color: 0x24140a, transparent: true, opacity: 0.32, depthWrite: false }), 0.075);
+        K.flatShape(grow(0.7), new T.MeshBasicMaterial({ color: 0x1c1006, transparent: true, opacity: 0.35, depthWrite: false }), 0.08).renderOrder = 1;
         rimM.renderOrder = 1;
         const fc = TX.makeCanvas(256); const fg = fc.getContext('2d');
         for (let i = 0; i < 26; i++) {
@@ -1239,14 +1397,17 @@ export default {
       const cp = track.place(sO + 6, 27);
       const ang = Math.atan2(sp.z - cp.z, sp.x - cp.x);
       const can = new T.Group();
-      const body = new T.Mesh(K.lathe([[0.001, 0], [5.2, 0], [5.4, 0.4], [5.4, 2.4], [5.0, 3.0], [2.2, 6.6], [1.1, 8.2], [0.9, 8.8], [0.001, 8.8]], 32), K.metal(0xb87a48, 0.3));
+      const body = new T.Mesh(K.lathe([[0.001, 0], [5.0, 0], [5.2, 0.3], [5.2, 5.2], [4.9, 5.8], [2.6, 7.9], [1.3, 9.0], [1.0, 9.8], [0.001, 9.8]], 32), K.phys({ color: 0xb3241c, roughness: 0.3, metalness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.2 }));
       can.add(body);
-      const band = new T.Mesh(new T.TorusGeometry(5.2, 0.35, 6, 32), K.metal(0x8a5a30, 0.35)); band.rotation.x = PI / 2; band.position.y = 2.7; can.add(band);
-      const spout = new T.Mesh(new T.CylinderGeometry(0.22, 0.5, 12, 10), brass); spout.position.set(0, 14.6, 0); can.add(spout);
-      const pump = new T.Mesh(new T.CylinderGeometry(1.0, 1.0, 1.2, 14), brass); pump.position.set(-1.5, 5.4, 0); pump.rotation.z = 0.7; can.add(pump);
-      can.rotation.z = -PI / 2; can.position.y = 5.4;
+      const band = new T.Mesh(new T.TorusGeometry(5.3, 0.3, 6, 32), brass); band.rotation.x = PI / 2; band.position.y = 0.3; can.add(band);
+      { const oc = TX.makeCanvas(256, 32); const og = oc.getContext('2d'); og.fillStyle = '#f2e6c8'; og.fillRect(0, 0, 256, 32); og.fillStyle = '#7a1410'; og.font = '700 15px Rubik, sans-serif'; og.fillText('MACHINE OIL · SAE 20  ·  MACHINE OIL · SAE 20', 4, 21);
+        const lab = new T.Mesh(new T.CylinderGeometry(5.24, 5.24, 3.2, 32, 1, true), K.std({ map: TX.toTexture(oc, { wrap: false }), roughness: 0.5 })); lab.position.y = 2.6; can.add(lab); }
+      const spout = new T.Mesh(new T.CylinderGeometry(0.22, 0.5, 11, 10), brass); spout.position.set(0, 15.2, 0); can.add(spout);
+      const pump = new T.Mesh(new T.CylinderGeometry(1.0, 1.0, 1.2, 14), brass); pump.position.set(-2.6, 7.2, 0); pump.rotation.z = 0.8; can.add(pump);
+      const canBot = new T.Mesh(new T.CircleGeometry(5.0, 32), steel); canBot.rotation.x = PI / 2; canBot.position.y = -0.03; can.add(canBot);
+      can.rotation.z = -PI / 2; can.position.y = 5.2;
       const holder = new T.Group(); holder.add(can); holder.position.set(cp.x, 0, cp.z); holder.rotation.y = -ang; K.add(holder);
-      K.capsule(cp.x, cp.z, cp.x + Math.cos(ang) * 6, cp.z + Math.sin(ang) * 6, 5.4, 10.8);
+      K.capsule(cp.x, cp.z, cp.x + Math.cos(ang) * 7, cp.z + Math.sin(ang) * 7, 5.2, 10.4);
       AO(cp.x + Math.cos(ang) * 3.5, cp.z + Math.sin(ang) * 3.5, 6, 5, 0.5, ang);
       warnRoad('oil can spout', cp.x + Math.cos(ang) * 20, cp.z + Math.sin(ang) * 20, 0);
       // trail of oil from the spout to the slick
@@ -1298,20 +1459,23 @@ export default {
       AO(bp.x - 8, bp.z, 16.5, 5.5, 0.45, 0.05); AO(bp.x + 14, bp.z + 2, 5.5, 5.5, 0.45, -0.15);
       decal(5, bp.x - 2, bp.z, 8, 8, 0.05 + PI / 2, { y: 3.83, alpha: 0.9 });
       // the sawdust heap: a soft mound across the road
-      const heapTex = TX.mottledTextures({ size: 256, a: 0xe9cc95, b: 0xd2ad72, c: 0xf4e0b6, seed: 88, period: 20, speck: 0.6, bump: 5 });
-      const heapMat = K.std({ map: heapTex.map, normalMap: heapTex.normalMap, normalScale: V2(1.2), roughness: 1 });
-      // rebuild as a dome with lumpy edge
-      const segs = 48, rings = 8, pos = [], uv = [], idx = [];
+      const heapTex = TX.mottledTextures({ size: 256, a: 0xead0a0, b: 0xd6b07a, c: 0xf6e4c0, seed: 88, period: 16, speck: 0.45, bump: 4 });
+      const heapMat = K.std({ map: heapTex.map, normalMap: heapTex.normalMap, normalScale: V2(1.1), roughness: 1, vertexColors: true });
+      // a lumpy mound of sawdust: shaded darker where it thins out at the base
+      const segs = 56, rings = 14, pos = [], uv = [], idx = [], vc = [];
+      const lo = new T.Color(0xb48a55), hi = new T.Color(0xffffff), cc = new T.Color();
       for (let i = 0; i <= rings; i++) for (let j = 0; j <= segs; j++) {
         const t = i / rings, a = (j / segs) * PI * 2;
-        const edge = 1 + 0.18 * Math.sin(a * 3 + 1) + 0.1 * Math.sin(a * 7);
-        const rad = t * 7.2 * edge, hh = 1.25 * Math.pow(1 - t * t, 1.4) + 0.04;
-        pos.push(Math.cos(a) * rad * 1.35, hh, Math.sin(a) * rad); uv.push(Math.cos(a) * rad / 6, Math.sin(a) * rad / 6);
+        const edge = 1 + 0.18 * Math.sin(a * 3 + 1) + 0.1 * Math.sin(a * 7) + 0.05 * Math.sin(a * 13 + 2);
+        const lump = 1 + 0.14 * Math.sin(a * 5 + t * 9) + 0.08 * Math.sin(a * 11 - t * 13);
+        const rad = t * 7.4 * edge, hh = 1.45 * Math.pow(1 - t * t, 1.5) * lump + 0.04;
+        pos.push(Math.cos(a) * rad * 1.35, hh, Math.sin(a) * rad); uv.push(Math.cos(a) * rad / 3.5, Math.sin(a) * rad / 3.5);
+        cc.copy(lo).lerp(hi, Math.min(1, 0.35 + hh / 1.2)); vc.push(cc.r, cc.g, cc.b);
       }
       for (let i = 0; i < rings; i++) for (let j = 0; j < segs; j++) { const a = i * (segs + 1) + j, b = a + segs + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
       const dome = new T.BufferGeometry();
-      dome.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); dome.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); dome.setIndex(idx); dome.computeVertexNormals();
-      K.mesh(dome, heapMat, hp.x, 0, hp.z, { ry: -hp.angle, cast: false });
+      dome.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); dome.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); dome.setAttribute('color', new T.Float32BufferAttribute(vc, 3)); dome.setIndex(idx); dome.computeVertexNormals();
+      K.mesh(dome, heapMat, hp.x, 0, hp.z, { ry: -hp.angle, cast: true });
       K.surface('slow', { x: hp.x, z: hp.z, r: 7.6 });
       // dusting around the heap and along the tyre tracks
       decal(11, hp.x, hp.z, 26, 18, hp.angle, { y: 0.07, color: 0xf0d8a8, alpha: 0.9 });
@@ -1343,9 +1507,9 @@ export default {
       for (const [x, z] of [[1.5, -2.5], [1.5, -9], [-1, -6]]) { const m = new T.Mesh(new T.CylinderGeometry(0.5, 0.5, 0.2, 12), brass); m.position.set(x, 2.95, z); saw.add(m); }
       saw.position.set(sx, 0, sz); saw.rotation.y = -sa;
       K.add(saw);
-      K.capsule(...local(sx, sz, sa, -10, 6), ...local(sx, sz, sa, 2, 6), 6, 3);
-      AO(...local(sx, sz, sa, 20, 4), 30, 7, 0.25, sa);
-      AO(...local(sx, sz, sa, -4, 6), 8, 7, 0.45, sa);
+      K.capsule(...local(sx, sz, sa, -9, -7), ...local(sx, sz, sa, 1, -7), 6, 3);
+      AO(...local(sx, sz, sa, 25, -4.5), 27, 6.5, 0.3, sa);
+      AO(...local(sx, sz, sa, -5, -7), 9, 8.5, 0.45, sa);
       // carpenter's pencil
       const pg = new T.Group();
       const pb = new T.Mesh(new K.RoundedBoxGeometry(16, 0.75, 1.3, 2, 0.2), K.phys({ color: 0xd8401c, roughness: 0.35, clearcoat: 0.6 })); pg.add(pb);
@@ -1453,8 +1617,17 @@ export default {
       K.box(cx + 14, cz - 4, 5.6, 3.6, 0.3, 4);
       AO(cx + 14, cz - 4, 7, 4.5, 0.5, 0.3);
       // torn sandpaper offcuts
-      const scrapMat = K.std({ map: A.roadMat.map, normalMap: A.roadMat.normalMap, color: 0xe0a070, roughness: 0.95 });
-      for (const [x, z, a] of [[cx - 12, cz + 19, 0.4]]) { const m = K.mesh(new T.PlaneGeometry(7, 5), scrapMat, x, 0.05, z, { rx: -PI / 2, cast: false }); m.rotation.z = a; }
+      const scrapMat = K.std({ map: A.roadMat.map, normalMap: A.roadMat.normalMap, color: 0xf0b888, roughness: 0.95, side: T.DoubleSide });
+      for (const [x, z, a] of [[cx - 12, cz + 19, 0.4]]) {
+        // a torn quarter sheet: jagged edges
+        const sh = new T.Shape(); const pts = [];
+        for (let i = 0; i <= 8; i++) pts.push([-3.5 + i * 7 / 8, -2.5 + (i % 2 ? 0.25 : 0) * (i < 8 ? 1 : 0)]);
+        for (let i = 1; i <= 6; i++) pts.push([3.5 - (i % 2 ? 0.3 : 0), -2.5 + i * 5 / 6]);
+        for (let i = 1; i <= 8; i++) pts.push([3.5 - i * 7 / 8, 2.5 - (i % 2 ? 0.3 : 0.05)]);
+        pts.forEach(([px, py], k) => (k ? sh.lineTo(px, py) : sh.moveTo(px, py)));
+        const sg = new T.ShapeGeometry(sh); const su = sg.attributes.uv, sp = sg.attributes.position; for (let k = 0; k < su.count; k++) su.setXY(k, sp.getX(k) / 14, sp.getY(k) / 14);
+        const m = K.mesh(sg, scrapMat, x, 0.05, z, { rx: -PI / 2, cast: false }); m.rotation.z = a;
+      }
     }
 
     // ---------------------------------------------------------------- F-clamp near the jump, C-clamp on the front edge
@@ -1647,6 +1820,31 @@ export default {
       }
     }
 
+    // ---------------------------------------------------------------- NW corner: a jar of mixed screws and a bench brush
+    {
+      const jx = -160, jz = -91;
+      const jarG = K.lathe([[0.001, 0], [4.6, 0], [4.9, 0.5], [4.9, 10.2], [4.2, 11.2], [4.0, 11.4], [4.0, 12.6], [3.7, 12.6], [3.7, 11.5], [4.5, 10.4], [4.5, 0.6], [0.001, 0.5]], 40);
+      K.mesh(jarG, K.glass(0xeef4ee, 0.22), jx, 0, jz, { cast: false });
+      const mix = TX.mottledTextures({ size: 128, a: 0x8c9096, b: 0x5d6168, c: 0xc6a560, seed: 9, period: 32, speck: 0.9, bump: 6 });
+      K.mesh(new T.CylinderGeometry(4.35, 4.35, 7.2, 32), K.std({ map: mix.map, normalMap: mix.normalMap, metalness: 0.75, roughness: 0.4 }), jx, 4.2, jz);
+      const tops = [];
+      for (let i = 0; i < 14; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * 3.4; tops.push({ x: jx + Math.cos(a) * d, y: 7.9, z: jz + Math.sin(a) * d, ry: r() * 6.28, rx: r.range(-0.5, 0.5), rz: r.range(-0.3, 0.3) }); }
+      K.instances(screwGeo, K.metal(0xc9a24a, 0.3), tops, { cast: false });
+      // the lid lies beside it
+      K.mesh(new T.CylinderGeometry(4.3, 4.3, 1.4, 32), K.metal(0xc8302a, 0.4, { metalness: 0.5 }), jx + 9.5, 0.7, jz + 2.5);
+      AO(jx, jz, 6, 6, 0.5); AO(jx + 9.5, jz + 2.5, 5, 5, 0.45);
+      K.circle(jx, jz, 4.9, 12.6); K.circle(jx + 9.5, jz + 2.5, 4.3, 1.4);
+      // bench brush lying along the wall
+      const bx = -128, bz = -97.2, ba = 0.03;
+      const g = new T.Group();
+      const back = new T.Mesh(new K.RoundedBoxGeometry(22, 2.2, 3.6, 2, 0.8), K.std({ map: pine.map, color: 0x8a5a34, roughness: 0.4 })); back.position.y = 3.1; g.add(back);
+      const hdl = new T.Mesh(new T.CylinderGeometry(1.2, 1.4, 9, 14).rotateZ(PI / 2), K.std({ map: pine.map, color: 0x8a5a34, roughness: 0.4 })); hdl.position.set(-15, 2.8, 0); g.add(hdl);
+      const bristle = new T.Mesh(new K.RoundedBoxGeometry(22.5, 2.3, 5.2, 2, 0.9), K.std({ color: 0x3a3028, roughness: 1 })); bristle.position.y = 1.15; g.add(bristle);
+      g.position.set(bx, 0, bz); g.rotation.y = -ba; K.add(g);
+      AO(bx - 4, bz, 15, 3.4, 0.5, ba);
+      K.box(bx - 4, bz, 15, 2.2, ba, 4.2);
+    }
+
     // ---------------------------------------------------------------- road-edge accents: washers & screws along fast outer edges
     {
       const wl = [];
@@ -1680,7 +1878,7 @@ export default {
         const a = r() * 6.28, d = Math.sqrt(r()) * 9;
         const x = hp.x + Math.cos(a) * d * 1.3, z = hp.z + Math.sin(a) * d;
         const s = r.range(0.07, 0.18);
-        dust.push({ x, y: 0.05 + Math.max(0, 1.1 - d * 0.16), z, ry: r() * 6, s, sx: s * r.range(1, 3), sy: s * 0.5, color: r.pick([0xf2dcb0, 0xe8c995, 0xd9b27a]) });
+        dust.push({ x, y: 0.05 + Math.max(0, 1.35 - d * 0.19), z, ry: r() * 6, s, sx: s * r.range(1, 3), sy: s * 0.5, color: r.pick([0xf2dcb0, 0xe8c995, 0xd9b27a]) });
       }
       for (let i = 0; i < 1400; i++) {
         const x = r.range(B.minX + 1, B.maxX - 1), z = r.range(B.minZ + 2.5, B.maxZ - 1);
@@ -1690,7 +1888,7 @@ export default {
       }
       K.instances(new T.IcosahedronGeometry(1, 0), K.std({ color: 0xffffff, roughness: 1 }), dust, { colors: true, cast: false });
       // curly shavings: near the plane, the cut board and the heap
-      for (let i = 0; i < 30; i++) { const a = r() * 6.28, d = 2 + r() * 8; shavings.push({ x: hp.x + Math.cos(a) * d * 1.4, y: Math.max(0, 1.1 - d * 0.15), z: hp.z + Math.sin(a) * d, ry: r() * 6.28, s: r.range(0.22, 0.4) }); }
+      for (let i = 0; i < 30; i++) { const a = r() * 6.28, d = 2 + r() * 8; shavings.push({ x: hp.x + Math.cos(a) * d * 1.4, y: Math.max(0, 1.3 - d * 0.18), z: hp.z + Math.sin(a) * d, ry: r() * 6.28, s: r.range(0.22, 0.4) }); }
       for (let i = 0; i < 18; i++) { const x = -60 + r.gauss() * 12, z = 30 + r.gauss() * 8; if (K.offRoad(x, z, 1)) shavings.push({ x, y: 0, z, ry: r() * 6.28, s: r.range(0.35, 0.7) }); }
       K.instances(shavingGeo, K.std({ vertexColors: true, roughness: 0.75, side: T.DoubleSide }), shavings.map((p) => ({ ...p, rx: r.range(-0.3, 0.3) })));
       // loose nuts and bolts
@@ -1742,7 +1940,7 @@ export default {
       const H = 118, ox = D.x / D.y * H, oz = D.z / D.y * H, k = D.z / D.x;
       const sh = new T.Shape();
       sh.moveTo(-1400, -1400); sh.lineTo(1400, -1400); sh.lineTo(1400, 1400); sh.lineTo(-1400, 1400); sh.closePath();
-      const xs = [[-700, -62], [-59.6, 12], [14.4, 86], [88.4, 158]], cs = [[-900, -58], [-56, 6], [8, 70], [72, 900]];
+      const xs = [[-700, -62], [-59.6, 12], [14.4, 86], [88.4, 126]], cs = [[-900, -58], [-56, 6], [8, 70], [72, 900]];
       for (const [x0, x1] of xs) for (const [c0, c1] of cs) {
         const hp = new T.Path();
         // in shape space y = -z
@@ -1790,9 +1988,9 @@ export default {
       K.group.updateMatrixWorld(true);
       const isKept = (o) => { for (let p = o; p; p = p.parent) if (keep.includes(p)) return true; return false; };
       const classMats = {
-        metalS: K.std({ vertexColors: true, metalness: 1, roughness: 0.17 }),
-        metalR: K.std({ vertexColors: true, metalness: 1, roughness: 0.36 }),
-        gloss: K.phys({ vertexColors: true, roughness: 0.14, clearcoat: 1, clearcoatRoughness: 0.08 }),
+        metalS: shiny(K.std({ vertexColors: true, metalness: 1, roughness: 0.1 }), 1.1),
+        metalR: shiny(K.std({ vertexColors: true, metalness: 1, roughness: 0.36 }), 0.8),
+        gloss: shiny(K.phys({ vertexColors: true, roughness: 0.14, clearcoat: 1, clearcoatRoughness: 0.08 }), 0.8),
         plastic: K.phys({ vertexColors: true, roughness: 0.38, clearcoat: 0.35, clearcoatRoughness: 0.3 }),
         satin: K.std({ vertexColors: true, roughness: 0.45 }),
         matte: K.std({ vertexColors: true, roughness: 0.82 }),
