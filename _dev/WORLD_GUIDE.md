@@ -127,6 +127,8 @@ export default {
   prints `calls` and `triangles` after each `sim`). Use `K.instances` for anything repeated more than a
   few times, keep lathe segments ≤ 64, sphere segments ≤ 32, textures ≤ 1024² (most 256–512²).
 - World build should take < 2 s on a laptop (pixel loops over 1024² textures cost ~100 ms each).
+- Create every material in `build()` (hide objects you show later): the warm-up compiles what is in the
+  scene before the race, and a material created mid-race makes the game hitch while its shader compiles.
 
 ## Testing (headless Chromium with software WebGL — slow, so render with quality=low)
 Serve the repo root on http://localhost:8123 (`python3 -m http.server 8123` from the repo root). Tools:

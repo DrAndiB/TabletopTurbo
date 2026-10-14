@@ -1,5 +1,6 @@
 // Boot, menus, championship flow and the main loop.
 import { GameRenderer } from './render.js';
+import { Perf } from './perf.js';
 import { Input } from './input.js';
 import { Sound } from './audio.js';
 import { Game, ordinal } from './game.js';
@@ -25,6 +26,7 @@ const defaults = {
   skill: 'normal',
   catchup: 'mild',
   quality: 'auto',
+  fps: 60, // 60: at most ~60 fps, evenly paced on high-refresh screens; 'max': every refresh
   slots: [{ type: 'keys' }, { type: 'cpu' }, { type: 'cpu' }, { type: 'cpu' }],
 };
 let settings = loadSettings();
@@ -36,6 +38,7 @@ function loadSettings() {
       if (!MODES.includes(out.mode)) out.mode = defaults.mode;
       if (!['off', 'mild', 'strong'].includes(out.catchup)) out.catchup = defaults.catchup;
       if (!CUP_IDS.includes(out.cup)) out.cup = defaults.cup;
+      if (out.fps !== 60 && out.fps !== 'max') out.fps = defaults.fps;
       return out;
     }
   } catch (e) { /* ignore */ }
@@ -48,24 +51,51 @@ function saveSettings() {
 // ---------- engine objects ----------
 const canvas = $('#game');
 let quality = params.get('quality') || settings.quality;
-const R = new GameRenderer(canvas, quality === 'auto' ? 'medium' : quality);
+const R = new GameRenderer(canvas, quality === 'auto' ? Perf.rememberedTier() : quality);
 const input = new Input();
 const sound = new Sound();
 const hud = new Hud($('#hud'));
 const game = new Game(R, input, sound, hud);
-window.__tt = { game, R, input, sound, settings: () => settings };
+const perf = new Perf(R, {
+  onScaleChange: () => game.updateParticleScale(),
+  onTierChange: (q) => { R.setQuality(q); game.updateParticleScale(); },
+});
+perf.setAuto(quality === 'auto');
+perf.cap = params.get('fps') ? params.get('fps') !== 'max' : settings.fps !== 'max';
+if (params.get('debug')) perf.toggleOverlay(true);
+window.__tt = { game, R, input, sound, perf, settings: () => settings };
 
 let screen = 'title';
 let loadedWorld = null;
 let lastT = performance.now();
-let fpsAcc = 0, fpsN = 0, fpsCheckDone = false;
+let warming = false; // shaders are being built before a race: the loop waits
 let champ = null; // championship in progress: {cup, ids, index, drivers, totals, wins, names, last, award}
 
 function showScreen(name) {
   screen = name;
+  if (name !== 'none' && perf.shouldHint()) showGpuHint();
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('active', el.id === 'screen-' + name);
   document.body.dataset.screen = name;
   if (name === 'title' || name === 'lobby') sound.startMusic(); else sound.stopMusic();
+}
+
+// Build every shader and upload every texture before the first frame of a race (or the title
+// background), behind the loading card, so the race doesn't stutter in its first seconds.
+// After a world load the loading card is still up and covers it; a restart on the same table
+// finds almost everything built already and takes a few milliseconds.
+async function warmUp() {
+  warming = true;
+  try { await R.warmUp(); } catch (e) { console.warn('warm-up skipped', e); }
+  $('#loading').classList.remove('show');
+  warming = false;
+  lastT = performance.now();
+  perf.resetWindow();
+}
+
+function showGpuHint() {
+  const el = $('#gpu-hint');
+  if (!el || !el.hidden) return;
+  el.hidden = false;
 }
 
 async function ensureWorld(id) {
@@ -74,7 +104,7 @@ async function ensureWorld(id) {
   await new Promise((r) => setTimeout(r, 30));
   await game.loadWorld(worldById(id), {});
   loadedWorld = id;
-  $('#loading').classList.remove('show');
+  // the card stays up until warmUp() has built the shaders
 }
 
 // ---------- lobby ----------
@@ -272,15 +302,19 @@ for (const el of document.querySelectorAll('[data-opt]')) {
     const k = el.dataset.opt, v = el.dataset.val;
     settings[k] = isNaN(+v) ? v : +v;
     if (k === 'quality') applyQuality(v);
+    if (k === 'fps') perf.cap = v !== 'max';
     saveSettings(); renderLobby();
   });
 }
 
 function applyQuality(q) {
   quality = q;
+  // choosing Auto again re-tests the device from Medium
+  if (q === 'auto') Perf.forgetTier();
+  R.setRenderScale(1);
   R.setQuality(q === 'auto' ? 'medium' : q);
+  perf.setAuto(q === 'auto');
   game.updateParticleScale();
-  fpsCheckDone = q !== 'auto';
 }
 
 // ---------- controls screen ----------
@@ -335,10 +369,10 @@ function buildDrivers() {
   return drivers;
 }
 
-function afterStart() {
+async function afterStart() {
   hud.setup(game);
   $('#touch').classList.toggle('show', game.cars.some((e) => e.driver.type === 'touch'));
-  fpsAcc = 0; fpsN = 0;
+  await warmUp();
 }
 
 // A fresh session from the lobby (or "Again"): championships start over at the first table.
@@ -350,7 +384,7 @@ async function startRace() {
   showScreen('none');
   await ensureWorld(settings.world);
   game.startMatch({ drivers: buildDrivers(), mode: settings.mode, pointsToWin: settings.points, laps: settings.laps, skill: settings.skill, catchup: settings.catchup });
-  afterStart();
+  await afterStart();
 }
 
 // Pause menu "Restart": the same race again (inside a championship: the current table, scores kept).
@@ -379,7 +413,7 @@ async function runChampRace() {
   const id = champ.ids[champ.index];
   await ensureWorld(id);
   game.startMatch({ drivers: champ.drivers, mode: 'race', laps: settings.laps, skill: settings.skill, catchup: settings.catchup });
-  afterStart();
+  await afterStart();
   hud.flash(`${cupInfo(champ.cup).name} · race ${champ.index + 1} of ${champ.ids.length}`, '#ffc93c');
 }
 
@@ -556,6 +590,7 @@ $('#btn-champ-menu').onclick = () => { sound.click(); quitToMenu(); };
 $('#btn-sound').onclick = () => { sound.ensure(); sound.setMuted(!sound.muted); updateSoundBtn(); };
 $('#btn-fs').onclick = () => toggleFullscreen();
 $('#btn-pause').onclick = () => { sound.click(); togglePause(); };
+$('#btn-gpu-hint').onclick = () => { sound.click(); perf.dismissHint(); $('#gpu-hint').hidden = true; };
 function updateSoundBtn() { $('#btn-sound').textContent = sound.muted ? '🔇' : '🔊'; $('#btn-sound').setAttribute('aria-label', sound.muted ? 'Sound off' : 'Sound on'); }
 updateSoundBtn();
 function toggleFullscreen() {
@@ -574,6 +609,7 @@ input.on((type, e) => {
     else if ((screen === 'standings' || screen === 'podium') && e.code === 'Escape') quitToMenu();
   }
   if (e.code === 'KeyF' && (screen === 'none' || screen === 'pause')) toggleFullscreen();
+  if (e.code === 'F3') { e.preventDefault?.(); perf.toggleOverlay(); }
   if (e.code === 'Enter') {
     if (screen === 'title') $('#btn-play').click();
     else if (screen === 'lobby') startRace();
@@ -626,19 +662,15 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && scr
 
 // ---------- main loop ----------
 function frame(now) {
-  const dt = Math.min(0.1, (now - lastT) / 1000);
+  requestAnimationFrame(frame);
+  // on 120–240 Hz screens render every k-th refresh (evenly paced, ~60–80 fps) unless "Max" is chosen
+  if (!perf.frameStart(now) || warming) return;
+  const dtMs = now - lastT;
+  const dt = Math.min(0.1, dtMs / 1000);
   lastT = now;
   pollPads();
   game.update(dt);
-  if (screen === 'none' && game.state === 'race' && !fpsCheckDone && quality === 'auto') {
-    fpsAcc += dt; fpsN++;
-    if (fpsAcc > 4) {
-      const fps = fpsN / fpsAcc;
-      if (fps < 42 && R.qualityName !== 'low') { R.setQuality('low'); game.updateParticleScale(); }
-      fpsCheckDone = true;
-    }
-  }
-  requestAnimationFrame(frame);
+  perf.frameDone(dtMs, screen === 'none' && game.state === 'race');
 }
 
 // ---------- boot ----------
@@ -668,6 +700,7 @@ function frame(now) {
     await startRace();
   } else {
     game.startAttract();
+    await warmUp();
     showScreen('title');
   }
   $('#boot').classList.add('done');

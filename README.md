@@ -29,7 +29,7 @@ up to four players on one keyboard, plus gamepads and computer drivers.
 Keys can be changed in the menu ("Keys…"). "Easy keys" gives a driver automatic gas, so they only steer
 with two keys, which helps when three or four people share one keyboard. Gamepads work without setup
 (press A in the lobby to take a seat). On a phone, one player can race with touch steering.
-Esc or P pauses, F toggles fullscreen.
+Esc or P pauses, F toggles fullscreen, F3 shows a performance overlay.
 
 ## Run it locally
 
@@ -41,7 +41,8 @@ python -m http.server 8123
 ```
 
 then open http://localhost:8123/. Useful URL parameters: `?world=<id>`, `?quality=low|medium|high`,
-`?view=top` (top-down overview of a world), `?autostart=1&p=keys,cpu,cpu,cpu&mode=race`.
+`?view=top` (top-down overview of a world), `?autostart=1&p=keys,cpu,cpu,cpu&mode=race`,
+`?debug=1` (performance overlay), `?fps=max` (no 60 fps cap).
 
 ## Project layout
 
@@ -55,7 +56,9 @@ js/physics.js       arcade physics: vehicles, surfaces, colliders, movers, kicke
                     ramps, platforms, holes and trapdoors
 js/ai.js            CPU drivers
 js/cars.js          vehicle models
-js/render.js        three.js renderer, lighting, tilt-shift "miniature" effect, camera shake
+js/render.js        three.js renderer, lighting, tilt-shift "miniature" effect, camera shake,
+                    shader warm-up, dynamic render scale
+js/perf.js          frame pacing, Auto quality (dynamic resolution), performance overlay, GPU hint
 js/kit.js           helpers for world builders
 js/textures.js      procedural textures
 js/track.js         spline track and road ribbons

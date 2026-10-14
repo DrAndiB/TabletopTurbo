@@ -20,6 +20,10 @@
 <canvas id="game" aria-label="Race view"></canvas>
 
 <div id="boot"><div class="boot-car"></div><p>Setting the table…</p></div>
+<div id="gpu-hint" role="status" hidden>
+  <p><b>Running on built-in graphics.</b> For smoother racing on a laptop with a graphics card: Windows Settings → System → Display → Graphics, add your browser, choose <b>High performance</b>, then restart the browser.</p>
+  <button id="btn-gpu-hint" class="btn small-btn">Got it</button>
+</div>
 <div id="loading"><div class="boot-car"></div><p>Laying out the track…</p></div>
 
 <div id="hud" class="hidden" aria-live="polite">
@@ -95,6 +99,9 @@
           </div>
           <div class="opt-row"><span>Graphics</span>
             <div class="seg"><button data-opt="quality" data-val="auto">Auto</button><button data-opt="quality" data-val="low">Low</button><button data-opt="quality" data-val="medium">Medium</button><button data-opt="quality" data-val="high">High</button></div>
+          </div>
+          <div class="opt-row" title="On 120–240 Hz screens, 60 fps renders every second (or fourth) refresh: smoother pacing, cooler laptop"><span>Frame rate</span>
+            <div class="seg"><button data-opt="fps" data-val="60">60 fps</button><button data-opt="fps" data-val="max">Max</button></div>
           </div>
         </div>
       </div>

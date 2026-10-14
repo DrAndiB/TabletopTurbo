@@ -15,7 +15,28 @@ world-building guide (`WORLD_GUIDE.md`) and the test tools (`tools/`).
 
 From the repository root: `python -m http.server 8123`, then open http://localhost:8123/.
 Useful URL parameters: `?world=<id>`, `?quality=low|medium|high`, `?view=top`,
-`?autostart=1&p=keys,cpu,cpu,cpu&mode=race`, `?cup=<id>`, `?test=1` (no render loop; used by the tools).
+`?autostart=1&p=keys,cpu,cpu,cpu&mode=race`, `?cup=<id>`, `?test=1` (no render loop; used by the tools),
+`?debug=1` (performance overlay, also F3 in game), `?fps=max` (no frame cap).
+
+## Performance
+
+- **Warm-up:** before every race (and the title background) `R.warmUp()` compiles every material in the
+  scene, hidden ones included, uploads every texture and renders two frames, then waits for the GPU. After a
+  world load this happens behind the loading card; a restart on the same table takes milliseconds. Materials a
+  world creates later, inside `animate` or `tick`, are not covered: create them in `build()` and hide them.
+- **Quality presets** (`QUALITY` in `render.js`): High is two-pass tilt-shift, 4096 shadows, pixel ratio up to 2.
+  Medium uses a one-pass disk blur for the tilt-shift, 2048 shadows, pixel ratio up to 1.35. Low has no
+  tilt-shift, 1024 shadows, pixel ratio 1, no MSAA. Worlds read `K.quality.tilt === false` to thin out props on Low.
+- **Auto** starts on Medium (or Low, if this device needed it within the last week) and, while racing, lowers the
+  render scale to 60 % in steps when frames take too long, then drops to Low. It probes back up with growing pauses
+  between attempts. Picking Auto in the menu again re-tests the device. Fixed presets never change by themselves.
+- **Frame cap** (menu "Frame rate", default 60 fps): on 120–240 Hz screens the loop renders every 2nd, 3rd or 4th
+  refresh, so pacing stays even. "Max" renders every refresh. Physics always runs at a fixed 120 Hz step.
+- **Overlay** (F3 or `?debug=1`): fps, frame time, refresh rate and cap, render size and scale, preset,
+  draw calls and triangles for the whole frame (shadow, scene and post passes), shaders, textures, GPU name.
+- **Built-in graphics hint:** on Windows, when the GPU name looks integrated (Intel, AMD APU) and a race ran
+  slowly (or Auto had to cut resolution), a dismissible note on the next menu screen explains how to set the
+  browser to High performance. Once dismissed it doesn't come back.
 
 ## Adding a world
 
