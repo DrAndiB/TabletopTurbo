@@ -116,6 +116,7 @@ export class Game {
       const car = new Car(spec, i);
       const colorDef = PLAYER_COLORS[d.color];
       const model = buildCar(vtype, colorDef, d.color + 1);
+      if (this.def.headlights) addHeadlights(model, this.def.headlights);
       this.R.scene.add(model.root); this.R.scene.add(model.shadow);
       const ent = {
         car, model, driver: d, color: colorDef, colorIndex: d.color, human: d.type !== 'cpu',
@@ -290,6 +291,7 @@ export class Game {
     }
     P.collideCars(this.cars.filter((e) => !e.out).map((e) => e.car));
     if (P.movers.length) P.updateMovers(this.time, dt);
+    if (P.spinners.length) { P.updateSpinners(this.time, dt); P.carrySpinners(this.cars.filter((e) => !e.out).map((e) => e.car), dt); }
     // fixed-rate gameplay hook for worlds (currents, wind, force zones): tick(dt, time, game)
     if (this.def.tick && racingOrHeld(this.state)) this.def.tick(dt, this.time, this);
     P.stepDynamics(dt, this.cars.filter((e) => !e.out).map((e) => e.car));
@@ -951,4 +953,15 @@ function racingOrHeld(state) { return state === 'race' || state === 'roundEnd' |
 export function ordinal(n) {
   const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+// Dark worlds (`headlights: true` or {intensity, distance, angle, color}): each car lights the road ahead.
+function addHeadlights(model, cfg) {
+  const o = cfg === true ? {} : cfg;
+  const L = new THREE.SpotLight(o.color ?? 0xfff1d6, o.intensity ?? 40, o.distance ?? 48, o.angle ?? 0.6, o.penumbra ?? 0.55, o.decay ?? 1.2);
+  L.position.set(1.9, 1.3, 0);
+  L.target.position.set(16, -1.5, 0);
+  L.castShadow = false;
+  model.tilt.add(L); model.tilt.add(L.target);
+  model.headlight = L;
 }

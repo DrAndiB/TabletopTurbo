@@ -123,6 +123,10 @@ export function makeKit({ scene, track, physics, quality, seed = 7 }) {
     capsule(x1, z1, x2, z2, rad, h = 50, extra = {}) { return physics.addCollider({ type: 'capsule', x1, z1, x2, z2, r: rad, h, ...extra }); },
     surface(kind, shape) { return physics.addSurface({ kind, ...shape }); },
     hole(x, z, rad) { return physics.addHole({ x, z, r: rad }); },
+    // rectangular hole; set `.open = false/true` from tick() for trapdoors
+    trapdoor(x, z, hw, hd, angle = 0, open = false) { return physics.addHole({ x, z, hw, hd, angle, open }); },
+    // turning disc that carries cars: angleFn(t) -> radians; h = deck height (0 = flush)
+    spinner(x, z, r, angleFn, opts = {}) { return physics.addSpinner({ x, z, r, angleFn, ...opts }); },
     ramp(x, z, angle, len, wid, height, base = 0) { return physics.addRamp({ x, z, angle, len, wid, height, base }); },
     platform(x, z, hw, hd, angle, h) { return physics.addPlatform({ x, z, hw, hd, angle, h }); },
     // moving collider: shape {type:'circle'|'box'|'capsule', r|hw,hd, h}, fn(t) -> {x,z,angle} or {x1,z1,x2,z2}

@@ -23,6 +23,21 @@ const GATE_P = 8; // sluice cycle (s)
 
 let A = null; // runtime state for tick/animate
 
+// Safety net: nothing may slip past the tub's rounded inner wall (it would vanish under the rim).
+function keepInTub(c, margin = 1.3) {
+  const ax = Math.abs(c.x), az = Math.abs(c.z), sx = Math.sign(c.x) || 1, sz = Math.sign(c.z) || 1;
+  const qx = ax - (IX - RC), qz = az - (IZ - RC);
+  let inside, nx, nz; // inside distance and outward normal
+  if (qx > 0 && qz > 0) { const l = Math.hypot(qx, qz) || 1; inside = RC - l; nx = sx * qx / l; nz = sz * qz / l; }
+  else if (qx > qz) { inside = RC - qx; nx = sx; nz = 0; }
+  else { inside = RC - qz; nx = 0; nz = sz; }
+  if (inside >= margin) return;
+  const push = margin - inside;
+  c.x -= nx * push; c.z -= nz * push;
+  const vn = c.vx * nx + c.vz * nz;
+  if (vn > 0) { c.vx -= nx * vn * 1.3; c.vz -= nz * vn * 1.3; }
+}
+
 const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -584,6 +599,16 @@ export default {
         if (p && q) K.capsule(p[0], p[1], q[0], q[1], RC_, 6);
       }
       K.circle(ISLAND.x, ISLAND.z, ISLAND.R + 1.2, 6);
+      // rounded tub corners: the square bounds walls leave gaps under the rim there
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const cx = sx * (IX - RC), cz = sz * (IZ - RC), R = RC + RC_;
+        let prev = null;
+        for (let i = 0; i <= 10; i++) {
+          const a = (i / 10) * PI / 2, pt = [cx + sx * Math.cos(a) * R, cz + sz * Math.sin(a) * R];
+          if (prev) K.capsule(prev[0], prev[1], pt[0], pt[1], RC_, 6);
+          prev = pt;
+        }
+      }
     }
 
     // ============================================================================
@@ -1638,6 +1663,7 @@ export default {
     for (const e of game.cars) {
       const c = e.car;
       if (c.state !== 'drive' || c.airborne || e.out) continue;
+      keepInTub(c);
       // the water carries the boat along (its own velocity is relative to the water)
       const f = flowAt(c.x, c.z);
       if (f) { c.x += f[0] * dt; c.z += f[1] * dt; }

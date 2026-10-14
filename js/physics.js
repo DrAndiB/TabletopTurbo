@@ -24,7 +24,7 @@ export const VEHICLES = {
 
 const SURFACES = {
   normal: { grip: 1, drag: 0, accel: 1, top: 1 },
-  slick: { grip: 0.16, drag: 0, accel: 0.55, top: 1, spin: 1 },
+  slick: { grip: 0.08, drag: 0, accel: 0.45, top: 1, spin: 1 },
   sticky: { grip: 1.3, drag: 3.2, accel: 0.75, top: 0.45 },
   slow: { grip: 0.85, drag: 1.6, accel: 0.8, top: 0.62 },
   rough: { grip: 0.9, drag: 0.8, accel: 0.9, top: 0.8 },
@@ -114,6 +114,7 @@ export class PhysicsWorld {
     this.ramps = [];
     this.platforms = [];
     this.movers = []; // kinematic colliders moved by a function of time
+    this.spinners = []; // turning discs that carry cars
     this.bounds = opts.bounds || null; // {minX,maxX,minZ,maxZ}
     this.fallOffEdges = opts.fallOffEdges ?? true;
     this.floorY = opts.floorY ?? -70;
@@ -191,7 +192,84 @@ export class PhysicsWorld {
     this.surfaces.push(s);
     return s;
   }
-  addHole(h) { this.holes.push(h); return h; }
+  // Hole: circle {x, z, r} or rectangle {x, z, hw, hd, angle}. Set `open = false` to close it (trapdoors).
+  addHole(h) {
+    if (h.hw != null) { h.cos = Math.cos(h.angle || 0); h.sin = Math.sin(h.angle || 0); h.r = h.r ?? Math.hypot(h.hw, h.hd); }
+    this.holes.push(h);
+    return h;
+  }
+  // Is (x, z) over an open hole, shrunk by `inset`?
+  inHole(h, x, z, inset = 0) {
+    if (h.open === false) return false;
+    if (h.hw != null) {
+      const dx = x - h.x, dz = z - h.z;
+      const a = dx * h.cos + dz * h.sin, b = -dx * h.sin + dz * h.cos;
+      return Math.abs(a) < h.hw - inset && Math.abs(b) < h.hd - inset;
+    }
+    return (x - h.x) ** 2 + (z - h.z) ** 2 < (h.r - inset) ** 2;
+  }
+  // Spinner: a turning disc (gear, turntable, roundabout) that carries cars and objects round.
+  // {x, z, r, h (deck height, 0 = flush with the table), angleFn(t) -> radians}. Leaving it at speed flings you.
+  addSpinner(sp) {
+    sp.h = sp.h ?? 0; sp.theta = sp.angleFn(0); sp.dTheta = 0; sp.omega = 0; sp.lastT = null;
+    sp.fling = sp.fling ?? 1; sp.pull = sp.pull ?? 0.5;
+    this.spinners.push(sp);
+    return sp;
+  }
+  updateSpinners(t, dt) {
+    for (const sp of this.spinners) {
+      const th = sp.angleFn(t);
+      const fresh = sp.lastT == null || Math.abs(t - sp.lastT) > 0.25;
+      sp.dTheta = fresh ? 0 : wrapAngle(th - sp.theta);
+      sp.omega = fresh ? 0 : sp.dTheta / dt;
+      sp.theta = th; sp.lastT = t;
+    }
+  }
+  spinnerAt(x, z, y = 0) {
+    for (const sp of this.spinners) {
+      if ((x - sp.x) ** 2 + (z - sp.z) ** 2 < sp.r * sp.r && Math.abs(y - sp.h) < 0.6) return sp;
+    }
+    return null;
+  }
+  // carry everything standing on a spinner round with it
+  carrySpinners(cars, dt) {
+    if (!this.spinners.length) return;
+    const rot = (o, sp, turnHeading) => {
+      const cs = Math.cos(sp.dTheta), sn = Math.sin(sp.dTheta);
+      const rx = o.x - sp.x, rz = o.z - sp.z;
+      o.x = sp.x + rx * cs - rz * sn; o.z = sp.z + rx * sn + rz * cs;
+      if (turnHeading) {
+        o.angle = wrapAngle(o.angle + sp.dTheta);
+        const vx = o.vx * cs - o.vz * sn, vz = o.vx * sn + o.vz * cs; o.vx = vx; o.vz = vz;
+      }
+    };
+    for (const car of cars) {
+      if (car.state !== 'drive') { car.spinner = null; continue; }
+      const sp = car.airborne ? null : this.spinnerAt(car.x, car.z, car.y);
+      if (car.spinner && car.spinner !== sp) {
+        // left a disc: keep its surface speed (the fling)
+        const o = car.spinner, rx = car.x - o.x, rz = car.z - o.z;
+        car.vx += -o.omega * rz * o.fling; car.vz += o.omega * rx * o.fling;
+      }
+      if (sp && sp !== car.spinner && car.spinner == null) {
+        // stepping on: speed relative to the moving deck
+        const rx = car.x - sp.x, rz = car.z - sp.z;
+        car.vx -= -sp.omega * rz * 0.5; car.vz -= sp.omega * rx * 0.5;
+      }
+      car.spinner = sp;
+      if (!sp) continue;
+      rot(car, sp, true);
+      // a fast disc pushes you outward
+      const rx = car.x - sp.x, rz = car.z - sp.z, rr = Math.hypot(rx, rz) || 1;
+      const a = sp.omega * sp.omega * rr * sp.pull;
+      car.vx += (rx / rr) * a * dt; car.vz += (rz / rr) * a * dt;
+    }
+    for (const d of this.dynamics) {
+      if (d.state !== 'live') continue;
+      const sp = this.spinnerAt(d.x, d.z, sp0h(this, d));
+      if (sp) rot(d, sp, false);
+    }
+  }
   // Ramp: rises from 0 at its start to `height` at its end along `angle`. Rect centred at x,z.
   addRamp(r) {
     r.cos = Math.cos(r.angle); r.sin = Math.sin(r.angle);
@@ -230,6 +308,9 @@ export class PhysicsWorld {
       const dx = x - p.x, dz = z - p.z;
       const a = dx * p.cos + dz * p.sin, b = -dx * p.sin + dz * p.cos;
       if (Math.abs(a) <= p.hw && Math.abs(b) <= p.hd && p.h > g) { g = p.h; ramp = null; slope = 0; }
+    }
+    for (const sp of this.spinners) {
+      if (sp.h > g && (x - sp.x) ** 2 + (z - sp.z) ** 2 <= sp.r * sp.r) { g = sp.h; ramp = null; slope = 0; }
     }
     return { g, ramp, slope };
   }
@@ -309,7 +390,21 @@ export class PhysicsWorld {
     const lateral = ctx?.lateral ?? 0, tw = ctx?.trackW ?? 14;
     const kind = car.airborne ? 'normal' : this.surfaceAt(car.x, car.z, lateral, tw);
     car.surface = kind;
+    // slick patches: a twitch on the way in, a wandering tail while on it, oily tyres for a moment after
+    const onSlick = kind === 'slick' && !car.airborne;
+    if (onSlick) {
+      const spd = Math.hypot(car.vx, car.vz);
+      if (!car.wasSlick && spd > 12) {
+        const sgn = Math.sin(car.x * 12.9898 + car.z * 78.233 + car.index * 3.1) > 0 ? 1 : -1;
+        car.w += sgn * (0.7 + 1.1 * Math.min(1, spd / 45));
+      }
+      car.slickT = (car.slickT || 0) + dt;
+      car.w += Math.sin(car.slickT * 5.3 + car.index * 2.1) * spd * 0.06 * dt;
+      car.oily = 0.6;
+    } else if (car.oily > 0) car.oily = Math.max(0, car.oily - dt);
+    car.wasSlick = onSlick;
     let S = SURFACES[kind] || SURFACES.normal;
+    if (!onSlick && car.oily > 0 && kind !== 'slick') S = { ...S, grip: S.grip * (1 - 0.5 * car.oily / 0.6) };
     if (kind === 'slow' && sp.offroadGrip) S = { ...S, drag: S.drag * 0.45, top: Math.min(1, S.top + 0.2), accel: 0.95 };
     if (sp.hover && (kind === 'water' || kind === 'slow' || kind === 'sticky' || kind === 'rough')) S = { ...S, grip: 1, drag: S.drag * 0.25, top: Math.max(S.top, 0.92), accel: Math.max(S.accel, 0.9), spin: 0 };
     // speedMul scales top speed, accelMul the engine (catch-up, slipstream, turbo start)
@@ -413,7 +508,7 @@ export class PhysicsWorld {
     // falling off the table or into a hole
     if (!car.airborne || car.y < 0.5) {
       for (const h of this.holes) {
-        if ((car.x - h.x) ** 2 + (car.z - h.z) ** 2 < (h.r - 0.4) ** 2) { this.startFall(car, 'hole', h); return; }
+        if (this.inHole(h, car.x, car.z, 0.4)) { this.startFall(car, 'hole', h); return; }
       }
     }
     if (this.fallOffEdges && !this.insideBounds(car.x, car.z) && car.y < 1) this.startFall(car, 'edge');
@@ -450,6 +545,12 @@ export class PhysicsWorld {
           total += j0;
         };
         for (const c of this.colliders) test(c);
+        for (const sp of this.spinners) {
+          if (sp.h < 0.9 || car.y >= sp.h - 0.4) continue;
+          if (this.groundAt(px, pz).g >= sp.h - 0.6) continue;
+          const hit = this.circleVsCollider(px, pz, r, { type: 'circle', x: sp.x, z: sp.z, r: sp.r });
+          if (hit) total += this.resolveCarHit(car, hit, px, pz, 0.3);
+        }
         for (const p of this.platforms) {
           if (car.y >= p.h - 0.4) continue;
           // driving up a ramp onto the platform is allowed: only block when not on a ramp leading up
@@ -594,7 +695,7 @@ export class PhysicsWorld {
         else if (vn < 0) { const e = c.bounce ?? 0.6; d.vx -= (1 + e) * vn * hit.nx; d.vz -= (1 + e) * vn * hit.nz; if (-vn > 10) this.events.push({ type: 'clack', strength: -vn, x: d.x, z: d.z }); }
       }
       for (const h of this.holes) {
-        if ((d.x - h.x) ** 2 + (d.z - h.z) ** 2 < (h.r * 0.85) ** 2) {
+        if (h.hw != null ? this.inHole(h, d.x, d.z, d.r * 0.15) : this.inHole(h, d.x, d.z, h.r * 0.15)) {
           d.state = 'falling'; d.t = 0; d.vy = 0; d.y = 0;
           d.vx = (h.x - d.x) * 4; d.vz = (h.z - d.z) * 4;
           this.events.push({ type: 'pocket', x: d.x, z: d.z, strength: 10 });
@@ -650,3 +751,6 @@ export class PhysicsWorld {
     }
   }
 }
+
+// height used to decide whether a pushable object rides on a spinner deck
+function sp0h(world, d) { const g = world.groundAt(d.x, d.z).g; return g; }

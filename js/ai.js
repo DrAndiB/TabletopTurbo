@@ -39,7 +39,7 @@ export class AIDriver {
     for (const d of P.dynamics) {
       if (d.state === 'live' && (x - d.x) ** 2 + (z - d.z) ** 2 < (rad + d.r) ** 2) return true;
     }
-    for (const h of P.holes) if ((x - h.x) ** 2 + (z - h.z) ** 2 < (rad + h.r) ** 2) return true;
+    for (const h of P.holes) if (h.open !== false && (h.hw != null ? P.inHole({ ...h, hw: h.hw + rad, hd: h.hd + rad }, x, z) : (x - h.x) ** 2 + (z - h.z) ** 2 < (rad + h.r) ** 2)) return true;
     return false;
   }
 

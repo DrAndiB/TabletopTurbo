@@ -87,6 +87,17 @@ export default {
   `c.hits`, so `animate` can flash a light when it changes.
 - Boats float at y = 0 (waterline), drift through
   turns, bob and bank, and leave a foam wake instead of skid marks.
+- Trapdoors: `K.trapdoor(x, z, halfW, halfD, angle, open = false)` adds a rectangular hole; set `.open = true/false`
+  from `tick` (telegraph it: a light/creak before it opens). Cars and pushables only fall in while it is open; CPU
+  drivers avoid open ones. `K.hole(x, z, r)` holes are always open (or set `.open = false` too).
+- Spinners: `K.spinner(x, z, r, angleFn, {h, fling, pull})` is a turning disc (gear, turntable) that carries cars and
+  pushables round with it. `angleFn(t)` returns the disc angle in radians at simulation time t (pure function; sync
+  the mesh's `rotation.y = -angleFn(game.time)` in `animate`). `h` = deck height (0 = flush with the table; a raised deck
+  needs ramps and blocks cars from the side, like a platform). Leaving a disc keeps its surface speed (`fling`, 1 =
+  full), and fast discs push cars outward (`pull`, default 0.5). Positive angles turn from +x towards +z.
+- Darkness: set `headlights: true` (or `{intensity, distance, angle, color}`) and every vehicle gets a forward
+  spotlight (no shadows). Keep the world dark but readable; light pools from lamps/candles help.
+- Slick surfaces are now properly treacherous: a twitch on entry, a wandering tail, and oily tyres for ~0.6 s after.
 - Physics: `K.circle(x, z, r, h)`, `K.box(x, z, halfW, halfD, angle, h)`, `K.capsule(x1, z1, x2, z2, r, h)` — `h` = height; a car in the air above `h` passes over.
   `K.surface(kind, {poly} | {x, z, r})` — kinds: `slick` (spins, e.g. milk/oil/ink), `sticky` (jam/glue/paint), `slow` (sand/sawdust/grass), `rough`, `water` (puddles).
   `K.hole(x, z, r)` — cars (and pushable objects) fall in and respawn.
