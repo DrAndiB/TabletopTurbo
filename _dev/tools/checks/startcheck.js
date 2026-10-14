@@ -1,5 +1,5 @@
 (async () => {
-  const { WORLDS } = await import('/demos/tabletop-turbo/js/worlds/index.js');
+  const { WORLDS } = await import(new URL('js/worlds/index.js', location.href).href);
   const g = __tt.game; const res = [];
   for (const def of WORLDS) {
     await g.loadWorld(def, {});

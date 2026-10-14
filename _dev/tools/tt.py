@@ -4,14 +4,14 @@ usage:  python tt.py "<query>" "<step>;;<step>..." [WIDTHxHEIGHT]
 steps:  sim:<seconds>   advance the simulation and render one frame (prints draw calls/triangles)
         shot:<name>     save a screenshot to $TT_OUT/<name>.png (default ./out)
         js:<code>       evaluate JavaScript in the page (window.__tt exposes game, input, settings(), start(), step())
-env:    TT_BASE  game URL (default http://localhost:8123/demos/tabletop-turbo/)
+env:    TT_BASE  game URL (default http://localhost:8123/, i.e. this repo served from its root)
         TT_OUT   screenshot folder (default ./out)
 example: python tt.py "autostart=1&world=desk&p=cpu,cpu,cpu,cpu&quality=low" "sim:4;;shot:desk_a"
 """
 import asyncio, sys, json, time, os
 from playwright.async_api import async_playwright
 
-BASE = os.environ.get('TT_BASE', 'http://localhost:8123/demos/tabletop-turbo/')
+BASE = os.environ.get('TT_BASE', 'http://localhost:8123/')
 OUT = os.environ.get('TT_OUT', 'out')
 
 async def main():
