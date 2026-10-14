@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tabletop Turbo: Andreas Braun</title>
+<meta name="description" content="A tabletop racing game for the browser: tiny toy cars on a breakfast table, a study desk, a pool table, a garden and a workbench. Up to four players on one keyboard, plus gamepads and computer drivers.">
+<link rel="canonical" href="https://andreasbraun.lu/demos/tabletop-turbo/">
+<meta property="og:title" content="Tabletop Turbo">
+<meta property="og:description" content="Tiny toy cars racing across a breakfast table, a desk, a pool table, a garden and a workbench. Up to four players on one keyboard.">
+<meta property="og:url" content="https://andreasbraun.lu/demos/tabletop-turbo/">
+<meta property="og:image" content="https://andreasbraun.lu/demos/tabletop-turbo/img/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#1f1a17">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffc93c'/%3E%3Crect x='12' y='22' width='40' height='18' rx='8' fill='%23e23b2e'/%3E%3Ccircle cx='21' cy='42' r='6' fill='%231f1a17'/%3E%3Ccircle cx='43' cy='42' r='6' fill='%231f1a17'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/game.css">
+<link rel="modulepreload" href="vendor/three.bundle.js">
+</head>
+<body data-screen="boot">
+<canvas id="game" aria-label="Race view"></canvas>
+
+<div id="boot"><div class="boot-car"></div><p>Setting the table…</p></div>
+<div id="loading"><div class="boot-car"></div><p>Laying out the track…</p></div>
+
+<div id="hud" class="hidden" aria-live="polite">
+  <div id="chips"></div>
+  <div id="msg" class="msg"></div>
+  <div id="flash"></div>
+</div>
+
+<div id="corner">
+  <button id="btn-sound" class="icon-btn" aria-label="Sound on">🔊</button>
+  <button id="btn-fs" class="icon-btn" aria-label="Fullscreen">⛶</button>
+</div>
+
+<!-- Title -->
+<section id="screen-title" class="screen">
+  <div class="title-wrap">
+    <h1 class="logo"><span class="l1">Tabletop</span><span class="l2">Turbo</span></h1>
+    <p class="tagline">Tiny cars, big furniture. Up to four drivers on one keyboard. Fall off the screen and you're out.</p>
+    <div class="title-buttons">
+      <button id="btn-play" class="btn big yellow">Play <kbd>Enter</kbd></button>
+      <button id="btn-controls" class="btn">Controls</button>
+    </div>
+    <p id="pad-hint" class="small" hidden>Gamepad found: press <b>A</b> in the next screen to take a seat.</p>
+    <p class="small back"><a href="/demos/">← Back to the demos on andreasbraun.lu</a></p>
+  </div>
+</section>
+
+<!-- Lobby -->
+<section id="screen-lobby" class="screen">
+  <div class="panel lobby">
+    <header class="panel-head">
+      <button id="btn-lobby-back" class="btn ghost small-btn">← Back</button>
+      <h2>Set the table</h2>
+      <button id="btn-lobby-controls" class="btn ghost small-btn">Keys…</button>
+    </header>
+
+    <div class="lobby-grid">
+      <div class="col">
+        <h3>1 · Pick a table</h3>
+        <div id="world-list" class="world-list"></div>
+      </div>
+      <div class="col">
+        <h3>2 · Drivers <span class="sub">click to change · gamepads press A</span></h3>
+        <div id="player-list" class="player-list"></div>
+        <p id="kbd-warn" class="warn" hidden>Three or more players on one keyboard: some keyboards can't register that many keys at once. If a car stops responding, switch someone to <b>Easy keys</b> (auto gas, two keys) or plug in a gamepad.</p>
+
+        <h3>3 · Rules</h3>
+        <div class="opts">
+          <div class="opt-row"><span>Mode</span>
+            <div class="seg"><button data-opt="mode" data-val="h2h">Head-to-head</button><button data-opt="mode" data-val="race">Race</button></div>
+          </div>
+          <p class="opt-help" data-mode-help>Head-to-head: the screen follows the leader. Drop off its edge and you're out. Last car on screen scores a point.</p>
+          <div class="opt-row" id="opt-points"><span>Points to win</span>
+            <div class="seg"><button data-opt="points" data-val="3">3</button><button data-opt="points" data-val="5">5</button><button data-opt="points" data-val="7">7</button></div>
+          </div>
+          <div class="opt-row" id="opt-laps"><span>Laps</span>
+            <div class="seg"><button data-opt="laps" data-val="3">3</button><button data-opt="laps" data-val="5">5</button><button data-opt="laps" data-val="8">8</button></div>
+          </div>
+          <div class="opt-row"><span>CPU drivers</span>
+            <div class="seg"><button data-opt="skill" data-val="easy">Easy</button><button data-opt="skill" data-val="normal">Normal</button><button data-opt="skill" data-val="hard">Hard</button></div>
+          </div>
+          <div class="opt-row"><span>Graphics</span>
+            <div class="seg"><button data-opt="quality" data-val="auto">Auto</button><button data-opt="quality" data-val="low">Low</button><button data-opt="quality" data-val="medium">Medium</button><button data-opt="quality" data-val="high">High</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="panel-foot">
+      <span class="small">Esc or P pauses · F for fullscreen</span>
+      <button id="btn-start" class="btn big yellow">Start <kbd>Enter</kbd></button>
+    </footer>
+  </div>
+</section>
+
+<!-- Controls -->
+<section id="screen-controls" class="screen">
+  <div class="panel controls">
+    <header class="panel-head">
+      <button id="btn-controls-back" class="btn ghost small-btn">← Back</button>
+      <h2>Keys</h2>
+      <button id="btn-controls-reset" class="btn ghost small-btn">Reset</button>
+    </header>
+    <p class="small center">Click a key to change it, then press the new key. Gamepads work without setup: stick or d-pad steers, RT or A accelerates, LT or B brakes.</p>
+    <div id="controls-grid" class="controls-grid"></div>
+  </div>
+</section>
+
+<!-- Pause -->
+<section id="screen-pause" class="screen">
+  <div class="panel small-panel">
+    <h2>Paused</h2>
+    <div class="stack">
+      <button id="btn-resume" class="btn big yellow">Resume</button>
+      <button id="btn-restart" class="btn">Restart</button>
+      <button id="btn-quit" class="btn">Quit to menu</button>
+    </div>
+  </div>
+</section>
+
+<!-- Results -->
+<section id="screen-results" class="screen">
+  <div class="panel small-panel results">
+    <h2 id="results-title">Winner!</h2>
+    <ol id="results-list"></ol>
+    <div class="stack row">
+      <button id="btn-again" class="btn big yellow">Again <kbd>Enter</kbd></button>
+      <button id="btn-menu" class="btn">Menu</button>
+    </div>
+  </div>
+</section>
+
+<div id="touch"><div id="touch-left"><span>◀</span></div><div id="touch-right"><span>▶</span></div></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
