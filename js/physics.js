@@ -8,6 +8,7 @@ export const VEHICLES = {
   sports: { maxSpeed: 47, accel: 64, brake: 120, reverseMax: 17, turnRate: 3.35, latGrip: 150, drag: 0.22, rolling: 6, len: 4.4, wid: 2.2, r: 1.12, axle: 1.08, mass: 1 },
   formula: { maxSpeed: 51, accel: 70, brake: 135, reverseMax: 17, turnRate: 3.25, latGrip: 170, drag: 0.22, rolling: 6, len: 4.6, wid: 2.1, r: 1.05, axle: 1.2, mass: 0.95 },
   truck: { maxSpeed: 43, accel: 60, brake: 110, reverseMax: 18, turnRate: 3.2, latGrip: 135, drag: 0.2, rolling: 5, len: 4.4, wid: 2.6, r: 1.3, axle: 1.0, mass: 1.25, offroadGrip: 1.0 },
+  rover: { maxSpeed: 44, accel: 60, brake: 120, reverseMax: 17, turnRate: 3.35, latGrip: 150, drag: 0.22, rolling: 6, len: 4.4, wid: 2.5, r: 1.22, axle: 1.1, mass: 1.2, offroadGrip: 1.0 },
   rally: { maxSpeed: 46, accel: 66, brake: 120, reverseMax: 17, turnRate: 3.4, latGrip: 140, drag: 0.22, rolling: 6, len: 4.3, wid: 2.25, r: 1.14, axle: 1.05, mass: 1.05 },
 };
 
@@ -66,6 +67,7 @@ export class PhysicsWorld {
     this.fallOffEdges = opts.fallOffEdges ?? true;
     this.floorY = opts.floorY ?? -70;
     this.offroad = opts.offroad || null; // {kind, margin}
+    this.gravity = GRAVITY * (opts.gravity ?? 1); // worlds can lower it (Mars)
     this.events = []; // {type, car, x, z, strength}
   }
 
@@ -195,7 +197,7 @@ export class PhysicsWorld {
     const sp = car.spec;
     if (car.state === 'falling') {
       car.fallT += dt;
-      car.vy -= GRAVITY * dt;
+      car.vy -= this.gravity * dt;
       car.y += car.vy * dt;
       car.x += car.fallVX * dt; car.z += car.fallVZ * dt;
       car.fallVX *= Math.exp(-0.6 * dt); car.fallVZ *= Math.exp(-0.6 * dt);
@@ -273,7 +275,7 @@ export class PhysicsWorld {
     // vertical: ramps, platforms, drops
     const gr = this.groundAt(car.x, car.z);
     if (car.airborne) {
-      car.vy -= GRAVITY * dt;
+      car.vy -= this.gravity * dt;
       car.y += car.vy * dt;
       if (car.y <= gr.g) {
         const impact = -car.vy;
@@ -433,7 +435,7 @@ export class PhysicsWorld {
       }
       if (d.state === 'falling') {
         d.t += dt;
-        d.vy = (d.vy ?? 0) - GRAVITY * dt;
+        d.vy = (d.vy ?? 0) - this.gravity * dt;
         d.y = (d.y ?? 0) + d.vy * dt;
         d.x += d.vx * dt; d.z += d.vz * dt;
         d.vx *= Math.exp(-8 * dt); d.vz *= Math.exp(-8 * dt);

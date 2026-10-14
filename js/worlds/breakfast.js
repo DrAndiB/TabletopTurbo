@@ -227,8 +227,8 @@ export default {
       K.add(grp);
       // butter block holding the top end up
       const bx = p.x + Math.cos(ang) * (len / 2 - 1.2), bz = p.z + Math.sin(ang) * (len / 2 - 1.2);
-      const b = K.mesh(new K.RoundedBoxGeometry(3.2, 3.1, 6.4, 3, 0.35), butterMat, bx, Y0 + 1.55, bz, { ry: -ang });
-      K.box(bx, bz, 1.6, 3.2, ang, 3.1);
+      K.mesh(new K.RoundedBoxGeometry(3.2, 3.1, 6.4, 3, 0.35), butterMat, bx, Y0 + 1.55, bz, { ry: -ang });
+      // no collider for the butter: it sits under the toast, and the ramp's raised end already blocks cars from behind
       K.contact(p.x, p.z, 7, 5.5, 0.3, ang);
       // spilt milk just past the ramp, across the whole road
       const mp = track.place(s + 22, 0.5);

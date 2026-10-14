@@ -1,4 +1,4 @@
-// Toy car models built from simple geometry: sports coupé, rally hatch, formula racer and 4x4 truck.
+// Toy car models built from simple geometry: sports coupé, rally hatch, formula racer, 4x4 truck and Mars rover.
 import * as THREE from '../vendor/three.bundle.js';
 import { RoundedBoxGeometry, BufferGeometryUtils } from '../vendor/three.bundle.js';
 import { blobShadowTexture, makeCanvas, toTexture } from './textures.js';
@@ -16,6 +16,8 @@ function mats() {
   shared.tail = new THREE.MeshStandardMaterial({ color: 0xd01515, emissive: 0xff1a10, emissiveIntensity: 0.6, roughness: 0.3 });
   shared.white = new THREE.MeshPhysicalMaterial({ color: 0xf7f7f2, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.1 });
   shared.shadow = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, alphaMap: blobShadowTexture(), depthWrite: false });
+  shared.alu = new THREE.MeshStandardMaterial({ color: 0xc2c5ca, roughness: 0.42, metalness: 0.9 });
+  shared.gold = new THREE.MeshStandardMaterial({ color: 0xd9a441, roughness: 0.28, metalness: 1 });
   shared.helmetVisor = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.05, metalness: 0.6, clearcoat: 1 });
   return shared;
 }
@@ -112,6 +114,34 @@ function makeWheel(r, w, rimMat, M) {
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.16, r * 0.16, w * 1.1, 10), M.chrome);
   hub.rotation.x = Math.PI / 2; g.add(hub);
   mergeByMaterial(g);
+  return g;
+}
+
+// Rover wheel: machined aluminium drum with chevron grousers and a dark hub.
+function makeRoverWheel(r, w, M) {
+  const g = new THREE.Group();
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.94, r * 0.94, w, 20, 1, true), M.alu);
+  drum.rotation.x = Math.PI / 2; g.add(drum);
+  for (const s of [-1, 1]) {
+    const face = new THREE.Mesh(new THREE.CircleGeometry(r * 0.94, 20), M.darkRim);
+    face.position.z = s * w * 0.42; face.rotation.y = s < 0 ? Math.PI : 0; g.add(face);
+  }
+  // grousers: thin ridges around the tread, alternately angled (chevrons)
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    const gr = new THREE.Mesh(new THREE.BoxGeometry(r * 0.12, r * 0.12, w * 1.02), M.alu);
+    gr.position.set(Math.cos(a) * r * 0.94, Math.sin(a) * r * 0.94, 0);
+    gr.rotation.z = a; gr.rotation.x = (i % 2 ? 0.35 : -0.35);
+    g.add(gr);
+  }
+  // spokes on the outer face so the spin reads
+  for (let i = 0; i < 3; i++) {
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(r * 1.7, r * 0.13, 0.06), M.alu);
+    sp.rotation.z = (i / 3) * Math.PI; sp.position.z = w * 0.45; g.add(sp);
+  }
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.2, r * 0.2, w * 1.1, 10), M.alu);
+  hub.rotation.x = Math.PI / 2; g.add(hub);
+  mergeByMaterial(g); // two draw calls per wheel: aluminium and the dark faces
   return g;
 }
 
@@ -239,16 +269,76 @@ export function buildCar(type, colorDef, num) {
     dec.position.set(0.5, 2.08, 0);
     tilt.add(dec);
     wheelR = 0.78; wheelW = 0.62; wx = 1.38; wz = 1.18; wy = 0.78;
+  } else if (type === 'rover') {
+    // a toy Mars rover in the player's colour: warm box body, white deck, camera mast, antenna,
+    // power unit at the back and rocker-bogie legs on six wheels
+    const box = add(new THREE.Mesh(new RoundedBoxGeometry(2.7, 0.62, 1.62, 3, 0.14), M.white));
+    box.position.set(0.05, 1.18, 0);
+    const deck = add(new THREE.Mesh(new RoundedBoxGeometry(3.05, 0.1, 2.02, 2, 0.04), body));
+    deck.position.set(-0.05, 1.53, 0);
+    const trim = add(new THREE.Mesh(new RoundedBoxGeometry(2.75, 0.12, 1.66, 2, 0.05), dark));
+    for (const sz of [-0.62, 0.62]) { const st = add(new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.03, 0.16), M.white)); st.position.set(-0.05, 1.59, sz); }
+    trim.position.set(0.05, 0.85, 0);
+    // mast with a camera head ("eyes")
+    const mast = add(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.05, 10), M.alu));
+    mast.position.set(1.05, 2.05, 0.5);
+    const head = add(new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.3, 0.72, 2, 0.06), M.white));
+    head.position.set(1.12, 2.66, 0.5);
+    for (const sz of [0.32, 0.68]) {
+      const eye = add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.1, 12), M.black));
+      eye.rotation.z = Math.PI / 2; eye.position.set(1.35, 2.68, sz);
+      const lens = add(new THREE.Mesh(new THREE.CircleGeometry(0.05, 12), M.darkRim));
+      lens.rotation.y = Math.PI / 2; lens.position.set(1.405, 2.68, sz);
+    }
+    // high-gain dish antenna
+    const post = add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4, 8), M.alu));
+    post.position.set(-0.3, 1.75, -0.55);
+    const dish = add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 20), M.white));
+    dish.position.set(-0.3, 1.98, -0.55); dish.rotation.set(0.5, 0, 0.35);
+    // whip antenna
+    const whip = add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 6), M.black));
+    whip.position.set(-0.9, 1.98, 0.62);
+    // power unit at the rear: finned cylinder tilted back
+    const rtg = add(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 12), M.darkRim));
+    rtg.position.set(-1.72, 1.45, 0); rtg.rotation.z = 0.95;
+    for (let i = 0; i < 4; i++) {
+      const fin = add(new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.5, 0.04), M.darkRim));
+      fin.position.set(-1.72, 1.45, 0); fin.rotation.set((i / 4) * Math.PI, 0, 0.95);
+    }
+    // folded robot arm at the front with a gold turret
+    const arm = add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 1.3), M.alu));
+    arm.position.set(1.52, 1.05, 0);
+    const turret = add(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.3, 12), M.gold));
+    turret.position.set(1.55, 1.0, -0.62);
+    // rocker-bogie legs: beams from the body pivots down to the wheel hubs
+    const beam = (x1, y1, x2, y2, z) => {
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      const b = add(new THREE.Mesh(new THREE.BoxGeometry(len, 0.12, 0.12), M.alu));
+      b.position.set((x1 + x2) / 2, (y1 + y2) / 2, z); b.rotation.z = Math.atan2(y2 - y1, x2 - x1);
+    };
+    for (const s of [-1, 1]) {
+      const z = s * 1.04;
+      beam(1.5, 0.52, 0.35, 1.05, z); beam(0.35, 1.05, -0.75, 0.78, z);
+      beam(-0.75, 0.78, 0.0, 0.52, z); beam(-0.75, 0.78, -1.45, 0.52, z);
+      const piv = add(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.2, 10), M.gold));
+      piv.rotation.x = Math.PI / 2; piv.position.set(0.35, 1.05, z);
+    }
+    const dec = new THREE.Mesh(new THREE.CircleGeometry(0.4, 24), numberDecal(num, colorDef));
+    dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
+    dec.position.set(-0.55, 1.59, 0.25);
+    tilt.add(dec);
+    wheelR = 0.5; wheelW = 0.42; wx = 1.5; wz = 1.22; wy = 0.5;
   }
 
   // wheels
   const rimMat = type === 'truck' ? M.darkRim : M.rim;
-  for (const [sx, front] of [[wx, true], [-wx, false]]) {
+  const axles = type === 'rover' ? [[wx, true], [0.0, false], [-1.45, false]] : [[wx, true], [-wx, false]];
+  for (const [sx, front] of axles) {
     for (const sz of [-wz, wz]) {
       const pivot = new THREE.Group();
       pivot.position.set(sx, wy, sz);
       const r = type === 'formula' && !front ? wheelR * 1.12 : wheelR;
-      const w = makeWheel(r, wheelW, rimMat, M);
+      const w = type === 'rover' ? makeRoverWheel(r, wheelW, M) : makeWheel(r, wheelW, rimMat, M);
       if (type === 'formula' && !front) pivot.position.y = r;
       w.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
       pivot.add(w);

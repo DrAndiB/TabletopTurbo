@@ -31,7 +31,7 @@ export class Game {
     const track = new Track(def.track.points, { width: def.track.width ?? 14 });
     this.track = track;
     const physics = new PhysicsWorld(track, {
-      bounds: def.bounds, fallOffEdges: def.fallOffEdges ?? true, floorY: def.floorY ?? -70, offroad: def.offroad || null,
+      bounds: def.bounds, fallOffEdges: def.fallOffEdges ?? true, floorY: def.floorY ?? -70, offroad: def.offroad || null, gravity: def.gravity ?? 1,
     });
     this.physics = physics;
     const kit = makeKit({ scene: this.R.scene, track, physics, quality: this.R.quality, seed: def.seed ?? 7 });
