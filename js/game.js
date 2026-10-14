@@ -303,6 +303,11 @@ export class Game {
       const c = e.car;
       if (c.state === 'drive') {
         const n = tr.nearest(c.x, c.z, e.trackI);
+        // no extreme shortcuts: the nearest road point may only move on a little at a time. A big forward jump
+        // means the car crossed the infield to a later part of the lap: put it back where it left the road.
+        let skip = n.s - e.trackS;
+        if (skip > L / 2) skip -= L; else if (skip < -L / 2) skip += L;
+        if (Math.abs(skip) > (this.def.maxShortcut ?? 45) && (racing || this.state === 'countdown')) { this.caughtCutting(e, skip > 0); continue; }
         const r0 = this.relS(e.trackS), r1 = this.relS(n.s);
         const dr = r1 - r0;
         if (dr < -L / 2) { e.lap++; this.onLap(e); }
@@ -512,6 +517,13 @@ export class Game {
     } else if (e.human && e.lap > 0 && e.lap === this.laps - 1) {
       this.hud.flash('Final lap!', e.color.hex);
     }
+  }
+
+  caughtCutting(e, forward = true) {
+    e.cuts = (e.cuts || 0) + 1;
+    if (e.human && forward) this.hud.flash(this.humanCount?.() > 1 ? `${e.name}: no shortcuts!` : 'No shortcuts!', e.color.hex);
+    this.particles.emit(e.car.x, e.car.y + 1, e.car.z, { color: 0xffffff, n: 14, size: 2.2, life: 0.6, spread: 8, up: 4, grav: 0, grow: 2.5, alpha: 0.7 });
+    this.respawn(e);
   }
 
   respawn(e) {

@@ -101,6 +101,7 @@ export class Car {
     this.vx = this.vz = this.w = 0; this.y = 0; this.vy = 0; this.airborne = false;
     this.state = 'drive'; this.tumble = 0; this.fallT = 0; this.slip = 0;
     this.stun = 0; this.draft = 0;
+    this.spinner = null; this.oily = 0; this.wasSlick = false;
   }
 }
 

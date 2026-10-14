@@ -1,7 +1,7 @@
 # Tabletop Turbo: developer notes
 
 A tabletop toy-car racer for the browser: up to four players on one keyboard, gamepads, CPU drivers,
-13 miniature worlds. Live at https://andreasbraun.lu/demos/tabletop-turbo/.
+16 miniature worlds in four cups. Live at https://andreasbraun.lu/demos/tabletop-turbo/.
 
 This `_dev/` folder is kept in the repository but is **not published** on the website (GitHub Pages
 skips folders that start with an underscore).
@@ -51,8 +51,9 @@ Useful URL parameters: `?world=<id>` (load a world), `?quality=low|medium|high`,
 Read `WORLD_GUIDE.md` (units, camera, kit API, quality bar, performance budget). In short:
 1. Create `js/worlds/<id>.js` exporting the world definition (track points, bounds, lighting, `build(K)`,
    optional `animate` and `tick`).
-2. Register it in `js/worlds/index.js` (add it to `IN_PROGRESS` while working on it: it stays out of the
-   menu but loads with `?world=<id>`).
+2. Register it in `js/worlds/index.js`: add it to `ALL` and to a cup in `CUPS` (cups are ordered by difficulty;
+   a world in no cup shows up in a "More tables" row). List it in `IN_PROGRESS` while working on it: it stays out
+   of the menu but loads with `?world=<id>`.
 3. Add a thumbnail `img/<id>.jpg` (352×220).
 4. Run the checks below, then remove it from `IN_PROGRESS`.
 
@@ -73,6 +74,9 @@ Run from `_dev/tools/` with the local server running.
 - `checks/h2h.js`, `checks/race.js`: full matches through to the results screen.
   The checks run with `python tt.py "quality=low" "js:$(cat checks/<file> | tr '\n' ' ')"`
   (on Windows, paste the file contents instead of the `$(...)` part, or use WSL).
+- `checks/shortcut.js`: drives straight across the infield in a few worlds; each attempt must be caught.
+- Lint before every release (catches undefined names, which tests that don't render frames can miss):
+  `npx eslint@9 -c _dev/tools/eslint.config.mjs js/*.js js/worlds/*.js` (needs `npm i -D eslint@9 globals@15`).
 - `shot.py <url> <out.png> [wait] [w h]`: plain screenshot of any page (e.g. `?view=top`).
 - `trk.py <points.json>`: checks a track layout (length, tightest radius, places where the track comes
   close to itself).

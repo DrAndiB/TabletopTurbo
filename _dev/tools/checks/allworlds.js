@@ -9,7 +9,7 @@
     while (g.state === 'countdown') g.simulate(0.05);
     for (let i = 0; i < 120; i++) { g.simulate(0.5); g.cars.forEach(e => { if (e.car.fwdSpeed < -3) back++; }); }
     const laps = g.cars.map(e => (e.progress / g.track.length).toFixed(1));
-    res.push(`${def.id}: respawns=${resp} laps=${laps.join(',')} backSamples=${back}`);
+    res.push(`${def.id}: respawns=${resp} cuts=${g.cars.map(e => e.cuts || 0).join("")} laps=${laps.join(',')} backSamples=${back}`);
   }
   return res.join('\n');
 })()

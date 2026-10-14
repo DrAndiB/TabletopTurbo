@@ -97,6 +97,8 @@ export default {
   full), and fast discs push cars outward (`pull`, default 0.5). Positive angles turn from +x towards +z.
 - Darkness: set `headlights: true` (or `{intensity, distance, angle, color}`) and every vehicle gets a forward
   spotlight (no shadows). Keep the world dark but readable; light pools from lamps/candles help.
+- Shortcuts: the engine resets a car that jumps more than `maxShortcut` (default 45) units along the track in one
+  go (e.g. across the infield). Raise it per world only for a deliberate, designed shortcut.
 - Slick surfaces are now properly treacherous: a twitch on entry, a wandering tail, and oily tyres for ~0.6 s after.
 - Physics: `K.circle(x, z, r, h)`, `K.box(x, z, halfW, halfD, angle, h)`, `K.capsule(x1, z1, x2, z2, r, h)` — `h` = height; a car in the air above `h` passes over.
   `K.surface(kind, {poly} | {x, z, r})` — kinds: `slick` (spins, e.g. milk/oil/ink), `sticky` (jam/glue/paint), `slow` (sand/sawdust/grass), `rough`, `water` (puddles).

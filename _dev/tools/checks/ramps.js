@@ -16,7 +16,7 @@
       }
       const e = g.cars[0], c = e.car;
       const sx = r.x - r.cos * (r.len / 2 + 14), sz = r.z - r.sin * (r.len / 2 + 14);
-      c.state = 'drive'; c.place(sx, sz, r.angle); c.vx = r.cos * 38; c.vz = r.sin * 38; c.airborne = false; c.y = 0;
+      c.state = 'drive'; c.place(sx, sz, r.angle); c.vx = r.cos * 38; c.vz = r.sin * 38; c.airborne = false; c.y = g.physics.groundAt(sx, sz).g; c.groundY = c.y;
       const n = g.track.nearest(sx, sz); e.trackI = n.i; e.trackS = n.s; e.lastGoodS = n.s; e.offT = 0;
       __tt.input.down.add('ArrowUp');
       let maxY = 0, air = 0, minV = 99;
