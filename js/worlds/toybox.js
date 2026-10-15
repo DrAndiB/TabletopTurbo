@@ -1447,6 +1447,9 @@ export default {
         for (let t = 0; t < 1.6 && !on; t += 0.2) { const k = Math.floor(((u + t) % Pp) / A.occStep) % c.occ.length; if (c.occ[k]) on = true; }
         if (on) near = true;
       }
+      // the wooden train toots as it nears a crossing
+      if (near && !A.wasNear && game.sound && game.sound.cue) game.sound.cue('toot', { x: A.cross[0].x, z: A.cross[0].z, game });
+      A.wasNear = near;
       const blink = near && Math.floor(time * 3.2) % 2 === 0;
       A.lampMat.emissiveIntensity = blink ? 3.2 : 0;
       for (const m of A.crossGlow) m.material.opacity = blink ? 0.22 : 0;

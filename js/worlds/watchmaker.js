@@ -1309,10 +1309,8 @@ export default {
       G.lampR.emissiveIntensity = open > 0 ? blink : 0.15;
       if (k !== A.lastBeat) {
         A.lastBeat = k;
-        if (live && game.sound && game.sound.ctx && game.onScreen(G.x, MV.H + 3, G.z, 0.35)) {
-          game.sound.tone(k & 1 ? 2600 : 1950, 0.03, { type: 'square', vol: 0.06 });
-          game.sound.tone(k & 1 ? 5200 : 3900, 0.012, { type: 'triangle', vol: 0.03, when: 0.004 });
-        }
+        // the escapement ticks on every beat, quieter away from the middle of the view (the music keeps time with it)
+        if (live && game.sound && game.sound.cue) game.sound.cue('tick', { x: G.x, z: G.z, game, alt: k & 1 });
       }
     }
     if (A.anchor) A.anchor.grp.rotation.y = A.anchor.base + anchorAngle(time);

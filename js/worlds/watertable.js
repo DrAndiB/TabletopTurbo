@@ -1149,7 +1149,7 @@ export default {
         lamps.push(lm);
       }
       K.add(yaw); keep.push(yaw);
-      A.gate = { leaves, lamps, hw };
+      A.gate = { leaves, lamps, hw, x: p.x, z: p.z };
       for (const side of [0, 1]) {
         const lat = side === 0 ? -(hw + 0.6) / 2 + 0.25 : (hw + 0.6) / 2 - 0.25;
         const q = track.place(S.gate, lat);
@@ -1701,6 +1701,10 @@ export default {
       const { leaves, lamps } = A.gate;
       for (let i = 0; i < 2; i++) {
         const l = gateLift(i, time);
+        // a clank ~0.7 s before a leaf starts to move
+        const fut = gateLift(i, time + 0.7), was = A.gateFut ? A.gateFut[i] : fut;
+        if (((was === 0 && fut > 0) || (was === 1 && fut < 1)) && game && game.sound && game.sound.cue) game.sound.cue('clank', { x: A.gate.x, z: A.gate.z, game, vol: was === 1 ? 1 : 0.6 });
+        (A.gateFut ||= [])[i] = fut;
         leaves[i].position.y = 0.5 + l * 6.2;
         const soon = gateLift(i, time + 0.7) < 0.5 || l < 0.5;
         lamps[i].emissiveIntensity = soon ? 2.2 : 0;

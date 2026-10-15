@@ -143,7 +143,8 @@ export class Game {
       car.ent = ent;
       return ent;
     });
-    this.sound.createEngines(this.cars.length);
+    this.sound.createEngines(this.cars.length, vtype);
+    this.sound.prepareRace(this.def.id);
     this.round = 0;
     this.raceTime = 0;
     this.finishOrder = [];
@@ -260,6 +261,7 @@ export class Game {
       if (before > 0 && this.countT <= 0) {
         this.state = 'race';
         this.sound.beep(true);
+        this.sound.raceGo(this);
         this.hud.message('GO!', 'go');
         setTimeout(() => { if (this.state === 'race') this.hud.message('', null); }, 700);
         this.launch();
@@ -536,6 +538,7 @@ export class Game {
       if (e.human) { this.sound.roundWin(); this.hud.flash(`${e.name} finishes ${ordinal(e.place)}!`, e.color.hex); }
     } else if (e.human && e.lap > 0 && e.lap === this.laps - 1) {
       this.hud.flash('Final lap!', e.color.hex);
+      this.sound.finalLapReached();
     }
   }
 
@@ -620,13 +623,13 @@ export class Game {
     switch (ev.type) {
       case 'hit': S.bump(ev.strength, pan); this.sparks(ev.car, ev.strength); this.crashJuice(ev, pan); break;
       case 'bump':
-        S.bump(ev.strength * 0.8, pan);
+        S.bump(ev.strength * 0.8, pan, ev.other ? (ev.car.spec.carBounce ? 'bounce' : 'car') : null);
         if (ev.obj && this.def.clackOnBump) S.clack(ev.strength, pan);
         if (!ev.obj && ev.strength >= 14) this.sparksAt(ev.x, ev.car.y + 0.8, ev.z, ev.strength);
         this.crashJuice(ev, pan);
         break;
       case 'clack': S.clack(ev.strength, pan); break;
-      case 'land': S.thud(ev.strength); this.particles.emit(ev.car.x, 0.3, ev.car.z, { color: this.def.dustColor ?? 0xe8e0d0, n: 8, size: 1.4, life: 0.5, spread: 10, up: 2, grav: 4, grow: 1.6, alpha: 0.5 }); break;
+      case 'land': S.land(ev.strength, pan); this.particles.emit(ev.car.x, 0.3, ev.car.z, { color: this.def.dustColor ?? 0xe8e0d0, n: 8, size: 1.4, life: 0.5, spread: 10, up: 2, grav: 4, grow: 1.6, alpha: 0.5 }); break;
       case 'jump': S.jump(); break;
       case 'fall': if (ev.kind === 'hole') S.plop(); else S.fall(); break;
       case 'pocket': S.plop(); break;
@@ -761,6 +764,7 @@ export class Game {
   endMatch(winner) {
     this.state = 'matchEnd';
     this.sound.silenceEngines();
+    this.sound.raceEnd();
     this.sound.matchWin();
     const standings = this.mode === 'h2h'
       ? [...this.cars].sort((a, b) => b.points - a.points)
@@ -1030,6 +1034,7 @@ export class Game {
   updateAudio() {
     const S = this.sound;
     if (!S.ctx) return;
+    S.frame(this);
     this.cars.forEach((e, i) => {
       const c = e.car;
       const vis = !e.out && c.state === 'drive';
@@ -1043,10 +1048,10 @@ export class Game {
 
   pause(on) {
     if (on && (this.state === 'race' || this.state === 'countdown' || this.state === 'roundEnd')) {
-      this.prevState = this.state; this.state = 'paused'; this.sound.silenceEngines();
+      this.prevState = this.state; this.state = 'paused'; this.sound.setPaused(true);
       return true;
     }
-    if (!on && this.state === 'paused') { this.state = this.prevState; this.acc = 0; return true; }
+    if (!on && this.state === 'paused') { this.state = this.prevState; this.acc = 0; this.sound.setPaused(false); return true; }
     return false;
   }
 
@@ -1054,7 +1059,7 @@ export class Game {
   startAttract() {
     this.startMatch({ drivers: [0, 1, 2, 3].map((i) => ({ type: 'cpu', color: i })), mode: 'h2h', pointsToWin: 99, skill: 'hard', catchup: 'off' });
     this.state = 'attract';
-    this.sound.silenceEngines();
+    this.sound.stopEngines(); // no engine voices running behind the menus
     this.hud.message('', null);
   }
 }

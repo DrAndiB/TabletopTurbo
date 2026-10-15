@@ -1548,6 +1548,9 @@ export default {
     // ---- level crossings: lamps, booms, bell
     A.lc.forEach((lc, i) => {
       const [tA, tC] = crossingTimes(lc, time);
+      // the train whistles ~2 s before it reaches the crossing
+      if (game && game.sound && game.sound.cue && A.lcT && A.lcT[i] > 2 && tA <= 2) game.sound.cue('whistle', { x: lc.x, z: lc.z, game });
+      (A.lcT ||= [])[i] = tA;
       const warn = tA < 3.2 && tC > -1.2;
       const down = ss(3.0, 1.6, tA) * (1 - ss(-0.2, -1.4, tC));
       const vis = A.lcVis[i];

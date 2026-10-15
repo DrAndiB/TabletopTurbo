@@ -68,7 +68,9 @@ js/kit.js           helpers for world builders
 js/textures.js      procedural textures
 js/track.js         spline track and road ribbons
 js/input.js         keyboard (4 players), gamepads, touch
-js/audio.js         synthesised sound (no audio files)
+js/audio.js         synthesised sound (no audio files): engines per vehicle, crashes, cues, mixing
+js/music.js         procedural music: one original piece per world, menu theme
+js/ambience.js      background sounds per world, cue sounds (train whistles, sluice gate, escapement)
 js/hud.js, js/fx.js, js/records.js (best laps, ghosts, trophies), js/util.js
 js/worlds/*.js      one file per world; js/worlds/index.js holds the cups and the menu order
 img/                menu thumbnails and social preview images

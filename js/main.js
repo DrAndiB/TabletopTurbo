@@ -32,6 +32,8 @@ const defaults = {
   quality: 'auto',
   fps: 60, // 60: at most ~60 fps, evenly paced on high-refresh screens; 'max': every refresh
   minimap: 'auto', // auto: races, championships and time trials with one human driver
+  music: 'on', // race and menu music
+  sfx: 'on', // engines, crashes, cues and background sounds (the corner button mutes everything)
   slots: [{ type: 'keys' }, { type: 'cpu' }, { type: 'cpu' }, { type: 'cpu' }],
 };
 let settings = loadSettings();
@@ -45,6 +47,8 @@ function loadSettings() {
       if (!CUP_IDS.includes(out.cup)) out.cup = defaults.cup;
       if (out.fps !== 60 && out.fps !== 'max') out.fps = defaults.fps;
       if (!['auto', 'on', 'off'].includes(out.minimap)) out.minimap = defaults.minimap;
+      if (out.music !== 'off') out.music = 'on';
+      if (out.sfx !== 'off') out.sfx = 'on';
       return out;
     }
   } catch (e) { /* ignore */ }
@@ -60,6 +64,8 @@ let quality = params.get('quality') || settings.quality;
 const R = new GameRenderer(canvas, quality === 'auto' ? Perf.rememberedTier() : quality);
 const input = new Input();
 const sound = new Sound();
+sound.setMusic(settings.music !== 'off');
+sound.setEffects(settings.sfx !== 'off');
 const hud = new Hud($('#hud'));
 const game = new Game(R, input, sound, hud);
 const perf = new Perf(R, {
@@ -309,6 +315,8 @@ for (const el of document.querySelectorAll('[data-opt]')) {
     settings[k] = isNaN(+v) ? v : +v;
     if (k === 'quality') applyQuality(v);
     if (k === 'fps') perf.cap = v !== 'max';
+    if (k === 'music') sound.setMusic(v !== 'off');
+    if (k === 'sfx') sound.setEffects(v !== 'off');
     saveSettings(); renderLobby();
   });
 }

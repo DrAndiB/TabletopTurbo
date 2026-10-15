@@ -2041,6 +2041,8 @@ export default {
     const u = cycleT(time);
     A.lc.forEach((lc, i) => {
       const warn = u > lc.tA - 5.2 && u < lc.tD + 1.4;
+      // the train whistles ~2 s before it reaches the crossing
+      if (game && game.sound.cue && A.lcU != null && A.lcU < lc.tA - 2 && u >= lc.tA - 2) game.sound.cue('whistle', { x: lc.x, z: lc.z, game });
       const down = ss(lc.tA - 4.2, lc.tA - 2.7, u) * (1 - ss(lc.tD + 0.25, lc.tD + 1.7, u));
       const vis = A.lcVis[i];
       for (const b of vis.booms) b.rotation.x = (1 - down) * (PI / 2 - 0.02);
@@ -2052,6 +2054,7 @@ export default {
         if (A.lcBell[i] <= 0) { A.lcBell[i] = 0.42; game.sound.tone(1560, 0.12, { type: 'sine', vol: 0.035 }); game.sound.tone(2340, 0.08, { type: 'sine', vol: 0.015 }); }
       }
     });
+    A.lcU = u;
     // ---- the mountain over the tunnel turns see-through while a car is inside
     let inside = false;
     if (game && game.cars) for (const e of game.cars) {
