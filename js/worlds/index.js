@@ -15,8 +15,12 @@ import boardroom from './boardroom.js';
 import watchmaker from './watchmaker.js';
 import dollhouse from './dollhouse.js';
 import chemlab from './chemlab.js';
+import moselle from './moselle.js';
+import fouer from './fouer.js';
+import grund from './grund.js';
+import oldtown from './oldtown.js';
 
-// Four cups of four tables, easiest cup first and easiest table first within each cup (Mario Kart style).
+// Cups of four tables, easiest cup first and easiest table first within each cup (Mario Kart style).
 // `level` (1-4) is the difficulty shown in the menu, `color` the cup's accent. Worlds that are not in
 // WORLDS (still under construction) are skipped wherever cups are used, so a cup simply shows fewer
 // tables until they are done.
@@ -25,6 +29,8 @@ export const CUPS = [
   { id: 'doodle', name: 'Doodle Cup', level: 2, color: '#2f6fe0', blurb: 'Slippery and splashy', worlds: ['desk', 'bathroom', 'pool', 'watertable'] },
   { id: 'turbo', name: 'Turbo Cup', level: 3, color: '#f07b1d', blurb: 'Jumps, trains and tight bends', worlds: ['workshop', 'boardroom', 'mars', 'railway'] },
   { id: 'chaos', name: 'Chaos Cup', level: 4, color: '#8a4fd8', blurb: 'For experts only', worlds: ['pinball', 'chemlab', 'dollhouse', 'watchmaker'] },
+  // a tour of Luxembourg, easy to expert within the cup
+  { id: 'duchy', name: 'Grand Duchy Cup', level: 3, color: '#00a1de', blurb: 'A tour of Luxembourg, easy to expert', worlds: ['moselle', 'fouer', 'grund', 'oldtown'] },
 ];
 
 // menu order = cup order (also the order of the "Grand Tour" championship)
@@ -33,9 +39,10 @@ const ALL = [
   desk, bathroom, pool, watertable,
   workshop, boardroom, mars, railway,
   pinball, chemlab, dollhouse, watchmaker,
+  moselle, fouer, grund, oldtown,
 ];
 // Worlds still under construction can be listed here: they stay out of the menu but load with ?world=<id>.
-const IN_PROGRESS = new Set([]);
+const IN_PROGRESS = new Set(['moselle', 'fouer', 'grund', 'oldtown']);
 export const WORLDS = ALL.filter((w) => !IN_PROGRESS.has(w.id));
 export function worldById(id) { return ALL.find((w) => w.id === id) || WORLDS[0]; }
 // the playable tables of a cup, in cup order

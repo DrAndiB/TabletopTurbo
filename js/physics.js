@@ -11,6 +11,8 @@ export const VEHICLES = {
   rover: { maxSpeed: 44, accel: 60, brake: 120, reverseMax: 17, turnRate: 3.35, latGrip: 150, drag: 0.22, rolling: 6, len: 4.4, wid: 2.5, r: 1.22, axle: 1.1, mass: 1.2, offroadGrip: 1.0 },
   // toy speedboat: drifts through turns, coasts to a stop quickly, floats (see spec.boat in game/cars)
   boat: { maxSpeed: 45, accel: 58, brake: 95, reverseMax: 14, turnRate: 3.1, latGrip: 62, drag: 0.5, rolling: 14, len: 4.6, wid: 2.1, r: 1.12, axle: 1.15, mass: 1.0, boat: true, yawFollow: 0.45 },
+  // bumper car (fairground): placeholder spec, tuned in the vehicles pass
+  bumper: { maxSpeed: 42, accel: 66, brake: 120, reverseMax: 17, turnRate: 3.6, latGrip: 140, drag: 0.24, rolling: 7, len: 4.0, wid: 2.6, r: 1.2, axle: 0.95, mass: 1.1 },
   // hovercraft: glides over water, sand and land alike, slides through every turn
   hover: { maxSpeed: 45, accel: 56, brake: 70, reverseMax: 14, turnRate: 3.2, latGrip: 50, drag: 0.3, rolling: 4, len: 4.3, wid: 2.4, r: 1.2, axle: 1.05, mass: 0.9, yawFollow: 0.55, hover: true },
   // snowmobile: skis and a track; sure-footed in snow, a little loose
