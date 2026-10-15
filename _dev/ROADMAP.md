@@ -44,10 +44,23 @@ note on the plan agreed so far.
 
 ## Idea bank (not for the next version)
 
-- **Luxembourg-inspired tracks.** Tabletop scenes with a Luxembourg theme, for example a kitchen table set for
-  Gromperekichelcher and Bouneschlupp, a Moselle wine tasting with vineyard rows and crémant glasses, a funfair table
-  in the spirit of the Schueberfouer, or a desk with a model of the Old Town, its bridges and the casemates.
-  Generic and original designs only: no real logos.
+- **Luxembourg-inspired tracks: a "Grand Duchy Cup" of four** (brainstorm, October 2026, nothing decided).
+  Each one a different kind of tabletop scene of a real place; generic and original designs, no real logos.
+  1. *Crémant Curves* (easy): a Moselle wine tasting. Vineyard terraces of stacked trays, a blue fabric runner as
+     the river with a riverboat, crémant glasses and corks, grapes to push, a spilled-wine slick. 4x4 truck.
+  2. *Fouer Frenzy* (medium): the Schueberfouer at night. Lit stalls (Gromperekichelcher, Fouerfësch), a Ferris
+     wheel, a roller-coaster section for jumps, a run through a bumper-car rink (also the first battle arena later).
+     Possibly a new vehicle: bumper cars.
+  3. *Grund Prix* (hard): a model-maker's diorama of Grund and Clausen. Cobbled road along the winding Alzette with
+     bridges and a ford, a tunnel through the Bock casemates rock, a loop round Neimënster's cloister, weaving
+     through the arches of the railway viaduct with a model train above, a hairpin climb past the Wenzel wall to the
+     Rham plateau. A little tourist train as a moving hazard. Rally car.
+  4. *Old Town Jigsaw* (expert): a half-finished jigsaw of the Ville Haute on a coffee table. Tight streets past the
+     Knuedler market, the palace sentry box, the cathedral and the Gëlle Fra; the Chemin de la Corniche along the
+     puzzle's edge (fall off); a jump between puzzle sections as the Adolphe Bridge; missing pieces are holes,
+     loose pieces can be pushed. Formula racer.
+  Spares: Kirchberg (red bridge, tram, Pfaffenthal lift), Vianden (castle, chairlift), Mullerthal (sandstone gorges),
+  Esch-Belval blast furnaces (could double as an industrial drift track).
 - **Drift tracks.** Tracks built for sliding: slippery surfaces (polished floor, ice, a buttered tray), wide
   sweeping corners, maybe drift scoring for angle and duration as its own mode.
 - **Battle mode on arena tracks.** Enclosed arenas instead of laps (a dinner plate, a frying pan, a chessboard).
