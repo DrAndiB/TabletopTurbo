@@ -41,14 +41,15 @@ note on the plan agreed so far. Items 1–9 are fixes and polish; item 10 is new
    segmented black skirt, long low cabin with dark windows and a band in the player's colour, ribbed roof with a
    mast and the race number, twin ducted fans with stripes in the player's colour and a rudder behind each fan.
    Same footprint, so handling and collisions stay as they are.
-10. **Grand Duchy Cup: four Luxembourg-inspired tracks** as a fifth cup (moved up from the idea bank on 15 October
-    2026; names, details and vehicles still open). Each one a different kind of tabletop scene of a real place;
-    generic and original designs, no real logos.
+10. **Grand Duchy Cup: four Luxembourg-inspired tracks** as their own cup, a fifth cup alongside the other four, ordered
+    easy to expert (moved up from the idea bank on 15 October 2026). Each one a different kind of tabletop scene of
+    a real place; generic and original designs, no real logos.
     1. *Crémant Curves* (easy): a Moselle wine tasting. Vineyard terraces of stacked trays, a blue fabric runner as
        the river with a riverboat, crémant glasses and corks, grapes to push, a spilled-wine slick. 4x4 truck.
     2. *Fouer Frenzy* (medium): the Schueberfouer at night. Lit stalls (Gromperekichelcher, Fouerfësch), a Ferris
        wheel, a roller-coaster section for jumps, a run through a bumper-car rink (also the first battle arena later).
-       Possibly a new vehicle: bumper cars.
+       New vehicle: **bumper cars** (decided): rubber bumper ring, pole up to a sparking ceiling grid, extra-bouncy
+       collisions, an electric hum for the vehicle sound (item 7).
     3. *Grund Prix* (hard): a model-maker's diorama of Grund and Clausen. Cobbled road along the winding Alzette with
        bridges and a ford, a tunnel through the Bock casemates rock, a loop round Neimënster's cloister, weaving
        through the arches of the railway viaduct with a model train above, a hairpin climb past the Wenzel wall to the
