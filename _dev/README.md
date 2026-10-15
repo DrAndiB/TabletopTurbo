@@ -8,7 +8,7 @@ world-building guide (`WORLD_GUIDE.md`) and the test tools (`tools/`).
 - **This repository (DrAndiB/TabletopTurbo)** is the source of truth: all code, assets, history and tools.
 - **The website (DrAndiB/DrAndiB.github.io)** serves a copy of the game at
   https://andreasbraun.lu/demos/tabletop-turbo/ from its `demos/tabletop-turbo/` folder. That copy has
-  everything except `_dev/`, `README.md` and `.gitignore`. See "Publishing" below.
+  everything except `_dev/`, `app/`, `.github/`, `README.md` and `.gitignore`. See "Publishing" below.
 - The game's history before it moved here (October 2026) came over with it, so `git log` shows every step.
 
 ## Run it locally
@@ -37,6 +37,10 @@ Useful URL parameters: `?world=<id>`, `?quality=low|medium|high`, `?view=top`,
 - **Built-in graphics hint:** on Windows, when the GPU name looks integrated (Intel, AMD APU) and a race ran
   slowly (or Auto had to cut resolution), a dismissible note on the next menu screen explains how to set the
   browser to High performance. Once dismissed it doesn't come back.
+
+## Android app
+
+`app/` holds the Android app (Capacitor), built on GitHub by `.github/workflows/android.yml`. See `app/README.md`.
 
 ## Adding a world
 
@@ -80,7 +84,7 @@ somewhere other than http://localhost:8123/.
    website repo checked out next to it as `..\DrAndiB.github.io` (PowerShell):
 
    ```
-   robocopy . ..\DrAndiB.github.io\demos\tabletop-turbo /MIR /XD .git _dev node_modules out /XF README.md .gitignore
+   robocopy . ..\DrAndiB.github.io\demos\tabletop-turbo /MIR /XD .git .github _dev app node_modules out /XF README.md .gitignore
    ```
 
    (`/MIR` also removes files that no longer exist here, so the copy matches exactly.)

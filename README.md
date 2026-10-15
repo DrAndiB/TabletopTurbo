@@ -70,6 +70,7 @@ img/                menu thumbnails and social preview images
 vendor/             three.js r186 bundle
 fonts/              Lilita One and Rubik
 _dev/               developer notes, the world-building guide and test tools
+app/                Android app (Capacitor wrapper, built by GitHub Actions; see app/README.md)
 ```
 
 ## Developing

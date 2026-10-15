@@ -372,5 +372,27 @@ body[data-screen="none"] #btn-pause { display: grid; }
 .in-app #btn-fs, .in-app #screen-title .back { display: none; }
 /* keep the corner buttons and menus clear of a camera cutout (Capacitor sets --safe-area-inset-* in the app) */
 .in-app #corner { right: calc(10px + max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px))); }
-.in-app .screen { padding-left: calc(16px + max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px)));
-  padding-right: calc(16px + max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px))); }
+.in-app .screen { padding-left: calc(var(--screen-pad, 16px) + max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px)));
+  padding-right: calc(var(--screen-pad, 16px) + max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px))); }
+
+/* phones held sideways (website and app): compact menus, and the HUD chips move to the left so they stay
+   clear of the pause and sound buttons */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { --screen-pad: 8px; }
+  .screen { padding: 8px; }
+  .panel { padding: 10px 14px 12px; max-height: calc(100dvh - 16px); border-radius: 14px; }
+  .panel.lobby { padding-bottom: 0; }
+  .panel.lobby .panel-foot { padding-top: 8px; padding-bottom: 10px; }
+  .panel-head h2 { font-size: 24px; }
+  .panel h3 { margin: 8px 0 6px; }
+  body[data-screen="lobby"] #corner, body[data-screen="controls"] #corner, body[data-screen="results"] #corner,
+  body[data-screen="standings"] #corner, body[data-screen="podium"] #corner { display: none; }
+  .chip { padding: 2px 8px 2px 3px; } .chip-name { font-size: 13px; padding: 0 7px; } .chip-info { font-size: 12px; }
+  #chips { gap: 5px; top: 8px; transform: none;
+    left: calc(10px + max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px))); }
+}
+/* touch-only devices: no key hints on buttons */
+@media (pointer: coarse) and (hover: none) {
+  .btn kbd, .panel.lobby .panel-foot .small { display: none; }
+  .panel.lobby .panel-foot { justify-content: flex-end; }
+}
