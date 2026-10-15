@@ -77,6 +77,10 @@ export default {
 - `tick(dt, time, game)` (optional world function) runs at the fixed physics rate (120 Hz) during countdown/race:
   use it for force zones such as water currents, wind or a fan (e.g. `for (const e of game.cars) { const c = e.car; if (c.state === 'drive' && inside(c.x, c.z)) { c.vx += fx * dt; c.vz += fz * dt; } }`).
   Keep it cheap. (`animate` only runs when frames are rendered; `tick` also runs in test simulations.)
+- Stuck cars: the engine puts a car back on the road when it gains less than 3 units along the track in 6 s
+  (pushing against a wall counts). If cars legitimately wait in your world (a closed crossing, a gate, a sweeping
+  arm), set `e.holdT = 0.25` from `tick` for every car queuing in front of it (humans too, e.g. within ~35 units
+  before it while it is closed or about to close); the stuck timer pauses while `holdT > 0`.
 - World options: `gravity: 0.6` scales gravity (Mars); `wake: {color}` sets boat foam colour.
 - Vehicles: `sports | formula | rally | truck | rover | boat | hover | snowmobile | monster | suv`.
   `hover` (hovercraft) ignores water/slow/sticky/rough penalties (slick still slides) and floats on a cushion;
@@ -98,7 +102,13 @@ export default {
 - Darkness: set `headlights: true` (or `{intensity, distance, angle, color}`) and every vehicle gets a forward
   spotlight (no shadows). Keep the world dark but readable; light pools from lamps/candles help.
 - Shortcuts: the engine resets a car that jumps more than `maxShortcut` (default 45) units along the track in one
-  go (e.g. across the infield). Raise it per world only for a deliberate, designed shortcut.
+  go (e.g. across the infield). It also tallies the progress a car makes while it is entirely off the road (2.5
+  units past the edge) against the distance it drives there; more than 12 units ahead is a cut (`CUT` in game.js;
+  a world can set `maxCutGain`, `Infinity` switches it off). Raise these per world only for a deliberate, designed
+  shortcut. Run `_dev/tools/checks/cuts.js` on your world: it lists the corners where a straight line across the
+  infield still gains more than 15 units and drives them. Close each `EXPLOIT` with something that belongs in the
+  world and is visible: a prop with a collider in the infield, a wall or kerb, or a `slow`/`rough` surface, kept at
+  least ~2 units clear of the road edge so the inside line of the corner stays fair, then run it again.
 - Slick surfaces are now properly treacherous: a twitch on entry, a wandering tail, and oily tyres for ~0.6 s after.
 - Physics: `K.circle(x, z, r, h)`, `K.box(x, z, halfW, halfD, angle, h)`, `K.capsule(x1, z1, x2, z2, r, h)` — `h` = height; a car in the air above `h` passes over.
   `K.surface(kind, {poly} | {x, z, r})` — kinds: `slick` (spins, e.g. milk/oil/ink), `sticky` (jam/glue/paint), `slow` (sand/sawdust/grass), `rough`, `water` (puddles).

@@ -70,7 +70,17 @@ somewhere other than http://localhost:8123/.
   - `checks/ramps.js`: drives straight at every ramp and reports whether it launches and what blocks it.
   - `checks/startcheck.js`: race starts in every world (no car may roll backwards at GO).
   - `checks/shortcut.js`: drives across the infield in a few worlds; every attempt must be caught.
+  - `checks/cuts.js`: shortcut scanner. Finds straight lines across the infield that gain more than 15 units of
+    track while slipping under the engine's catch (no nearest-road jump beyond `maxShortcut`, not too long past
+    `offCourse`, under the off-road gain limit `CUT` in game.js, nothing in the way), then drives the best ones for real and prints the time gained; `EXPLOIT`
+    marks a cut that isn't caught and gains more than 0.3 s. Every world in the menu by default; pass world ids
+    (in the menu or not) in the query: `python tt.py "quality=low&ids=moselle,fouer" "js:$(cat checks/cuts.js | tr '\n' ' ')"`.
+    Options: `gain=15`, `top=4` (candidates per world), `confirm=0` (scan only, no test drives).
   - `checks/h2h.js`, `checks/race.js`: full matches through to the results screen.
+- Stuck cars: a car with less than 3 units of progress along the track in 6 s is put back on the road (CPUs too).
+  A world whose cars legitimately wait (a closed level crossing, a gate) sets `e.holdT = <seconds>` from `tick`
+  for every car queuing there; the stuck timer pauses while it is above zero (the engine counts it down). See
+  gingerbread, railway, toybox and watertable. `game.stuckResets` counts the resets in a race.
 - Lint before every release. It catches undefined names in code paths the frame-less tests never reach:
   `npm i -D eslint@9 globals@15`, then `npx eslint -c _dev/tools/eslint.config.mjs js/*.js js/worlds/*.js`.
 - `shot.py <url> <out.png> [wait] [w h]`: plain screenshot of any page (e.g. `?view=top`).

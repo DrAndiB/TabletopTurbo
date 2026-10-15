@@ -1375,6 +1375,10 @@ export default {
     if (A.cross && A.tsched) {
       const Pp = A.tsched.P, u = (((time - A.t0) % Pp) + Pp) % Pp, n = A.cross[0] ? A.cross[0].occ.length : 0;
       const occ = (c, a, b) => { for (let t = a; t <= b; t += A.occStep) { const k = Math.floor((((u + t) % Pp) + Pp) % Pp / A.occStep) % n; if (c.occ[k]) return true; } return false; };
+      // any car queuing at a closed crossing is waiting, not stuck: pause the engine's stuck timer
+      for (const e of cars) {
+        for (const cr of A.cross) if ((((cr.s - e.trackS) % Lr) + Lr) % Lr < 35 && occ(cr, 0, 2.5)) e.holdT = 0.25;
+      }
       for (const e of cars) {
         if (!e.ai || e.out) continue;
         const c = e.car; if (c.state !== 'drive' || c.airborne) continue;
@@ -1393,6 +1397,9 @@ export default {
       }
     }
     if (A.tailS != null) {
+      // waiting for the cat's tail to sweep clear isn't being stuck either
+      const tailDown = tailPose(time).a < 0.9 || tailPose(time + 1).a < 0.9;
+      if (tailDown) for (const e of cars) if ((((A.tailS - e.trackS) % Lr) + Lr) % Lr < 30) e.holdT = 0.25;
       for (const e of cars) {
         if (!e.ai || e.out) continue;
         const c = e.car; if (c.state !== 'drive' || c.airborne) continue;

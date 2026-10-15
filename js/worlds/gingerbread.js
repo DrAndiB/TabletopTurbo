@@ -1468,6 +1468,13 @@ export default {
       if (g > c.y + 0.85) c.y = g;
     }
     const Lr = game.track.length;
+    // any car queuing at a closed crossing is waiting, not stuck: pause the engine's stuck timer
+    for (const e of game.cars) {
+      for (const lc of A.lc) {
+        const d = ((((lc.roadS - e.trackS) % Lr) + Lr) % Lr), [tArr, tClr] = crossingTimes(lc, time);
+        if (d < 35 && tArr < 4 && tClr > -0.5) e.holdT = 0.25;
+      }
+    }
     for (const e of game.cars) {
       if (!e.ai || e.out) continue;
       const c = e.car;

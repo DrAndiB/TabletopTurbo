@@ -31,6 +31,7 @@ const defaults = {
   catchup: 'mild',
   quality: 'auto',
   fps: 60, // 60: at most ~60 fps, evenly paced on high-refresh screens; 'max': every refresh
+  minimap: 'auto', // auto: races, championships and time trials with one human driver
   slots: [{ type: 'keys' }, { type: 'cpu' }, { type: 'cpu' }, { type: 'cpu' }],
 };
 let settings = loadSettings();
@@ -43,6 +44,7 @@ function loadSettings() {
       if (!['off', 'mild', 'strong'].includes(out.catchup)) out.catchup = defaults.catchup;
       if (!CUP_IDS.includes(out.cup)) out.cup = defaults.cup;
       if (out.fps !== 60 && out.fps !== 'max') out.fps = defaults.fps;
+      if (!['auto', 'on', 'off'].includes(out.minimap)) out.minimap = defaults.minimap;
       return out;
     }
   } catch (e) { /* ignore */ }
@@ -129,7 +131,7 @@ function slotHint(i, s) {
   if (s.type === 'keys') return `${k(b.up)} gas ${k(b.down)} brake ${k(b.left)}${k(b.right)} steer`;
   if (s.type === 'simple') return `Auto gas · ${k(b.left)}${k(b.right)} steer · both = brake`;
   if (s.type === 'pad') return `Pad ${s.pad + 1}: stick steers, RT/A gas, LT/B brake`;
-  if (s.type === 'touch') return 'Hold left or right side of the screen to steer';
+  if (s.type === 'touch') return 'Auto gas · hold left or right side to steer · red BRAKE buttons brake and reverse';
   if (s.type === 'cpu') return 'Computer driver';
   return 'Empty seat';
 }
@@ -375,8 +377,18 @@ function buildDrivers() {
 
 async function afterStart() {
   hud.setup(game);
-  $('#touch').classList.toggle('show', game.cars.some((e) => e.driver.type === 'touch'));
+  const touch = game.cars.some((e) => e.driver.type === 'touch');
+  $('#touch').classList.toggle('show', touch);
+  document.body.classList.toggle('touch-ui', touch);
+  releaseTouch();
+  hud.minimap?.show(minimapWanted());
   await warmUp();
+}
+
+// Mini map: Auto shows it in races, championships and time trials with exactly one human driver
+function minimapWanted() {
+  if (settings.minimap === 'on' || settings.minimap === 'off') return settings.minimap === 'on';
+  return game.mode !== 'h2h' && game.humanCount() === 1;
 }
 
 // A fresh session from the lobby (or "Again"): championships start over at the first table.
@@ -428,7 +440,7 @@ function scoreChampRace(standings) {
     champ.totals[e.colorIndex] = (champ.totals[e.colorIndex] || 0) + pts;
     if (i === 0) champ.wins[e.colorIndex] = (champ.wins[e.colorIndex] || 0) + 1;
     champ.names[e.colorIndex] = { name: e.name, hex: e.color.hex };
-    return { color: e.colorIndex, place: i + 1, pts, time: e.finishTime };
+    return { color: e.colorIndex, place: i + 1, pts, time: e.finished ? e.finishTime : null, gap: e.finished ? null : e.gapLaps };
   });
 }
 
@@ -542,7 +554,7 @@ game.onMatchEnd = ({ winner, standings, mode }) => {
     standings.forEach((e, i) => {
       const li = document.createElement('li');
       li.style.setProperty('--pc', e.color.hex);
-      const detail = mode === 'h2h' ? `${e.points} point${e.points === 1 ? '' : 's'}` : (e.finishTime ? formatTime(e.finishTime) : 'did not finish');
+      const detail = mode === 'h2h' ? `${e.points} point${e.points === 1 ? '' : 's'}` : raceDetail(e);
       li.innerHTML = `<span class="pos">${ordinal(i + 1)}</span><span class="who">${e.name}</span><span class="det">${detail}</span>`;
       list.appendChild(li);
     });
@@ -552,6 +564,14 @@ game.onMatchEnd = ({ winner, standings, mode }) => {
     showScreen('results');
   }, 1200);
 };
+
+// a finish time, or for a car still out on the track the distance it had left: "+0.3 lap"
+function raceDetail(e) {
+  if (e.finished) return formatTime(e.finishTime);
+  if (e.gapLaps == null) return 'did not finish';
+  const g = Math.max(0.1, Math.round(e.gapLaps * 10) / 10);
+  return `+${g.toFixed(1)} lap${g > 1 ? 's' : ''}`;
+}
 
 function quitToMenu() {
   champ = null;
@@ -614,8 +634,10 @@ input.on((type, e) => {
   }
   if (e.code === 'KeyF' && (screen === 'none' || screen === 'pause')) toggleFullscreen();
   if (e.code === 'F3') { e.preventDefault?.(); perf.toggleOverlay(); }
+  if (e.code === 'KeyM' && screen === 'none' && !input.isGameKey('KeyM') && game.state !== 'attract') hud.minimap?.toggle();
   if (e.code === 'Enter') {
-    if (screen === 'title') $('#btn-play').click();
+    if (screen === 'none') { if (game.canSkipWait()) game.skipWait(); }
+    else if (screen === 'title') $('#btn-play').click();
     else if (screen === 'lobby') startRace();
     else if (screen === 'results') startRace();
     else if (screen === 'standings') nextChampRace();
@@ -632,6 +654,30 @@ for (const side of ['left', 'right']) {
   z.addEventListener('pointercancel', on(false));
   z.addEventListener('pointerleave', on(false));
 }
+// brake buttons, one above each steering button: their own pointers (never steering their half), so the other
+// thumb keeps steering; braking at a standstill reverses
+const brakesDown = new Set();
+for (const b of document.querySelectorAll('.touch-brake')) {
+  const on = (v) => (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (v) brakesDown.add(b); else brakesDown.delete(b);
+    input.touch.brake = brakesDown.size > 0;
+    b.classList.toggle('down', v);
+  };
+  b.addEventListener('pointerdown', on(true));
+  b.addEventListener('pointerup', on(false));
+  b.addEventListener('pointercancel', on(false));
+  b.addEventListener('pointerleave', on(false));
+}
+function releaseTouch() {
+  input.touch.left = input.touch.right = input.touch.brake = false;
+  brakesDown.clear();
+  for (const el of document.querySelectorAll('#touch .down')) el.classList.remove('down');
+}
+// a tap anywhere skips the wait for the other cars at the end of a race (not on the pause and sound buttons)
+window.addEventListener('pointerdown', (e) => {
+  if (screen === 'none' && game.canSkipWait() && !(e.target.closest && e.target.closest('#corner'))) game.skipWait();
+}, true);
 let firstVisit = false;
 try { firstVisit = !localStorage.getItem(SETTINGS_KEY); } catch (e) { /* ignore */ }
 if (matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches && firstVisit) {
@@ -654,6 +700,7 @@ function pollPads() {
       if (p.button === 1) { const i = settings.slots.findIndex((s) => s.type === 'pad' && s.pad === p.pad); if (i >= 0) { settings.slots[i] = { type: 'cpu' }; renderLobby(); } }
     }
     if ((screen === 'none' || screen === 'pause') && p.button === 9) togglePause();
+    if (screen === 'none' && p.button === 0 && game.canSkipWait()) game.skipWait();
     if (screen === 'results' && p.button === 0) startRace();
     if (screen === 'standings' && (p.button === 0 || p.button === 9)) nextChampRace();
     if (screen === 'podium' && p.button === 0) startRace();

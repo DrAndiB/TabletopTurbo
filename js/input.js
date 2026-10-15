@@ -22,7 +22,7 @@ export class Input {
     this.bindings = this.loadBindings();
     this.listeners = [];
     this.capture = null; // fn(code) when rebinding
-    this.touch = { left: false, right: false, active: false };
+    this.touch = { left: false, right: false, brake: false, active: false };
     this.padPrev = new Map();
     window.addEventListener('keydown', (e) => this.onKey(e, true), { passive: false });
     window.addEventListener('keyup', (e) => this.onKey(e, false), { passive: false });
@@ -103,8 +103,10 @@ export class Input {
   }
 
   // Read controls for one driver config: {type:'keys'|'simple'|'pad'|'touch', slot, pad}
+  // `launch` is the turbo-start press for auto-gas drivers (any touch, or either Easy-keys steering key);
+  // the game only looks at it during the countdown.
   read(cfg) {
-    const out = { throttle: 0, brake: 0, steer: 0 };
+    const out = { throttle: 0, brake: 0, steer: 0, launch: 0 };
     if (cfg.type === 'keys' || cfg.type === 'simple') {
       const b = this.bindings[cfg.slot];
       const L = this.down.has(b.left), R = this.down.has(b.right);
@@ -117,6 +119,7 @@ export class Input {
         if (L && R) { out.brake = 1; }
         else { out.throttle = 1; out.steer = (R ? 1 : 0) - (L ? 1 : 0); }
         if (D) { out.brake = 1; out.throttle = 0; }
+        out.launch = L || R ? 1 : 0;
       }
     } else if (cfg.type === 'pad') {
       const p = this.pad(cfg.pad);
@@ -135,7 +138,12 @@ export class Input {
     } else if (cfg.type === 'touch') {
       const t = this.touch;
       if (t.left && t.right) out.brake = 1;
-      else { out.throttle = 1; out.steer = (t.right ? 1 : 0) - (t.left ? 1 : 0); }
+      else {
+        // a brake button brakes (and reverses from a standstill) while the other thumb keeps steering
+        if (t.brake) out.brake = 1; else out.throttle = 1;
+        out.steer = (t.right ? 1 : 0) - (t.left ? 1 : 0);
+      }
+      out.launch = t.left || t.right || t.brake ? 1 : 0;
     }
     return out;
   }

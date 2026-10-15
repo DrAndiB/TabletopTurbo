@@ -1660,6 +1660,14 @@ export default {
   tick(dt, time, game) {
     if (!A || !A.FX) return;
     const D = DRAIN;
+    // a boat waiting in front of a lowered sluice leaf (its half of the channel) is waiting, not stuck
+    if (A.S) {
+      const Lr = game.track.length;
+      for (const e of game.cars) {
+        const side = e.lateral < 0 ? 0 : 1;
+        if ((((A.S.gate - e.trackS) % Lr) + Lr) % Lr < 30 && Math.min(gateLift(side, time), gateLift(side, time + 0.7)) < 0.55) e.holdT = 0.25;
+      }
+    }
     for (const e of game.cars) {
       const c = e.car;
       if (c.state !== 'drive' || c.airborne || e.out) continue;

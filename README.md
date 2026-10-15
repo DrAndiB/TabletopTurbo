@@ -28,8 +28,13 @@ up to four players on one keyboard, plus gamepads and computer drivers.
 
 Keys can be changed in the menu ("Keys…"). "Easy keys" gives a driver automatic gas, so they only steer
 with two keys, which helps when three or four people share one keyboard. Gamepads work without setup
-(press A in the lobby to take a seat). On a phone, one player can race with touch steering.
-Esc or P pauses, F toggles fullscreen, F3 shows a performance overlay.
+(press A in the lobby to take a seat). On a phone, one player can race with touch controls: automatic gas,
+hold the left or right half of the screen to steer, and press one of the red BRAKE buttons (above the
+steering buttons) to brake while the other thumb steers; held at a standstill it reverses.
+Touch and Easy-keys drivers get a turbo start by tapping (or pressing a steering key) right at GO.
+Esc or P pauses, F toggles fullscreen, M shows or hides the mini map, F3 shows a performance overlay.
+A car that makes no progress for 6 s is put back on the track; when you finish a race first, Enter, A or a
+tap skips the wait for the other cars.
 
 ## Run it locally
 

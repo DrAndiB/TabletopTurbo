@@ -171,14 +171,26 @@ body[data-screen="none"] #corner:hover { opacity: 1; }
 .tt-row.best b { background: var(--yellow); border-radius: 6px; padding: 0 5px; }
 .tt.fresh .tt-row.best b { animation: blink .3s 6 alternate; }
 
-/* touch controls */
+/* mini map (js/minimap.js sizes it): bottom-left, or bottom-centre between the touch buttons */
+#minimap { position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: 12px; display: block; }
+#minimap[hidden] { display: none; }
+body.touch-ui #minimap { left: 50%; transform: translateX(-50%); bottom: 14px; }
+/* smaller centre note ("Waiting for the others…") and flash lines that stay until cleared ("Stuck?…") */
+.msg.note { top: 30%; font-size: clamp(22px, 3.4vw, 38px); -webkit-text-stroke: 3px var(--ink); text-shadow: 0 4px 0 var(--ink); }
+.flash-item.stay { animation: none; }
+
+/* touch controls: steer with the screen halves, a brake button above each steering button */
 #touch { position: fixed; inset: 0; z-index: 6; display: none; }
 #touch.show { display: flex; }
 body:not([data-screen="none"]) #touch { display: none; }
-#touch > div { flex: 1; display: flex; align-items: flex-end; padding: 24px; touch-action: none; }
-#touch-right { justify-content: flex-end; }
+#touch > div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 14px; padding: 24px; touch-action: none; }
+#touch > #touch-right { align-items: flex-end; }
 #touch span { width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; color: #fff; background: rgba(31,26,23,.35); border: 3px solid rgba(255,255,255,.5); }
 #touch .down span { background: rgba(255,201,60,.6); }
+.touch-brake { width: 74px; height: 64px; border-radius: 18px; display: grid; place-items: center; align-content: center; gap: 2px; color: #fff; background: rgba(226,59,46,.5); border: 3px solid rgba(255,255,255,.6); touch-action: none; }
+.touch-brake b { font: 800 11px/1 var(--body); letter-spacing: .12em; }
+.touch-brake.down { background: rgba(226,59,46,.88); transform: scale(.95); }
+@media (orientation: landscape) and (max-height: 500px) { #touch > div { padding: 16px; gap: 10px; } }
 
 @media (max-width: 600px) {
   .chip { padding: 2px 8px 2px 3px; } .chip-name { font-size: 13px; padding: 0 7px; } .chip-info { font-size: 12px; }

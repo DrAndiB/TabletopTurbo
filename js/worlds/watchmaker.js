@@ -1049,6 +1049,19 @@ export default {
       AO(x, z, 7.5, 7.5, 0.55);
       warnRoad('loupe', x, z, 7);
     }
+    // steel bench block (a round staking anvil with a ring of graded holes) filling the inside of the north-east
+    // hairpin, so the hairpin can't be cut across the bench
+    {
+      const x = 110, z = -60, R = 10, h = 2.7;
+      K.mesh(K.lathe([[0.001, 0], [R, 0], [R, h - 0.5], [R - 0.5, h], [0.001, h]], 64), steel, x, 0, z);
+      const holes = [{ x, y: h + 0.01, z, s: 1.3 }];
+      for (let i = 0; i < 12; i++) { const a = i * TAU / 12, rr = 6.6; holes.push({ x: x + Math.cos(a) * rr, y: h + 0.01, z: z + Math.sin(a) * rr, s: 0.45 + i * 0.07 }); }
+      K.instances(new T.CircleGeometry(1, 20).rotateX(-PI / 2), K.std({ color: 0x0b0b0c, roughness: 0.9 }), holes, { cast: false });
+      K.mesh(new T.TorusGeometry(R - 0.25, 0.12, 6, 64), steelDark, x, h - 0.25, z, { rx: PI / 2, cast: false });
+      K.circle(x, z, R, h);
+      AO(x, z, R + 1.2, R + 1.2, 0.55);
+      warnRoad('bench block', x, z, R + 2);
+    }
     // parts tray with compartments and tiny screws (east bench, north of the case bend)
     {
       const x = 76, z = -24, w = 30, d = 17;

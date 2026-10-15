@@ -1,6 +1,7 @@
 // In-game overlay: player chips with points / laps, the time-trial clock, centre messages and short flashes.
 import { ordinal } from './game.js';
 import { formatTime } from './records.js';
+import { MiniMap } from './minimap.js';
 
 export class Hud {
   constructor(root) {
@@ -15,6 +16,9 @@ export class Hud {
     this.ttLap = root.querySelector('#tt-lap');
     this.lastKey = '';
     this.flashTimer = null;
+    this.stay = new Map(); // status lines that stay until cleared
+    const mm = root.querySelector('#minimap');
+    this.minimap = mm ? new MiniMap(mm) : null;
   }
 
   setup(game) {
@@ -29,6 +33,8 @@ export class Hud {
     });
     this.lastKey = '';
     this.flashEl.innerHTML = '';
+    this.stay.clear();
+    if (this.minimap) this.minimap.setTrack(game.track, game.startS);
     if (this.tt) {
       this.tt.hidden = game.mode !== 'tt';
       this.tt.style.setProperty('--pc', game.cars[0] ? game.cars[0].color.hex : '#fff');
@@ -46,6 +52,7 @@ export class Hud {
 
   update(game) {
     if (!this.chipEls || game.state === 'attract') return;
+    if (this.minimap && this.minimap.on) this.minimap.draw(game);
     const race = game.mode === 'race', tt = game.mode === 'tt';
     let order = [];
     if (race) order = [...game.cars].sort((a, b) => (b.finished - a.finished) || (a.finished && b.finished ? a.place - b.place : b.progress - a.progress));
@@ -94,5 +101,19 @@ export class Hud {
     el.textContent = text;
     this.flashEl.appendChild(el);
     setTimeout(() => el.remove(), 1900);
+  }
+
+  // A flash line that stays (and updates in place) until it is cleared with status(key, null).
+  status(key, text, color) {
+    let el = this.stay.get(key);
+    if (!text) { if (el) { el.remove(); this.stay.delete(key); } return; }
+    if (!el || !el.isConnected) {
+      el = document.createElement('div');
+      el.className = 'flash-item stay';
+      this.flashEl.appendChild(el);
+      this.stay.set(key, el);
+    }
+    el.style.setProperty('--fc', color || '#fff');
+    if (el.textContent !== text) el.textContent = text;
   }
 }

@@ -999,6 +999,8 @@ export default {
       edgeRail(-1, sNW0, sNW1, 2.6);                         // north-west corner
       // bay U-turn: rubber posts on the outside of its apex
       for (const a of [140, 165, 195, 220]) { const ang = a * PI / 180; post(BAY.x + Math.cos(ang) * 33, BAY.z + Math.sin(ang) * 33, 4.5); }
+      // east U-turn: a rubber post on the tip of the island, so the hairpin can't be cut across the tip
+      post(107.5, 36, 5.5);
     }
 
     // ================================================================================================
