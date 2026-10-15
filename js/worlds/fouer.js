@@ -1,9 +1,10 @@
 // World: Fouer Frenzy. The Schueberfouer, Luxembourg City's big late-summer funfair, as a model fair on a hobby
-// board at night. Fairground bumper cars race on asphalt lanes between gravel, past a lit Ferris wheel, the
-// carousel, a chair-o-plane and the octopus (whose arms swoop low over the inside of the south-east bend), along
-// a little steel roller-coaster with a dip and a jump, and straight through the bumper-car rink. Stalls in the
-// local spirit: Gromperekichelcher, Fouerfësch, candy floss, a shooting gallery and hook-a-duck (the ducks got
-// loose on the road). Spilled candy floss is sticky, a spilled glass of Riesling is slick.
+// board at night. Fairground bumper cars race on asphalt lanes between gravel, straight through the bumper-car
+// rink, round the octopus (whose arms swoop low over the inside of the south-east bend), up a steel coaster deck
+// with a dip and a jump right past the big lit Ferris wheel, along the north straight above the wild mouse and
+// down the midway past the carousel and the chair-o-plane. Stalls in the local spirit: Gromperekichelcher,
+// Fouerfësch, candy floss, a shooting gallery and hook-a-duck (the ducks got loose on the road). Spilled candy
+// floss is sticky, a spilled glass of Riesling is slick.
 
 // ---- track: straights and arcs (south straight east, rink, octopus bend, coaster north, Ferris wheel straight,
 // the midway south, the carousel pocket, the food court and back). Generated from straights + arcs.
@@ -23,7 +24,21 @@ const wrapA = (a) => { a = (a + PI) % TAU; if (a < 0) a += TAU; return a - PI; }
 
 // landmarks
 const RINK = { x: 32, z: 68, a: 32, b: 21, open: 9.6 }; // bumper-car rink: ellipse semi-axes a (x) and b (z)
-const WHEEL = { x: 56, z: -77, R: 19, hub: 25.5, P: 52, n: 16 }; // Ferris wheel: one turn per P seconds
+// Ferris wheel: one turn per P seconds. The camera looks north from not very high up, so a 45-tall wheel only
+// shows whole when it stands beside a north-south road: it is west of the coaster straight, and the cars jump
+// off the coaster right past its hub. It leans "up" the screen, away from the lane, so it never covers it.
+const WHEEL = { x: 108, z: -2, R: 19, hub: 25.5, P: 52, n: 16 };
+// a little wild-mouse coaster in the infield south of the long north straight (visual; animated cars): its hills
+// run along the straight, low enough to stay in view below the racers, and it passes through its station (st)
+const MOUSE = {
+  pts: [
+    [50, 1.2, -19.5], [62, 1.2, -19.5], [69.5, 1.6, -21], [75.5, 3.4, -25.5], [78.3, 6.8, -31.5], [76.8, 9.5, -37.3],
+    [71, 10, -40.2], [63, 9.6, -40.6], [56, 6.0, -39.8], [49.5, 3.0, -39.3], [43.5, 6.2, -38.2], [38.6, 4.0, -34],
+    [37.4, 2.2, -28], [40.2, 1.6, -22.3], [44.5, 1.3, -19.6],
+  ],
+  st: [56, -20.5],
+  n: 3,
+};
 const CARO = { x: -55, z: -9, R: 10.5, w: 0.5 }; // carousel
 const SWING = { x: -104, z: 29, w: 1.15, tilt: 0.6 }; // chair-o-plane
 // the octopus sits in the middle of the south-east bend; its arms swoop low over the inside of the bend
@@ -476,7 +491,7 @@ export default {
         g.fillStyle = 'rgba(20,20,22,0.8)'; for (let y = 0; y < 256; y += 64) g.fillRect(0, y, 256, 2);
         for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#1a1a1a' : '#e8b820'; g.beginPath(); g.moveTo(0, i * 32); g.lineTo(18, i * 32 + 18); g.lineTo(18, i * 32 + 50); g.lineTo(0, i * 32 + 32); g.fill(); g.beginPath(); g.moveTo(256, i * 32); g.lineTo(238, i * 32 + 18); g.lineTo(238, i * 32 + 50); g.lineTo(256, i * 32 + 32); g.fill(); }
       });
-      const deckMat = K.std({ map: tex(dc, [1, 1], true), metalness: 0.6, roughness: 0.45, color: 0xc8ccd4 });
+      const deckMat = K.std({ map: tex(dc, [1, 1], true), metalness: 0.3, roughness: 0.5, color: 0xdadee6 });
       const N = 66;
       const posA = [], uvA = [], idx = [];
       const cols = [[-DW / 2, 0], [DW / 2, 1]];
@@ -507,6 +522,7 @@ export default {
           const dd = Math.max(0, d), y = coastY(dd);
           const [x, z] = at(d, side * (DW / 2 + 0.25));
           const cur = [x, y + 1.15, z];
+          if (d >= 0) BULB('chase', x, y + 1.62, z, [0xffe04a, 0xff4a6a, 0x4ad8ff][Math.round(d / 1.5) % 3], d / 14 + (side > 0 ? 0.5 : 0), 0.85, 0.9);
           if (prev) {
             put(rod(prev, cur, 0.36, 8), RED, {}, M.paint);
             put(rod([prev[0], prev[1] - 0.55, prev[2]], [cur[0], cur[1] - 0.55, cur[2]], 0.18, 6), 0xe8e2d4, {}, M.metal);
@@ -544,9 +560,13 @@ export default {
         const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 2, uv.getY(i));
         const m = new T.Mesh(g, K.std({ map: tex(cc, [1, 1], true), roughness: 0.6, emissive: 0x3a3008 })); m.receiveShadow = true; K.group.add(m);
       }
-      // station building with sign, a parked coaster car and its little stub of track (inside the NE corner)
+    }
+
+    // ============================================================ the wild mouse (infield south of the north straight)
+    {
+      // station building with its sign; the loop below runs through it
       {
-        const f = frame(119, 0, -27, 0);
+        const f = frame(MOUSE.st[0], 0, MOUSE.st[1], 0);
         f(box(12, 0.8, 9), 0x6a5a48, { y: 0.4 }, M.matte);
         for (const [x, z] of [[-5.6, -4], [5.6, -4], [-5.6, 4], [5.6, 4]]) f(cyl(0.25, 0.25, 7, 6), 0xd8282a, { x, y: 4.2, z });
         for (let i = 0; i < 9; i++) f(box(1.5, 0.5, 10.5), i % 2 ? 0xf0ebe0 : 0xd8282a, { x: -6 + i * 1.5, y: 7.8 + (i % 2) * 0.05 }, M.matte);
@@ -554,14 +574,79 @@ export default {
         f(box(12.4, 2.4, 0.4), 0x111111, { y: 9.3, z: 3.5 });
         f(signGeo(12, 2.1, SIGN.maus), 0xffffff, { y: 9.3, z: 3.72 }, M.sign);
         f(box(10, 3, 0.2), [0.9, 0.75, 0.5], { y: 3.0, z: -4.3 }, M.glow);
-        // stub of track with a parked car (mouse-faced)
-        for (const lx of [-1.1, 1.1]) f(box(11, 0.25, 0.3), 0xd8282a, { x: 0, y: 1.0, z: 1 + lx * 0.9 });
-        const mc = (lx) => { f(rbox(3.4, 1.4, 2.2, 0.4), 0xffd43a, { x: lx, y: 1.9, z: 1 }); f(sph(0.6, 10, 8), 0x333333, { x: lx + 1.6, y: 2.4, z: 0.3 }); f(sph(0.6, 10, 8), 0x333333, { x: lx + 1.6, y: 2.4, z: 1.7 }); f(sph(0.25, 8, 6), 0xff3b30, { x: lx + 1.85, y: 2.0, z: 1 }); };
-        mc(-2.2); mc(1.6);
+        // the operator's booth at the back of the platform
+        f(box(2.6, 2.6, 2.2), 0xf0ebe0, { x: -3.6, y: 2.1, z: -2.9 }); f(box(2.0, 0.9, 0.08), [1.1, 0.9, 0.55], { x: -3.6, y: 2.5, z: -1.78 }, M.glow);
         f.box(0, 0, 6.3, 4.8, 8);
         AO(f.cx, f.cz, 8, 6, 0.4);
         POOL(f.cx, f.cz + 2, 8, 6, 0xffc070, 0.3);
         for (let i = 0; i <= 12; i++) BULB('chase', f.cx - 6 + i, 8.2, f.cz + 5.4, i % 2 ? 0xffd43a : 0xff3b30, i / 6, 0.9);
+      }
+      // the wild mouse itself: a loop of red rails on white posts beside the straight, through the station; three
+      // mouse-faced cars crawl up the chain lift and rattle down the drops (visual only; the posts fence it off)
+      {
+        const curve = new T.CatmullRomCurve3(MOUSE.pts.map(([x, y, z]) => new T.Vector3(x, y, z)), true, 'centripetal');
+        const N = 360, P = curve.getSpacedPoints(N), ML = curve.getLength(), ds = ML / N;
+        const tan = [], side = [];
+        for (let i = 0; i <= N; i++) {
+          const a = P[(i + N - 1) % N], b = P[(i + 1) % N];
+          const t = new T.Vector3().subVectors(b, a).normalize();
+          tan.push(t); side.push(new T.Vector3(-t.z, 0, t.x).normalize());
+        }
+        const lift = new T.Vector3(0, 0.12, 0), down = new T.Vector3(0, -0.3, 0);
+        for (const k of [-0.55, 0.55]) {
+          const rp = []; for (let i = 0; i < N; i++) rp.push(P[i].clone().addScaledVector(side[i], k).add(lift));
+          put(new T.TubeGeometry(new T.CatmullRomCurve3(rp, true), N, 0.13, 5, true), 0xd8282a, {}, M.paint);
+        }
+        put(new T.TubeGeometry(new T.CatmullRomCurve3(P.slice(0, N).map((p) => p.clone().add(down)), true), N, 0.24, 6, true), 0xe8e4dc, {}, M.metal);
+        for (let i = 0; i < N; i += 2) put(box(0.3, 0.12, 1.45), 0x2a2a2e, { x: P[i].x, y: P[i].y - 0.04, z: P[i].z, ry: -Math.atan2(tan[i].z, tan[i].x) }, M.matte);
+        // posts every ~2 units (close enough that no car squeezes between them), braces on the tall ones
+        const inStation = (x, z) => Math.abs(x - MOUSE.st[0]) < 6.6 && Math.abs(z - MOUSE.st[1]) < 5.1;
+        let lastS = -9, kb = 0;
+        for (let i = 0; i < N; i++) {
+          const p = P[i];
+          if (inStation(p.x, p.z) || i * ds - lastS < 2.05) continue;
+          lastS = i * ds;
+          const hp = p.y - 0.5, ang = -Math.atan2(tan[i].z, tan[i].x);
+          put(cyl(0.18, 0.24, hp, 6), 0xeceae4, { x: p.x, y: hp / 2, z: p.z }, M.metal);
+          put(box(0.22, 0.22, 1.5), 0xeceae4, { x: p.x, y: hp, z: p.z, ry: ang }, M.metal);
+          if (hp > 3.5 && kb++ % 2) put(rod([p.x + side[i].x * 1.1, 0.15, p.z + side[i].z * 1.1], [p.x, hp - 0.3, p.z], 0.09, 4), 0xeceae4, {}, M.metal);
+          put(cyl(0.42, 0.48, 0.3, 8), 0x3a3d42, { x: p.x, y: 0.15, z: p.z }, M.metal);
+          K.circle(p.x, p.z, 0.42, Math.min(hp, 6));
+          AO(p.x, p.z, 0.8, 0.8, 0.35);
+        }
+        // a chasing string of bulbs along the outside rail
+        for (let i = 0, k = 0; i < N; i += 5, k++) {
+          const q = P[i].clone().addScaledVector(side[i], 0.8);
+          BULB('chase', q.x, q.y + 0.3, q.z, [0xffe04a, 0xff4a6a, 0x4ad8ff][k % 3], k / 16, 0.8, 0.85);
+        }
+        POOL(58, -30, 24, 13, 0xffc070, 0.26);
+        // timing: slow through the station, chain lift up the west side, gravity after the top, brakes at the end
+        let iTop = 0, iSt = 0;
+        for (let i = 0; i < N; i++) { if (P[i].y > P[iTop].y) iTop = i; if (inStation(P[i].x, P[i].z) && i < N / 2) iSt = i; }
+        const yTop = P[iTop].y, tc = new Float32Array(N + 1);
+        for (let i = 0; i < N; i++) {
+          let v;
+          if (i <= iSt) v = 2.4;
+          else if (i <= iTop) v = 3.4;
+          else v = Math.min(Math.sqrt(3.4 * 3.4 + 2 * 13 * Math.max(0, yTop - P[i].y)), 2.4 + (N - i) * ds * 2.2);
+          tc[i + 1] = tc[i] + ds / v;
+        }
+        // cars: a yellow tub with a mouse face and two riders; local +x forward
+        const bodyG = BU.mergeGeometries([prep(rbox(2.4, 0.85, 1.5, 0.3), 0xffffff, mtx({ y: 0.75 })), prep(sph(0.62, 12, 8), 0xffffff, mtx({ x: 1.15, y: 1.05, sx: 0.9, sy: 0.8 }))], false);
+        const detG = BU.mergeGeometries([
+          ...[-0.5, 0.5].map((z) => prep(cyl(0.42, 0.42, 0.1, 10), 0x5a5a60, mtx({ x: 1.05, y: 1.75, z, rz: PI / 2 }))),
+          ...[-0.5, 0.5].map((z) => prep(cyl(0.28, 0.28, 0.12, 10), 0xff9ab8, mtx({ x: 1.08, y: 1.75, z, rz: PI / 2 }))),
+          prep(sph(0.17, 8, 6), 0x111111, mtx({ x: 1.78, y: 1.0 })),
+          ...[-0.25, 0.25].map((z) => prep(sph(0.11, 6, 4), 0x111111, mtx({ x: 1.6, y: 1.32, z }))),
+          ...[-0.15, -0.95].map((x) => prep(sph(0.33, 10, 8), 0xf0c8a0, mtx({ x, y: 1.55 }))),
+          ...[-0.15, -0.95].map((x) => prep(cyl(0.34, 0.4, 0.5, 8), 0x2f4a7a, mtx({ x, y: 1.1 }))),
+          ...[-0.8, 0.8].flatMap((x) => [-0.62, 0.62].map((z) => prep(cyl(0.2, 0.2, 0.18, 8), 0x1a1a1a, mtx({ x, y: 0.28, z, rx: PI / 2 })))),
+        ], false);
+        const bodies = new T.InstancedMesh(bodyG, K.phys({ vertexColors: true, roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.2 }), MOUSE.n);
+        const dets = new T.InstancedMesh(detG, M.paint, MOUSE.n);
+        [0xffd43a, 0xf4f0e6, 0xff7a1a].forEach((c, i) => bodies.setColorAt(i, new T.Color(c)));
+        for (const m of [bodies, dets]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; K.group.add(m); }
+        A.mouse = { P, tc, T: tc[N], N, bodies, dets, f: new T.Vector3(), u: new T.Vector3(), s: new T.Vector3(), p: new T.Vector3(), Y: new T.Vector3(0, 1, 0) };
       }
     }
 
@@ -599,9 +684,10 @@ export default {
       for (const sx of [-1, 1]) put(cyl(0.15, 0.15, 3.4, 6), 0x888888, { x: wx - 15 + sx * 7, y: 1.7, z: wz + 8.4 }, M.metal);
       // ticket booth
       { const f = frame(wx + 15, 1.6, wz + 4.5, 0); f(box(4, 4, 3.4), 0x2f6fd2, { y: 2 }); f(cone(3.2, 1.8, 4), 0xf0ebe0, { y: 4.9, ry: PI / 4 }); f(box(2.6, 1.4, 0.1), [1.1, 0.9, 0.55], { y: 2.6, z: 1.72 }, M.glow); }
-      // warm pool under the wheel and on the road in front
+      // warm pool under the wheel and a pink glow on the north straight behind it
       POOL(wx, wz + 6, 24, 11, 0xff9a6a, 0.28);
-      POOL(wx, -56, 30, 9, 0xff8ab0, 0.2);
+      POOL(wx, wz - 14, 22, 8, 0xff8ab0, 0.2);
+      POOL(137, wz - 16, 11, 15, 0xff8ab0, 0.26);
       // rotating part
       const rot = new T.Group(); rot.position.set(wx, HY, wz); K.group.add(rot);
       const sp = asm();
@@ -649,8 +735,8 @@ export default {
       cabs.frustumCulled = false; wins.frustumCulled = false;
       K.group.add(cabs); K.group.add(wins);
       A.cabs = { cabs, wins, n, R };
-      // real light: warm pink glow on the north straight
-      const pl = new T.PointLight(0xff9ab8, 460, 95, 1.7); pl.position.set(wx, 14, wz + 22); K.group.add(pl); A.wheelLight = pl;
+      // real light: warm pink glow between the wheel and the north straight
+      const pl = new T.PointLight(0xff9ab8, 460, 95, 1.7); pl.position.set(wx + 21, 15, wz - 6); K.group.add(pl); A.wheelLight = pl;
     }
 
     // ============================================================ the carousel (in the pocket west of the midway)
@@ -865,8 +951,17 @@ export default {
       for (let i = 0; i < na; i++) f(box(w / na + 0.01, 0.1, alen), i % 2 ? s1 : s2, { x: -w / 2 + (i + 0.5) * (w / na), y: h - drop / 2 - 0.05, z: d / 2 + aw / 2, rx: aang });
       for (let i = 0; i < na; i++) f(new T.CircleGeometry(w / na / 2, 8, PI, PI), i % 2 ? s1 : s2, { x: -w / 2 + (i + 0.5) * (w / na), y: h - drop - 0.05, z: d / 2 + aw + 0.02 });
       // sign board above the front edge of the roof, leaning back so it reads from above
+      // stalls facing east or west (along the midway) also get a name board on the south end of the roof, facing
+      // the camera: their front sign reads sideways from above
+      if (o.gable && o.sign != null) {
+        const gz = cz + w / 2 - 0.3, gw = Math.min(d + 2.4, 9.4), gh = 1.3, gy = h + 2.75, lean = 0.32;
+        put(box(gw + 0.45, gh + 0.45, 0.22), 0x15100c, { x: cx, y: gy, z: gz - 0.2, rx: -lean });
+        put(signGeo(gw, gh, o.sign), 0xffffff, { x: cx, y: gy, z: gz, rx: -lean }, M.sign);
+        for (const sx of [-1, 1]) put(box(0.18, 1.9, 0.18), 0x222222, { x: cx + sx * (gw / 2 - 0.7), y: h + 1.45, z: gz - 0.45 });
+        for (let i = 0; i <= 8; i++) BULB('chase', cx - gw / 2 - 0.1 + (i * (gw + 0.2)) / 8, gy + gh / 2 + 0.4, gz - 0.35, i % 2 ? 0xfff0c0 : (o.bulb ?? 0xff6a4a), i / 5, 0.75, 0.8);
+      }
       if (o.sign != null) {
-        const sw = o.signW ?? w - 1.2, lean = o.lean ?? 0.2, sy = h + 2.0, sz = d / 2 + 0.15;
+        const sw = o.signW ?? (o.gable ? w - 4.2 : w - 1.2), lean = o.lean ?? 0.2, sy = h + 2.0, sz = d / 2 + 0.15;
         f(box(sw + 0.5, 2.3, 0.3), 0x15100c, { y: sy, z: sz, rx: -lean });
         f(signGeo(sw, 1.95, o.sign), 0xffffff, { y: sy + Math.sin(lean) * 0.17, z: sz + Math.cos(lean) * 0.17, rx: -lean }, M.sign);
         for (const sx of [-1, 1]) f(box(0.2, 1.6, 0.2), 0x222222, { x: sx * (sw / 2 - 0.5), y: h + 0.6, z: sz - 0.3 });
@@ -885,7 +980,7 @@ export default {
     // --- Gromperekichelcher (midway, east side, facing west)
     const goldMat = 0xd8a040;
     stall(-12, -14, ry4dir.w, {
-      w: 13, lean: 0.6, sign: SIGN.gromp, col: 0x7a2a1a, stripes: [0xffc12a, 0x7a2a1a], bulb: 0xffc12a,
+      w: 13, lean: 0.6, gable: true, sign: SIGN.gromp, col: 0x7a2a1a, stripes: [0xffc12a, 0x7a2a1a], bulb: 0xffc12a,
       goods: (f, w, d) => {
         f(box(4, 1.6, 2), 0xb8bcc4, { x: -2.5, y: 3.4, z: -0.6 }, M.metal);
         f(box(3.6, 0.1, 1.6), [1.0, 0.55, 0.15], { x: -2.5, y: 4.22, z: -0.6 }, M.glow);
@@ -896,7 +991,7 @@ export default {
     });
     // --- Zockerwatt (candy floss: midway, west side, facing east)
     stall(-36, -18, ry4dir.e, {
-      w: 12, lean: 0.6, sign: SIGN.zocker, col: 0xf4d8e8, stripes: [0xff7ac0, 0xffffff], bulb: 0xff7ac0,
+      w: 12, lean: 0.6, gable: true, sign: SIGN.zocker, col: 0xf4d8e8, stripes: [0xff7ac0, 0xffffff], bulb: 0xff7ac0,
       goods: (f, w, d) => {
         f(cyl(1.3, 0.9, 1.0, 16), 0xd8dade, { x: -2.2, y: 3.2, z: -0.4 }, M.metal);
         f(sph(1.1, 14, 10), 0xffb0e0, { x: -2.2, y: 3.9, z: -0.4, sy: 0.6 }, M.matte);
@@ -906,7 +1001,7 @@ export default {
     });
     // --- Tombola (midway west, facing east)
     stall(-36, 6, ry4dir.e, {
-      w: 11, lean: 0.6, sign: SIGN.tombola, col: 0x1a5a3a, stripes: [0x2fa04a, 0xfff17a], bulb: 0xfff17a,
+      w: 11, lean: 0.6, gable: true, sign: SIGN.tombola, col: 0x1a5a3a, stripes: [0x2fa04a, 0xfff17a], bulb: 0xfff17a,
       goods: (f, w, d) => {
         f(cyl(1.9, 1.9, 0.3, 24), 0xffd43a, { y: 4.2, z: -d / 2 + 0.7, rx: PI / 2 });
         for (let i = 0; i < 12; i++) { const g = new T.CircleGeometry(1.75, 2, (i / 12) * TAU, TAU / 12); f(g, [0xff3b30, 0x2f6fd2, 0xffffff][i % 3], { y: 4.2, z: -d / 2 + 0.87 }); }
@@ -915,7 +1010,7 @@ export default {
     });
     // --- Mandelen (east side of the midway, facing west)
     stall(-12, 7, ry4dir.w, {
-      w: 10, lean: 0.6, sign: SIGN.mandel, col: 0x5a3a1a, stripes: [0xff9c3a, 0xf4ecdc], bulb: 0xff9c3a,
+      w: 10, lean: 0.6, gable: true, sign: SIGN.mandel, col: 0x5a3a1a, stripes: [0xff9c3a, 0xf4ecdc], bulb: 0xff9c3a,
       goods: (f, w, d) => {
         f(K.lathe([[0, 0], [1.4, 0.1], [1.7, 0.9], [1.6, 1.3], [0, 1.2]], 18), 0xc87a3a, { x: -1.5, y: 2.7, z: -0.2 }, M.metal);
         for (let i = 0; i < 12; i++) f(box(0.5, 0.7, 0.3), 0xe8d8b0, { x: 0.8 + (i % 6) * 0.6, y: 3.05, z: d / 2 - 0.6 - Math.floor(i / 6) * 0.4 }, M.matte);
@@ -967,13 +1062,20 @@ export default {
         }
       },
     });
-    stall(-93, 51, ry4dir.s, {
-      w: 10, sign: SIGN.mandel, col: 0x3b220f, stripes: [0xff9c3a, 0x3b220f], bulb: 0xff9c3a,
-      goods: (f) => { f(K.lathe([[0, 0], [1.3, 0.1], [1.6, 0.9], [0, 1.0]], 16), 0xc87a3a, { x: 2, y: 2.7, z: -0.3 }, M.metal); },
+    // a second fritter stand by the gate (there is never just one at the Fouer), facing the start straight
+    stall(-94, 51, ry4dir.s, {
+      w: 13, sign: SIGN.gromp, col: 0x5a1a10, stripes: [0xffc12a, 0x5a1a10], bulb: 0xffc12a,
+      goods: (f, w, d) => {
+        f(box(4.4, 1.6, 2), 0xb8bcc4, { x: 3, y: 3.4, z: -0.6 }, M.metal);
+        f(box(4.0, 0.1, 1.6), [1.0, 0.55, 0.15], { x: 3, y: 4.22, z: -0.6 }, M.glow);
+        for (let i = 0; i < 20; i++) f(cyl(0.5, 0.5, 0.18, 8), goldMat, { x: -4.6 + (i % 5) * 0.9 + r.range(-0.1, 0.1), y: 2.85 + Math.floor(i / 10) * 0.18, z: d / 2 - 0.8 + Math.floor((i % 10) / 5) * 0.5 - 0.2, rx: r.range(-0.3, 0.3) });
+        for (let i = 0; i < 4; i++) f(cone(0.45, 1.2, 8), 0xf4ecdc, { x: 0.2 + i * 0.75, y: 3.3, z: d / 2 - 0.5, rx: PI });
+        f(cyl(0.6, 0.6, 1.1, 12), 0xd8dade, { x: -1.0, y: 3.2, z: -1.6 }, M.metal);
+      },
     });
     // --- Fouerfësch (west infield, facing west towards the far west lane), tables and the wine bar
     stall(-104, -6, ry4dir.w, {
-      w: 15, d: 7, lean: 0.6, sign: SIGN.fesch, col: 0x123a6a, stripes: [0x2f6fd2, 0xffffff], bulb: 0x7fd8ff,
+      w: 15, d: 7, lean: 0.6, gable: true, sign: SIGN.fesch, col: 0x123a6a, stripes: [0x2f6fd2, 0xffffff], bulb: 0x7fd8ff,
       goods: (f, w, d, h) => {
         // big fish on the roof
         const fs = new T.Shape(); fs.moveTo(-3, 0); fs.bezierCurveTo(-1.5, 1.6, 1.5, 1.6, 3, 0); fs.lineTo(4.2, 1.1); fs.lineTo(4.2, -1.1); fs.lineTo(3, 0); fs.bezierCurveTo(1.5, -1.6, -1.5, -1.6, -3, 0);
@@ -1125,11 +1227,9 @@ export default {
     const bends = curvRuns(19, 1);
     for (const [s0, s1, sg] of bends) {
       if (inRink(s0) || inCoast(s0)) continue;
-      // outside of the bend
+      // outside of the bend only: the insides stay open gravel (slow, so cutting them gains nothing), which leaves
+      // no pocket behind a fence for a car to get trapped in
       barrierRun(s0, s1, sg > 0 ? -1 : 1, 1.3);
-      // inside: keep the apex honest (except at the octopus bend, where the arms do that job)
-      const pm = track.at((s0 + s1) / 2);
-      if (Math.hypot(pm.x - OCTO.x, pm.z - OCTO.z) > 35) barrierRun(s0 + 4, s1 - 4, sg > 0 ? 1 : -1, 1.0);
     }
     {
       const bp = [];
@@ -1185,10 +1285,10 @@ export default {
       K.group.add(new T.LineSegments(cg, new T.LineBasicMaterial({ color: 0x0c0c0c })));
     }
 
-    // ============================================================ the beer tent (east infield), trees, a Hämmelsmarsch flock
+    // ============================================================ the beer tent (north edge), trees, a Hämmelsmarsch flock
     {
       // big white tent with a striped roof and open, glowing sides
-      const f = frame(62, 0, -14, 0);
+      const f = frame(56, 0, -80, 0);
       const TW = 34, TD = 20, TH = 7;
       for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-0.5, -1], [0.5, -1], [-0.5, 1], [0.5, 1]]) f(cyl(0.25, 0.25, TH, 6), 0xe8e4dc, { x: x * TW / 2, y: TH / 2, z: z * TD / 2 }, M.metal);
       const nt = 12;
@@ -1211,7 +1311,7 @@ export default {
     {
       // model trees (chestnuts) where they hide no lanes
       const trees = [];
-      for (const [x, z, s] of [[18, -14, 1.1], [100, -14, 1.0], [30, 18, 0.95], [92, 10, 1.05], [-150, -88, 1.1], [-110, -90, 1.0], [-80, -92, 0.9], [-2, -92, 1.0], [118, -90, 1.05], [146, -92, 0.95], [-150, 88, 0.9], [150, 88, 1.0], [8, 24, 0.9], [-58, -78, 0.9]]) {
+      for (const [x, z, s] of [[18, -14, 1.1], [30, 18, 0.95], [86, 22, 1.05], [92, -32, 0.95], [-150, -88, 1.1], [-110, -90, 1.0], [-80, -92, 0.9], [-2, -92, 1.0], [118, -90, 1.05], [146, -92, 0.95], [-150, 88, 0.9], [150, 88, 1.0], [8, 24, 0.9], [-58, -78, 0.9]]) {
         if (dRoad(x, z) < 6 * s + 2 || colliderHit(x, z, 4)) continue;
         trees.push([x, z, s]);
         put(cyl(0.7 * s, 1.0 * s, 7 * s, 8), 0x4a3424, { x, y: 3.5 * s, z }, M.matte);
@@ -1283,7 +1383,7 @@ export default {
       const ppl = [];
       const spots = [
         [-12, -24, 4], [-12, 0, 3], [-38, -28, 3], [-44, 2, 3], [-58, 44, 4], [-34, 44, 3], [-82, 44, 3], [8, -63, 4], [104, -63, 4],
-        [60, -70, 5], [-104, -16, 3], [-114, 9, 4], [-112, -27, 3], [-62, 10, 4], [-46, -22, 3], [-55, 4, 3], [26, 44, 4], [8, 44, 3], [48, 92, 3],
+        [56, -66, 4], [56, -12, 4], [86, -22, 3], [30, -30, 3], [94, 12, 4], [124, 9, 3], [-104, -16, 3], [-114, 9, 4], [-98, -45, 3], [-62, 10, 4], [-46, -22, 3], [-55, 4, 3], [26, 44, 4], [8, 44, 3], [48, 92, 3],
         [-10, 82, 4], [-60, 82, 3], [-110, 82, 3], [116, -20, 3], [128, 2, 2], [70, 46, 3], [-90, 22, 3], [-120, 22, 3],
       ];
       const skin = [0xf0c8a0, 0xd8a078, 0x9a6a48, 0x6a4a32, 0xf4d8b8];
@@ -1305,6 +1405,7 @@ export default {
     // ============================================================ fine scatter: confetti, cups, paper cones, popcorn, tickets
     {
       const conf = [], cups = [], cones = [], corn = [];
+      const inRinkXZ = (x, z) => ((x - RINK.x) / (RINK.a + 1.5)) ** 2 + ((z - RINK.z) / (RINK.b + 1.5)) ** 2 < 1; // keep the arena floor clear
       const CC = [0xff3b6a, 0xffd43a, 0x2fd0ff, 0x5ae05a, 0xffffff, 0xff8a2a, 0xc48aff];
       let tries = 0;
       while (conf.length < (lowQ ? 420 : 800) && tries++ < 8000) {
@@ -1316,7 +1417,7 @@ export default {
       while (cups.length < 70 && tries++ < 4000) {
         const x = r.range(-150, 150), z = r.range(-95, 95);
         const dd = dRoad(x, z);
-        if (dd < 1.5 || dd > 14 || colliderHit(x, z, 0.8)) continue;
+        if (dd < 1.5 || dd > 14 || inRinkXZ(x, z) || colliderHit(x, z, 0.8)) continue;
         if (r() < 0.5) cups.push({ x, y: 0.55, z, rz: PI / 2, ry: r() * TAU, color: r.pick([0xf4ecdc, 0xd8282a, 0x2f6fd2]) });
         else cones.push({ x, y: 0.35, z, rz: PI / 2, ry: r() * TAU, color: r.pick([0xf4ecdc, 0xe8d8b0]) });
       }
@@ -1461,6 +1562,24 @@ export default {
       O.shadows.instanceMatrix.needsUpdate = true; O.strip2.instanceMatrix.needsUpdate = true;
       if (O.ring.instanceColor) O.ring.instanceColor.needsUpdate = true;
       O.arms.instanceMatrix.needsUpdate = true; O.tubs.instanceMatrix.needsUpdate = true; O.ring.instanceMatrix.needsUpdate = true;
+    }
+    // wild mouse: three cars, evenly spaced in time along the precomputed timing table
+    if (A.mouse) {
+      const Mo = A.mouse, m4 = A.m4, n = MOUSE.n;
+      for (let k = 0; k < n; k++) {
+        const tt = (((time + (k * Mo.T) / n) % Mo.T) + Mo.T) % Mo.T;
+        let lo = 0, hi = Mo.N;
+        while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (Mo.tc[mid] <= tt) lo = mid; else hi = mid; }
+        const fr = clamp((tt - Mo.tc[lo]) / (Mo.tc[lo + 1] - Mo.tc[lo] || 1), 0, 1);
+        const a = Mo.P[lo], b = Mo.P[lo + 1];
+        Mo.p.lerpVectors(a, b, fr);
+        Mo.f.subVectors(b, a).normalize();
+        Mo.s.crossVectors(Mo.f, Mo.Y).normalize();
+        Mo.u.crossVectors(Mo.s, Mo.f);
+        m4.makeBasis(Mo.f, Mo.u, Mo.s); m4.setPosition(Mo.p);
+        Mo.bodies.setMatrixAt(k, m4); Mo.dets.setMatrixAt(k, m4);
+      }
+      Mo.bodies.instanceMatrix.needsUpdate = true; Mo.dets.instanceMatrix.needsUpdate = true;
     }
     // chair-o-plane: chairs swing out as it turns
     if (A.swing) {

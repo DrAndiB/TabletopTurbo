@@ -2,7 +2,9 @@
 // table late on a sunny afternoon. Toy 4x4 trucks follow a printed vineyard path along "the Moselle" (a blue satin
 // runner with a little excursion boat cruising up and down under a stone bridge), through a white wine village with
 // slate roofs and a church, up two stacked serving boards dressed as vineyard terraces (small jump off the top),
-// past crémant flutes, an ice bucket, a cheese board with a dripping honey pot and a knocked-over glass of red.
+// past crémant flutes, an ice bucket, a decanter and an aroma wheel, a Riesling pie, a cheese board with a dripping
+// honey pot and a knocked-over glass of red. The infields of the two tight turns are blocked (a seagrass mat that
+// drags in the loop, a fenced vine plot in the hairpin), so no corner is worth cutting.
 
 import * as THREE from '../../vendor/three.bundle.js';
 
@@ -20,6 +22,7 @@ const riverDZ = (x) => (2.4 / 26) * Math.cos(x / 26 + 0.8) + (1.6 / 53) * Math.c
 const BOAT = { x0: -134, x1: 134, v: 5.5, turn: 8, lane: -0.8, off: 9 };
 const BRIDGE_X = 42;
 const TERR = { x: 88, z: -61 }; // foot of the terrace climb (heading west)
+const LOOP_MAT = { x: -70, z: -19, r: 16.5, t: 0.22 }; // round seagrass mat filling the loop (slow: no cutting across)
 
 let A = null; // runtime state for animate
 
@@ -377,9 +380,12 @@ export default {
       const sHP0 = sx(-106, -61), sHP1 = sx(-150, -48);
       for (const off of [11, 14.6]) vineRow(offsetRow(sHP0 - 6, sHP1 + 4, off), { collide: off < 12 });
       vineRow(offsetRow(sx(-152, -30), sx(-148, 12), 11), { collide: true });
-      // a little vineyard inside the hairpin
-      vineRow(offsetRow(sHP0 + 2, sHP1 - 4, -11.5), { collide: true, red: true });
-      vineRow(offsetRow(sHP0 + 10, sHP1 - 12, -15.2));
+      // a little vineyard inside the hairpin, down both legs to the bread board: its first row is a fence, so the
+      // hairpin can't be cut across
+      const sE0 = sx(-97, -8), sW1 = sx(-151, -8);
+      vineRow(offsetRow(sE0, sW1, -11.5), { collide: true, red: true });
+      vineRow(offsetRow(sx(-98, -26), sHP0 - 6, -15.2)); vineRow(offsetRow(sHP0 + 10, sHP1 - 12, -15.2)); vineRow(offsetRow(sHP1 + 4, sx(-152, -27), -15.2));
+      vineRow(offsetRow(sx(-98, -28), sx(-99, -50), -18.9), { red: true }); vineRow(offsetRow(sx(-151, -50), sx(-152, -29), -18.9));
       // the far bank of the river ("the other side")
       for (const [x0, x1] of [[-150, 18], [64, 152]]) { const pts = []; for (let x = x0; x <= x1; x += 4) pts.push([x, Math.max(riverZ(x) + RW / 2 + 2.6, 88) + 1.2]); vineRow(pts, { red: x0 > 0, wires: false, step: 1.5 }); }
     }
@@ -730,6 +736,17 @@ export default {
       K.box(bx, (zN + nEnd) / 2, 3.6, (nEnd - zN) / 2, 0, 3.5);
       K.box(bx, (arches[2][1] + zS) / 2, 3.6, (zS - arches[2][1]) / 2, 0, 3.5);
       for (const z of [lane - 6.65, lane + 6.65]) K.box(bx, z, 3.6, 0.65, 0, 7);
+      // pointed cutwaters on the river piers, up- and downstream
+      {
+        const cs = new T.Shape(); cs.moveTo(0, -1.0); cs.lineTo(2.2, 0); cs.lineTo(0, 1.0); cs.closePath();
+        const cg = new T.ExtrudeGeometry(cs, { depth: 4.4, bevelEnabled: false }); scaleUV(cg, 1 / 5); cg.rotateX(-PI / 2);
+        const capS = new T.Shape(); capS.moveTo(0, -1.15); capS.lineTo(2.5, 0); capS.lineTo(0, 1.15); capS.closePath();
+        const capG = new T.ExtrudeGeometry(capS, { depth: 0.35, bevelEnabled: false }); scaleUV(capG, 1 / 5); capG.rotateX(-PI / 2); capG.translate(0, 4.4, 0);
+        for (const z of [lane - 6.65, lane + 6.65]) for (const sd of [-1, 1]) {
+          K.mesh(cg, bridgeMat, bx + sd * 3.45, 0, z, { ry: sd > 0 ? 0 : PI });
+          K.mesh(capG, K.std({ color: 0xcfc3a6, roughness: 0.8 }), bx + sd * 3.45, 0, z, { ry: sd > 0 ? 0 : PI });
+        }
+      }
       for (const z of [lane - 13.4, lane + 13.4]) K.box(bx, z, 3.6, 0.6, 0, 6);
       AO(bx, (zN + zS) / 2, 4.8, (zS - zN) / 2 + 1, 0.4, 0, 0.12);
       warnRoad('bridge', bx, zN + 1, 0.3);
@@ -1044,16 +1061,55 @@ export default {
         K.capsule(cx - 5, cz + 2.7, cx + 5, cz - 2.7, 0.9, 1.6);
         AO(cx, cz, 7, 2.6, 0.3, -0.5);
       }
+      // a round seagrass mat in the loop, under the coaster and the knocked-over glass. It drags like the runner,
+      // so cutting across the loop never pays.
+      {
+        const { x: mx, z: mz, r: MR, t: MT } = LOOP_MAT;
+        const matC = canvas(512, 512, (g, w, h) => {
+          const rr = K.rng(77), cx = w / 2, cy = h / 2;
+          g.fillStyle = '#8a6e3e'; g.fillRect(0, 0, w, h);
+          // a coil of twisted grass: rings of slanted twists, light and dark strands
+          for (let rad = 7, ring = 0; rad < w / 2 - 2; rad += 9.4, ring++) {
+            const k = 0.9 + rr() * 0.18, n = Math.max(6, Math.floor((rad * TAU) / 5.2));
+            g.lineWidth = 8.6; g.strokeStyle = `rgb(${(176 * k) | 0},${(146 * k) | 0},${(92 * k) | 0})`;
+            g.beginPath(); g.arc(cx, cy, rad, 0, TAU); g.stroke();
+            for (let i = 0; i < n; i++) {
+              const a = (i / n) * TAU + ring * 0.37, ca = Math.cos(a), sa = Math.sin(a);
+              const lit = 0.75 + rr() * 0.45;
+              g.strokeStyle = `rgba(${(214 * lit) | 0},${(184 * lit) | 0},${(124 * lit) | 0},0.85)`; g.lineWidth = 2.2;
+              g.beginPath(); g.moveTo(cx + ca * (rad - 3.6) - sa * 1.6, cy + sa * (rad - 3.6) + ca * 1.6); g.lineTo(cx + ca * (rad + 3.6) + sa * 1.6, cy + sa * (rad + 3.6) - ca * 1.6); g.stroke();
+              g.strokeStyle = 'rgba(70,50,22,0.45)'; g.lineWidth = 1;
+              g.beginPath(); g.moveTo(cx + ca * (rad - 3.6) - sa * 3.2, cy + sa * (rad - 3.6) + ca * 3.2); g.lineTo(cx + ca * (rad + 3.6) - sa * 0.2, cy + sa * (rad + 3.6) + ca * 0.2); g.stroke();
+            }
+          }
+          // a darker binding stitch every few rings, a dyed blue band near the rim
+          g.strokeStyle = 'rgba(42,82,160,0.55)'; g.lineWidth = 7; g.beginPath(); g.arc(cx, cy, w / 2 - 30, 0, TAU); g.stroke();
+          for (let s = 0; s < 24; s++) {
+            const a = (s / 24) * TAU; g.strokeStyle = 'rgba(80,55,25,0.5)'; g.lineWidth = 1.6;
+            g.beginPath(); g.moveTo(cx + Math.cos(a) * 12, cy + Math.sin(a) * 12); g.lineTo(cx + Math.cos(a) * (w / 2 - 4), cy + Math.sin(a) * (w / 2 - 4)); g.stroke();
+          }
+        });
+        const matN = TX.toTexture(TX.normalFromHeight(TX.heightFromCanvasLuma(matC), 512, 512, 2.2), { srgb: false });
+        const matTop = K.std({ map: tex(matC), normalMap: matN, normalScale: V2(0.9), roughness: 0.92 });
+        const matSide = K.std({ color: 0xa88654, roughness: 0.95 });
+        const mm = K.mesh(new T.CylinderGeometry(MR, MR, MT, 72), [matSide, matTop, matSide], mx, MT / 2, mz, { ry: PI / 2 + 0.3, cast: false });
+        mm.receiveShadow = true;
+        AO(mx, mz, MR + 1.4, MR + 1.4, 0.3, 0, 0);
+        K.surface('slow', { x: mx, z: mz, r: MR - 0.4 });
+        warnRoad('loop mat', mx, mz, MR + 2.5);
+      }
       // knocked-over glass, its wine running across the path (slick!)
       {
         const fx = -69, fz = -26, len = 19;
         const grp = new T.Group();
         const gl = part(grp, K.lathe(redGlassProf, 40), glassMat); gl.renderOrder = 3; gl.castShadow = false;
         const lq = part(grp, K.lathe([[0.01, 13], [4.0, 13], [4.1, 15.5], [0.01, 15.5]], 24), redWine, 0, 0, 0); lq.scale.set(0.45, 1, 1); lq.position.x = -2.0; lq.renderOrder = 2;
-        grp.position.set(fx, 3.45, fz); grp.rotation.order = 'YZX'; grp.rotation.z = PI / 2 - 0.07; grp.rotation.y = 0.05;
+        grp.position.set(fx, 3.45 + LOOP_MAT.t, fz); grp.rotation.order = 'YZX'; grp.rotation.z = PI / 2 - 0.07; grp.rotation.y = 0.05;
         K.add(grp);
         K.capsule(fx - 1, fz, fx - len + 2, fz, 4.1, 8.5);
-        AO(fx - 9, fz, 11, 4.6, 0.32);
+        AO(fx - 9, fz, 11, 4.6, 0.32, 0, LOOP_MAT.t);
+        // the wine that stayed in the glass has soaked a dark stain into the mat
+        K.spill(fx - 11, fz + 0.6, 3.2, K.std({ color: 0x4a1418, roughness: 0.9, transparent: true, opacity: 0.55, depthWrite: false }), { y: LOOP_MAT.t + 0.03, thick: 0.02, stretch: 1.6, n: 24 });
         const sp = track.place(sAt(-98, -27), 6.5);
         const spill = K.spill(sp.x, sp.z, 6.5, wineMat, { lump: 0.38, stretch: 1.25, angle: 0.1, y: 0.1, thick: 0.22 });
         K.surface('slick', { poly: spill.poly });
@@ -1126,8 +1182,8 @@ export default {
       K.circle(px, pz, 5.0, 10);
       // runs down the pot, over the board edge and onto the path
       K.spill(px + 4.8, pz - 0.5, 1.4, honeyMat, { y: Y + 0.08, thick: 0.15, n: 18, stretch: 1.6, angle: 0.1 });
-      const hs = sAt(139, -16), q = track.place(hs, -4.5);
-      const hon = K.spill(q.x, q.z, 5.6, honeyMat, { lump: 0.4, stretch: 1.7, angle: q.angle, y: 0.1, thick: 0.24 });
+      const hs = sAt(139, -16), q = track.place(hs, -6.3);
+      const hon = K.spill(q.x, q.z, 4.1, honeyMat, { lump: 0.3, stretch: 1.9, angle: q.angle, y: 0.1, thick: 0.24 });
       K.surface('sticky', { poly: hon.poly });
       for (let k = 1; k < 5; k++) { const f = k / 5; K.spill(px + 5.5 + (q.x - px - 5.5) * f + r.range(-0.6, 0.6), pz + (q.z - pz) * f + r.range(-0.6, 0.6), r.range(0.6, 1.1), honeyMat, { y: 0.08, thick: 0.15, n: 16 }); }
       // cheese knife
@@ -1272,10 +1328,32 @@ export default {
         g.restore();
       });
       const leafMats = [['#6f9a36', '#a8c66a'], ['#c9a63a', '#e8d080'], ['#b0502a', '#e09060']].map(([b, v]) => K.std({ map: tex(leafC(b, v)), alphaTest: 0.5, side: T.DoubleSide, roughness: 0.6 }));
-      for (const [x, z, s, m, ry] of [[85, 4, 15, 0, 0.6], [100, 14, 12, 2, 2.1], [-58, -80, 14, 1, -0.4], [-133, -28, 12, 0, 1.2], [24, -30, 12, 2, 2.6], [-44, -70, 11, 0, 0.3]]) {
+      for (const [x, z, s, m, ry] of [[85, 4, 15, 0, 0.6], [100, 14, 12, 2, 2.1], [-58, -80, 14, 1, -0.4], [-125, -38, 12, 0, 1.2], [24, -30, 12, 2, 2.6], [-44, -70, 11, 0, 0.3]]) {
         const lf = K.mesh(new T.PlaneGeometry(s, s), leafMats[m], x, 0.08 + r() * 0.04, z, { rx: -PI / 2, cast: false });
         lf.rotation.z = ry;
         warnRoad('leaf', x, z, s / 2);
+      }
+      // a bunch of black grapes resting on a leaf, a few berries rolled away
+      {
+        const gx = -25, gz = -10, ga = 0.12, ca = Math.cos(ga), sa = Math.sin(ga), rr = K.rng(88);
+        const lf = K.mesh(new T.PlaneGeometry(18, 18), leafMats[0], gx + 4, 0.09, gz + 0.5, { rx: -PI / 2, cast: false });
+        lf.rotation.z = 1.9;
+        const berries = [];
+        for (let u = 0.6; u < 13; u += 1.5) {
+          const R = 3.8 * Math.pow(1 - u / 13, 0.7) + 0.7, n = Math.max(1, Math.round((PI * R) / 1.7));
+          for (let k = 0; k <= n; k++) {
+            const a = (k / n) * PI + (rr() - 0.5) * 0.3, lx = u + (rr() - 0.5) * 0.5, lw = R * Math.cos(a);
+            berries.push({ x: gx + ca * lx - sa * lw, y: 1.05 + R * Math.sin(a) * 0.8, z: gz + sa * lx + ca * lw, s: 0.9 + rr() * 0.2, ry: rr() * 6 });
+          }
+        }
+        for (const [ox, oz] of [[15.5, 4.5], [17.2, -2.5], [9.5, 5.8]]) berries.push({ x: gx + ox, y: 1.0, z: gz + oz, s: 0.98 });
+        K.instances(new T.SphereGeometry(1, 14, 10), K.phys({ color: 0x3a1a3e, roughness: 0.42, sheen: 0.8, sheenColor: new T.Color(0x9a8ab8), clearcoat: 0.35 }), berries);
+        // the woody stalk, sticking up out of the wide end
+        const stalk = new T.CatmullRomCurve3([new T.Vector3(gx + 1.5, 3.4, gz), new T.Vector3(gx - 0.6, 4.6, gz + 0.3), new T.Vector3(gx - 2.4, 5.0, gz + 1.0), new T.Vector3(gx - 3.6, 4.4, gz + 1.8)]);
+        K.mesh(new T.TubeGeometry(stalk, 12, 0.28, 6), K.std({ color: 0x6a5232, roughness: 0.8 }), 0, 0, 0);
+        K.circle(gx + ca * 5, gz + sa * 5, 5.2, 5);
+        AO(gx + ca * 5.5, gz + sa * 5.5, 8, 5.2, 0.4, ga);
+        warnRoad('grape bunch', gx + ca * 5, gz + sa * 5, 7);
       }
     }
 
@@ -1294,13 +1372,142 @@ export default {
       K.circle(gx, gz, 4.4, 19.5);
       K.contact(gx + 4.2, gz + 3.4, 5, 3.4, 0.12, 0.6).material.color.set(0xffc040);
       warnRoad('riesling glass', gx, gz, 5);
-      coaster(-71, -6);
+      // on the seagrass mat in the loop
+      const cy0 = LOOP_MAT.t;
+      K.mesh(new T.CylinderGeometry(5, 5, 0.5, 40), [corkMat, coasterMat, corkMat], -72, cy0 + 0.25, -9);
+      AO(-72, -9, 5.6, 5.6, 0.3, 0, cy0);
       const mush = K.lathe([[0.01, 0], [1.0, 0], [1.05, 0.3], [0.95, 2.3], [1.45, 2.4], [1.55, 3.0], [1.35, 3.6], [0.8, 3.85], [0.01, 3.9]], 24);
-      K.mesh(mush, corkMat, -71, 0.5, -6);
-      K.mesh(new T.CylinderGeometry(0.95, 0.95, 0.12, 20), gold, -71, 4.42, -6);
-      K.mesh(new T.TorusGeometry(1.25, 0.08, 6, 20), steel, -66.5, 0.1, -9, { rx: PI / 2 });
-      K.circle(-71, -6, 5, 1.2);
-      warnRoad('coaster', -71, -6, 5.5);
+      K.mesh(mush, corkMat, -72, cy0 + 0.5, -9);
+      K.mesh(new T.CylinderGeometry(0.95, 0.95, 0.12, 20), gold, -72, cy0 + 4.42, -9);
+      K.mesh(new T.TorusGeometry(1.25, 0.08, 6, 20), steel, -66.5, cy0 + 0.1, -13, { rx: PI / 2 });
+      K.circle(-72, -9, 5, 1.2);
+      warnRoad('coaster', -72, -9, 5.5);
+    }
+
+    // ---------- the S-bend infield: a decanter of red with its stopper, a printed aroma wheel
+    {
+      const dx = -12, dz = -25;
+      const prof = [[0.01, 0], [8.0, 0], [8.6, 0.35], [8.75, 1.5], [8.4, 3.6], [7.1, 5.6], [4.8, 8.0], [2.8, 11], [1.8, 15], [1.6, 21], [1.7, 23.2], [2.25, 24.7], [2.3, 25.1], [2.1, 25.1], [1.55, 23.3], [1.45, 21], [1.65, 15], [2.62, 11], [4.6, 8.0], [6.9, 5.5], [8.15, 3.5], [8.5, 1.5], [8.4, 0.7], [0.01, 0.6]];
+      const decGlass = K.glass(0xeef4f0, 0.12, { side: T.FrontSide, envMapIntensity: 0.7, clearcoat: 0.8 });
+      const dg = K.mesh(K.lathe(prof, 56), decGlass, dx, 0, dz, { cast: false }); dg.renderOrder = 3;
+      K.mesh(K.lathe([[0.01, 0.62], [8.38, 0.62], [8.45, 1.5], [8.1, 3.5], [6.85, 5.5], [4.55, 8.0], [4.0, 8.6], [0.01, 8.6]], 48), K.phys({ color: 0x3c0410, roughness: 0.12, clearcoat: 0.7, clearcoatRoughness: 0.08 }), dx, 0, dz, { cast: false });
+      K.circle(dx, dz, 8.75, 25);
+      AO(dx, dz, 10.2, 10.2, 0.45);
+      K.contact(dx + 7.5, dz + 5.5, 9.5, 6, 0.16, 0.6).material.color.set(0x9a0a20);
+      warnRoad('decanter', dx, dz, 10);
+      // the glass stopper, lying on its side
+      const st = new T.Group();
+      part(st, new T.SphereGeometry(1.9, 20, 14), glassMat).renderOrder = 3;
+      part(st, new T.CylinderGeometry(0.9, 1.15, 3.2, 16), glassMat, 0, -2.6, 0).renderOrder = 3;
+      st.position.set(dx + 11, 1.9, dz + 3); st.rotation.set(0, 0.7, PI / 2 + 0.1); K.add(st, { cast: false });
+      AO(dx + 11.8, dz + 2.5, 3.4, 2.2, 0.3, -0.7);
+      K.circle(dx + 11, dz + 3, 2, 3.8);
+      // a few drops of red beside it
+      for (const [ox, oz, rad] of [[-9.8, 4, 0.7], [-11.4, 6.3, 0.4], [-7, 8.9, 0.5]]) K.spill(dx + ox, dz + oz, rad, wineMat, { y: 0.06, thick: 0.08, n: 14 });
+
+      // a paper aroma wheel ("roue des arômes"), printed in families of colour
+      const mix = (hex, t) => { const c = new T.Color(hex).lerp(new T.Color(0xffffff), t); return `rgb(${(c.r * 255) | 0},${(c.g * 255) | 0},${(c.b * 255) | 0})`; };
+      const awC = canvas(1024, 1024, (g, w, h) => {
+        const cx = w / 2, cy = h / 2;
+        g.fillStyle = '#f7f2e6'; g.fillRect(0, 0, w, h);
+        const fam = [['FRUITÉ', 0xb8203a, ['Pomme', 'Poire', 'Pêche', 'Coing']], ['AGRUMES', 0xd9a414, ['Citron', 'Pamplemousse', 'Orange']], ['FLORAL', 0xc8508e, ['Acacia', 'Tilleul', 'Rose']], ['VÉGÉTAL', 0x4e8c34, ['Herbe', 'Foin', 'Menthe']], ['ÉPICÉ', 0xc85e1e, ['Poivre', 'Cannelle', 'Vanille']], ['GRILLÉ', 0x744424, ['Brioche', 'Noisette', 'Toast']], ['MINÉRAL', 0x4f6f8c, ['Silex', 'Ardoise', 'Craie']]];
+        const R0 = 96, R1 = 250, R2 = 400, R3 = 498, n = fam.length;
+        const ring = (r0, r1, a0, a1, fill) => { g.fillStyle = fill; g.beginPath(); g.arc(cx, cy, r1, a0, a1); g.arc(cx, cy, r0, a1, a0, true); g.closePath(); g.fill(); g.strokeStyle = '#f7f2e6'; g.lineWidth = 3; g.stroke(); };
+        const label = (txt, r, a, size, col, bold = false) => {
+          g.save(); g.translate(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+          const flip = Math.cos(a) < -0.01; g.rotate(flip ? a + PI : a);
+          g.fillStyle = col; g.font = `${bold ? '700 ' : ''}${size}px Rubik, Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.fillText(txt, 0, 0); g.restore();
+        };
+        fam.forEach(([name, col, subs], i) => {
+          const a0 = (i / n) * TAU - PI / 2, a1 = ((i + 1) / n) * TAU - PI / 2;
+          ring(R0, R1, a0, a1, mix(col, 0));
+          subs.forEach((s, j) => {
+            const b0 = a0 + ((a1 - a0) * j) / subs.length, b1 = a0 + ((a1 - a0) * (j + 1)) / subs.length;
+            ring(R1, R2, b0, b1, mix(col, 0.3 + 0.12 * j));
+            for (let q = 0; q < 2; q++) ring(R2, R3, b0 + ((b1 - b0) * q) / 2, b0 + ((b1 - b0) * (q + 1)) / 2, mix(col, 0.55 + 0.15 * q));
+            label(s, (R1 + R2) / 2, (b0 + b1) / 2, s.length > 9 ? 22 : 28, '#2a2018');
+          });
+          label(name, (R0 + R1) / 2, (a0 + a1) / 2, 34, '#ffffff', true);
+        });
+        g.fillStyle = '#2a2a2a'; g.beginPath(); g.arc(cx, cy, R0 - 4, 0, TAU); g.fill();
+        g.fillStyle = '#e2c27a'; g.font = '700 30px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('ARÔMES', cx, cy - 12);
+        g.font = 'italic 20px Georgia, serif'; g.fillText('de la Moselle', cx, cy + 20);
+      });
+      const awTop = K.std({ map: tex(awC), roughness: 0.82 });
+      const awx = 9, awz = -34;
+      K.mesh(new T.CylinderGeometry(10.5, 10.5, 0.14, 72), [K.std({ color: 0xece4d2, roughness: 0.85 }), awTop, awTop], awx, 0.07, awz, { ry: PI / 2 - 0.22, cast: false });
+      AO(awx, awz, 11.2, 11.2, 0.16);
+      warnRoad('aroma wheel', awx, awz, 11);
+    }
+
+    // ---------- east infield: a Riesling pie (pastry with a golden jelly) on a plate, one slice served
+    {
+      const prof = [[0.01, 0], [7.2, 0], [7.6, 0.4], [7.8, 2.4], [7.4, 3.6], [6.5, 4.1], [4.6, 4.45], [3, 4.6], [1.6, 4.65], [1.3, 4.4], [0.01, 4.3]];
+      const pastryC = canvas(512, 256, (g, w, h) => {
+        const rr = K.rng(101), vy = (v) => (1 - v) * h;
+        const gr = g.createLinearGradient(0, h, 0, 0);
+        gr.addColorStop(0, '#e2b56c'); gr.addColorStop(0.28, '#d9a456'); gr.addColorStop(0.36, '#b4682c'); gr.addColorStop(0.5, '#c17a34'); gr.addColorStop(0.8, '#cc8a3e'); gr.addColorStop(0.84, '#4a2a14'); gr.addColorStop(1, '#5a3418');
+        g.fillStyle = gr; g.fillRect(0, 0, w, h);
+        // crimped rim
+        for (let i = 0; i < 64; i++) { const x = (i / 64) * w; g.fillStyle = 'rgba(90,45,15,0.35)'; g.fillRect(x, vy(0.5), 2.5, vy(0.3) - vy(0.5)); g.fillStyle = 'rgba(255,225,160,0.25)'; g.fillRect(x + 3, vy(0.48), 2, vy(0.32) - vy(0.48)); }
+        // scored rays and a leaf pattern on the lid
+        for (let i = 0; i < 16; i++) { const x = (i / 16) * w + 8; g.strokeStyle = 'rgba(110,55,20,0.45)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, vy(0.52)); g.lineTo(x + 6, vy(0.79)); g.stroke(); }
+        for (let i = 0; i < 8; i++) { const x = (i / 8) * w + 20; g.fillStyle = 'rgba(232,180,100,0.7)'; g.beginPath(); g.ellipse(x, vy(0.66), 14, 7, 0.3, 0, TAU); g.fill(); g.strokeStyle = 'rgba(120,60,20,0.5)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x - 12, vy(0.66) + 3); g.lineTo(x + 12, vy(0.66) - 3); g.stroke(); }
+        speckle(g, w, h, rr, 900, 0.04, 0.08, 3);
+      });
+      const pastry = K.phys({ map: tex(pastryC), roughness: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.45 });
+      const P8 = (r0, h0) => [(r0 / 8) * 256, (1 - h0 / 5) * 160];
+      const cutC = canvas(256, 160, (g) => {
+        const rr = K.rng(102);
+        g.fillStyle = '#d9a456'; g.beginPath(); prof.forEach(([r0, h0], i) => { const [x, y] = P8(r0, h0); if (i) g.lineTo(x, y); else g.moveTo(x, y); }); g.lineTo(...P8(0, 0)); g.fill();
+        const fill = [[0, 0.5], [7.05, 0.5], [7.2, 2.3], [6.85, 3.15], [6.1, 3.55], [4.4, 3.85], [1.6, 3.95], [0, 3.8]];
+        g.fillStyle = '#b97a5c'; g.beginPath(); fill.forEach(([r0, h0], i) => { const [x, y] = P8(r0, h0); if (i) g.lineTo(x, y); else g.moveTo(x, y); }); g.fill();
+        for (let i = 0; i < 160; i++) { const r0 = rr() * 6.8, h0 = 0.7 + rr() * 2.4; const [x, y] = P8(r0, h0); g.fillStyle = rr() < 0.5 ? 'rgba(240,210,190,0.6)' : 'rgba(130,70,45,0.5)'; g.beginPath(); g.ellipse(x, y, 1 + rr() * 3, 1 + rr() * 2, rr() * 3, 0, TAU); g.fill(); }
+        // golden Riesling jelly under the lid
+        g.strokeStyle = 'rgba(236,196,92,0.95)'; g.lineWidth = 9; g.beginPath();
+        [[0, 3.55], [1.6, 3.7], [4.4, 3.6], [6.0, 3.3], [6.8, 2.95]].forEach(([r0, h0], i) => { const [x, y] = P8(r0, h0); if (i) g.lineTo(x, y); else g.moveTo(x, y); }); g.stroke();
+      });
+      const cutMat = K.std({ map: tex(cutC), roughness: 0.6, side: T.DoubleSide });
+      const cutFace = () => {
+        const s = new T.Shape(); prof.forEach(([r0, h0], i) => (i ? s.lineTo(r0, h0) : s.moveTo(r0, h0)));
+        const g = new T.ShapeGeometry(s), uv = g.attributes.uv, p = g.attributes.position;
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, p.getX(i) / 8, p.getY(i) / 5);
+        return g;
+      };
+      const pieOf = (phi0, phiL) => {
+        const grp = new T.Group();
+        part(grp, new T.LatheGeometry(prof.map(([r0, h0]) => V2(r0, h0)), 48, phi0, phiL), pastry);
+        for (const ph of [phi0, phi0 + phiL]) part(grp, cutFace(), cutMat, 0, 0, 0, 0, ph - PI / 2, 0);
+        return grp;
+      };
+      const plateProf = [[0.01, 0], [6.5, 0], [6.8, 0.3], [7.4, 0.42], [10.2, 1.25], [10.45, 1.5], [10.15, 1.55], [7.2, 0.95], [0.01, 0.9]];
+      const px = 79, pz = -19;
+      K.mesh(K.lathe(plateProf, 56), ivory, px, 0, pz);
+      const pie = pieOf(0.42, TAU - 0.84); pie.position.set(px, 0.9, pz); pie.rotation.y = 0.35; K.add(pie);
+      K.circle(px, pz, 10.45, 6);
+      AO(px, pz, 11.6, 11.6, 0.42);
+      warnRoad('pie', px, pz, 11.5);
+      // the served slice on a small plate with a pastry fork
+      const sx = 62, sz = -29;
+      K.mesh(K.lathe(plateProf.map(([r0, h0]) => [r0 * 0.62, h0 * 0.8]), 48), ivory, sx, 0, sz);
+      const sl = pieOf(-0.4, 0.8), sa = PI / 2 + 0.25; sl.position.set(sx - Math.sin(sa) * 4.4, 0.75, sz - Math.cos(sa) * 4.4); sl.rotation.y = sa; K.add(sl);
+      const fork = new T.Group();
+      part(fork, new T.BoxGeometry(5.2, 0.16, 0.55), steel, -2.4, 0, 0);
+      part(fork, new T.BoxGeometry(1.4, 0.16, 1.1), steel, 0.6, 0, 0);
+      for (const o of [-0.4, 0, 0.4]) part(fork, new T.BoxGeometry(1.8, 0.14, 0.18), steel, 2.2, 0, o);
+      fork.position.set(sx + 0.5, 0.98, sz + 4.6); fork.rotation.set(0, -0.08, 0.03); K.add(fork);
+      K.circle(sx, sz, 6.5, 4.5);
+      AO(sx, sz, 7.4, 7.4, 0.4);
+      warnRoad('slice plate', sx, sz, 7);
+      // pastry flakes around the plates
+      const flakes = [];
+      for (let k = 0; k < 40; k++) {
+        const near = k < 26, a = r() * TAU, d = near ? r.range(10.8, 15) : r.range(6.7, 10);
+        const x = (near ? px : sx) + Math.cos(a) * d, z = (near ? pz : sz) + Math.sin(a) * d * 0.8;
+        flakes.push({ x, y: 0.12, z, s: r.range(0.14, 0.38), rx: r() * 6, ry: r() * 6, color: r.pick([0xe2b56c, 0xc17a34, 0xd9a456, 0xf0d29a]) });
+      }
+      K.instances(new T.DodecahedronGeometry(1, 0), K.std({ color: 0xffffff, roughness: 0.85 }), flakes, { colors: true, cast: false });
     }
 
     // ---------- pushable corks and grapes

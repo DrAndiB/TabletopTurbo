@@ -138,15 +138,16 @@ export default {
     const RD = new Float32Array(GW * GH).fill(60), RS = new Float32Array(GW * GH), RLAT = new Float32Array(GW * GH);
     const RV = new Float32Array(GW * GH).fill(60), RVA = new Float32Array(GW * GH);
     for (let i = 0; i < track.N; i += 2) {
-      const x = track.x[i], z = track.z[i], hw = track.w[i] / 2, R = hw + 30;
+      const x = track.x[i], z = track.z[i], hw = track.w[i] / 2, R = hw + 22, R2 = R * R; // nothing reads further out
       const nx = -track.tz[i], nz = track.tx[i];
       const gx0 = Math.max(0, Math.floor(x - R - G0X)), gx1 = Math.min(GW - 1, Math.ceil(x + R - G0X));
       const gz0 = Math.max(0, Math.floor(z - R - G0Z)), gz1 = Math.min(GH - 1, Math.ceil(z + R - G0Z));
       for (let gz = gz0; gz <= gz1; gz++) {
-        const dz = gz + G0Z - z;
+        const dz = gz + G0Z - z, dz2 = dz * dz;
         for (let gx = gx0; gx <= gx1; gx++) {
-          const dx = gx + G0X - x, d = Math.sqrt(dx * dx + dz * dz) - hw, k = gz * GW + gx;
-          if (d < RD[k]) { RD[k] = d; RS[k] = i * track.ds; RLAT[k] = dx * nx + dz * nz; }
+          const dx = gx + G0X - x, d2 = dx * dx + dz2, k = gz * GW + gx, cur = RD[k] + hw;
+          if (d2 > R2 || d2 >= cur * cur) continue; // squared tests first: most cells are already nearer another sample
+          RD[k] = Math.sqrt(d2) - hw; RS[k] = i * track.ds; RLAT[k] = dx * nx + dz * nz;
         }
       }
     }
@@ -167,9 +168,13 @@ export default {
       const [x, z] = rivP[i], R = 30;
       const gx0 = Math.max(0, Math.floor(x - R - G0X)), gx1 = Math.min(GW - 1, Math.ceil(x + R - G0X));
       const gz0 = Math.max(0, Math.floor(z - R - G0Z)), gz1 = Math.min(GH - 1, Math.ceil(z + R - G0Z));
-      for (let gz = gz0; gz <= gz1; gz++) for (let gx = gx0; gx <= gx1; gx++) {
-        const d = Math.hypot(gx + G0X - x, gz + G0Z - z), k = gz * GW + gx;
-        if (d < RV[k]) { RV[k] = d; RVA[k] = i * rStep; }
+      for (let gz = gz0; gz <= gz1; gz++) {
+        const dz = gz + G0Z - z, dz2 = dz * dz;
+        for (let gx = gx0; gx <= gx1; gx++) {
+          const dx = gx + G0X - x, d2 = dx * dx + dz2, k = gz * GW + gx;
+          if (d2 >= RV[k] * RV[k]) continue;
+          RV[k] = Math.sqrt(d2); RVA[k] = i * rStep;
+        }
       }
     }
     const gridBil = (F, x, z, def) => {
@@ -195,7 +200,10 @@ export default {
       const a = lerp(-81, -72, ss(-50, -42, x));
       return lerp(a, -89.5, ss(13, 22, x)) + (n1(x, 0, 0.07, 3) - 0.5) * 2.2;
     };
-    const knollH = (x, z) => 19.5 * ss(22, 31, z + (n1(x, z, 0.08, 9) - 0.5) * 3) * ss(97, 108, x) + (n2(x, z, 0.1, 5) - 0.5) * 2.4 * ss(26, 34, z) * ss(104, 112, x);
+    const knollH = (x, z) => {
+      const xw = x + Math.min(1, (n1(x, z, 0.05, 13) - 0.6) * 14); // a ragged west face (never closer to the descent)
+      return 19.5 * ss(22, 31, z + (n1(x, z, 0.08, 9) - 0.5) * 3) * ss(97, 109, xw) + (n2(x, z, 0.1, 5) - 0.5) * 2.4 * ss(26, 34, z) * ss(104, 112, x);
+    };
     const H = (x, z) => {
       let h = 0;
       // northern cliffs and the upper town on top; the Bock rock juts forward between x -42 and 14
@@ -242,48 +250,92 @@ export default {
     };
 
     // ---------------------------------------------------------------- textures
-    const grassTex = (() => {
-      const Sz = 512;
+    const grassTex = (() => { // static-grass flock: dots rasterised in JS (no slow canvas read-back for the normal map)
+      const Sz = 512, N = Sz * Sz;
       const nA = TX.noiseField(256, { seed: 3, period: 6, oct: 4 });
-      const c = TX.paint(Sz, Sz, (x, y, u, v, o) => {
-        const t = TX.sampleField(nA, 256, u * 256, v * 256);
-        o[0] = 66 + t * 34; o[1] = 100 + t * 42; o[2] = 38 + t * 16;
-      });
-      const g = c.getContext('2d');
-      const cols = ['#5d8f34', '#79a843', '#4a7a2a', '#97b85a', '#3d6622', '#a9b866', '#6e9a3a', '#86a04a'];
+      const R = new Float32Array(N), G = new Float32Array(N), B = new Float32Array(N), Hh = new Float32Array(N);
+      for (let y = 0; y < Sz; y++) for (let x = 0; x < Sz; x++) {
+        const t = TX.sampleField(nA, 256, x / 2, y / 2), k = y * Sz + x;
+        R[k] = 66 + t * 34; G[k] = 100 + t * 42; B[k] = 38 + t * 16;
+      }
+      const cols = [0x5d8f34, 0x79a843, 0x4a7a2a, 0x97b85a, 0x3d6622, 0xa9b866, 0x6e9a3a, 0x86a04a].map((c) => [(c >> 16) & 255, (c >> 8) & 255, c & 255]);
       const rr = K.rng(5);
       for (let i = 0; i < 9000; i++) {
-        const x = rr() * Sz, y = rr() * Sz, rad = 0.6 + rr() * 1.3;
-        g.fillStyle = cols[(rr() * cols.length) | 0]; g.globalAlpha = 0.45 + rr() * 0.5;
-        for (const [ox, oy] of [[0, 0], [Sz, 0], [-Sz, 0], [0, Sz], [0, -Sz]]) { g.beginPath(); g.arc(x + ox, y + oy, rad, 0, TAU); g.fill(); }
+        const cx = rr() * Sz, cy = rr() * Sz, rad = 0.6 + rr() * 1.3, col = cols[(rr() * cols.length) | 0], al = 0.45 + rr() * 0.5;
+        const lum = (col[0] * 0.3 + col[1] * 0.59 + col[2] * 0.11) / 255;
+        for (let y = Math.floor(cy - rad - 1); y <= cy + rad + 1; y++) for (let x = Math.floor(cx - rad - 1); x <= cx + rad + 1; x++) {
+          const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy), a = al * clamp(rad + 0.5 - d, 0, 1);
+          if (a <= 0) continue;
+          const k = (((y % Sz) + Sz) % Sz) * Sz + (((x % Sz) + Sz) % Sz);
+          R[k] += (col[0] - R[k]) * a; G[k] += (col[1] - G[k]) * a; B[k] += (col[2] - B[k]) * a;
+          Hh[k] += (lum + 0.35 - Hh[k]) * a;
+        }
       }
-      g.globalAlpha = 1;
-      const nrm = TX.normalFromHeight(TX.heightFromCanvasLuma(c), Sz, Sz, 3.5);
+      const c = TX.paint(Sz, Sz, (x, y, u, v, o) => { const k = y * Sz + x; o[0] = R[k]; o[1] = G[k]; o[2] = B[k]; });
+      for (let k = 0; k < N; k++) Hh[k] += (R[k] * 0.3 + G[k] * 0.59 + B[k] * 0.11) / 255;
+      const nrm = TX.normalFromHeight(Hh, Sz, Sz, 1.75);
       return { map: TX.toTexture(c), normalMap: TX.toTexture(nrm, { srgb: false }) };
     })();
-    const rockTex = (() => { // Luxembourg sandstone: golden-grey, bedding planes, joints, lichen and moss
-      const Sz = 512;
-      const nA = TX.noiseField(256, { seed: 41, period: 5, oct: 5 });
-      const nB = TX.noiseField(256, { seed: 43, period: 3, oct: 4 });
+    const rockTex = (() => { // Luxembourg sandstone: warm grey-gold beds broken into blocks by joints, rain streaks, lichen
+      const Sz = 512, q = K.rng(9);
+      const nA = TX.noiseField(256, { seed: 41, period: 4, oct: 4 });
+      const nB = TX.noiseField(256, { seed: 43, period: 16, oct: 3 });
+      // beds of uneven thickness that add up to exactly one tile (so the texture wraps)
+      const beds = [];
+      { let y = 0; while (y < Sz - 30) { const h = 26 + q() * 74; beds.push([y, Math.min(h, Sz - y)]); y += h; } const last = beds[beds.length - 1]; last[1] = Sz - last[0]; }
+      const bedK = beds.map(() => 0.88 + q() * 0.22), bedW = beds.map(() => q());
+      const bedAt = (y) => { for (let i = beds.length - 1; i >= 0; i--) if (y >= beds[i][0]) return i; return 0; };
       const c = TX.paint(Sz, Sz, (x, y, u, v, o) => {
         const a = TX.sampleField(nA, 256, u * 256, v * 256), b = TX.sampleField(nB, 256, u * 256, v * 256);
-        const bed = Math.sin(v * TAU * 7 + a * 4), layer = Math.floor(v * 14 + a * 1.5) % 3;
-        let k = 0.78 + (b - 0.5) * 0.5 + (layer === 1 ? 0.08 : layer === 2 ? -0.06 : 0) - ss(0.55, 0.95, Math.abs(bed)) * 0.18;
-        k -= ss(0.62, 0.8, a) * 0.22;
-        const warm = 0.5 + 0.5 * Math.sin(u * 9 + b * 4);
-        o[0] = (166 + 26 * warm) * k; o[1] = (150 + 14 * warm) * k; o[2] = (118 - 8 * warm) * k;
+        const bi = bedAt(y), t = (y - beds[bi][0]) / beds[bi][1];
+        let k = bedK[bi] * (0.86 + (a - 0.5) * 0.34 + (b - 0.5) * 0.22) * (1.04 - 0.12 * t * t); // each bed darker towards its base
+        const warm = clamp(0.45 + bedW[bi] * 0.4 + (a - 0.5) * 0.6, 0, 1);
+        o[0] = (172 + 30 * warm) * k; o[1] = (160 + 14 * warm) * k; o[2] = (132 - 16 * warm) * k;
       });
-      const g = c.getContext('2d'), q = K.rng(9);
-      g.lineCap = 'round';
-      for (let i = 0; i < 26; i++) { const y = q() * Sz; g.strokeStyle = `rgba(40,30,20,${0.35 + q() * 0.3})`; g.lineWidth = 1.5 + q() * 2.5; g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= Sz; x += 32) g.lineTo(x, y + (q() - 0.5) * 8); g.stroke(); }
-      for (let i = 0; i < 90; i++) {
-        let x = q() * Sz, y = q() * Sz;
-        g.strokeStyle = `rgba(36,26,16,${0.35 + q() * 0.35})`; g.lineWidth = 1 + q() * 2.5;
-        g.beginPath(); g.moveTo(x, y);
-        for (let k = 0; k < 5; k++) { x += (q() - 0.5) * 14; y += 6 + q() * 14; g.lineTo(x, y); }
-        g.stroke();
+      const g = c.getContext('2d');
+      const wrapX = (fn) => { for (const ox of [-Sz, 0, Sz]) fn(ox); };
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      // bed joints: broken dark lines with a pale lip above (the ledge catches the light)
+      for (const [y0] of beds) {
+        let x = q() * 40;
+        while (x < Sz) {
+          const len = 30 + q() * 120, yy = y0 + (q() - 0.5) * 3, dy = (q() - 0.5) * 3, a1 = 0.18 + q() * 0.12, a2 = 0.45 + q() * 0.3, lw = 1.6 + q() * 1.8;
+          wrapX((ox) => {
+            g.strokeStyle = `rgba(250,240,214,${a1})`; g.lineWidth = 2; g.beginPath(); g.moveTo(x + ox, yy - 2.2); g.lineTo(x + len + ox, yy - 2.2 + dy); g.stroke();
+            g.strokeStyle = `rgba(44,34,24,${a2})`; g.lineWidth = lw; g.beginPath(); g.moveTo(x + ox, yy); g.lineTo(x + len + ox, yy + dy); g.stroke();
+          });
+          x += len + 10 + q() * 70;
+        }
       }
-      for (let i = 0; i < 2200; i++) { const t = q(); g.fillStyle = t < 0.45 ? `rgba(70,96,40,${0.2 + q() * 0.35})` : t < 0.6 ? `rgba(40,34,28,${0.2 + q() * 0.3})` : `rgba(236,226,196,${0.12 + q() * 0.2})`; g.beginPath(); g.arc(q() * Sz, q() * Sz, 0.8 + q() * 3.5, 0, TAU); g.fill(); }
+      // vertical joints splitting each bed into blocks, with shaded sides
+      beds.forEach(([y0, h]) => {
+        let x = q() * 30;
+        while (x < Sz) {
+          const xx = x, top = y0 + 1 + (q() < 0.3 ? q() * h * 0.5 : 0), bot = y0 + h - 1 - (q() < 0.3 ? q() * h * 0.4 : 0);
+          const j1 = (q() - 0.5) * 10, j2 = (q() - 0.5) * 10, wd = 6 + q() * 10, al = 0.12 + q() * 0.16, a2 = 0.4 + q() * 0.35, lw = 1.2 + q() * 2;
+          wrapX((ox) => {
+            const sh = g.createLinearGradient(xx + ox - wd, 0, xx + ox, 0); sh.addColorStop(0, 'rgba(30,20,10,0)'); sh.addColorStop(1, `rgba(30,20,10,${al})`);
+            g.fillStyle = sh; g.beginPath(); g.moveTo(xx + ox - wd, top); g.lineTo(xx + ox, top); g.lineTo(xx + ox + j1, (top + bot) / 2); g.lineTo(xx + ox + j2, bot); g.lineTo(xx + ox - wd + j2, bot); g.closePath(); g.fill();
+            g.strokeStyle = `rgba(36,26,16,${a2})`; g.lineWidth = lw;
+            g.beginPath(); g.moveTo(xx + ox, top); g.quadraticCurveTo(xx + ox + j1 * 1.6, (top + bot) / 2, xx + ox + j2, bot); g.stroke();
+          });
+          x += 40 + q() * 110;
+        }
+      });
+      // weathered grey-green and darker patches, rain streaks running down from the ledges, lichen and moss
+      for (let i = 0; i < 34; i++) {
+        const x = q() * Sz, y = q() * Sz, rad = 20 + q() * 55, col = q() < 0.5 ? '110,116,96' : q() < 0.5 ? '60,50,40' : '214,196,150', al = 0.16 + q() * 0.14;
+        wrapX((ox) => { for (const oy of [-Sz, 0, Sz]) { const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad); gr.addColorStop(0, `rgba(${col},${al})`); gr.addColorStop(1, `rgba(${col},0)`); g.fillStyle = gr; g.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2); } });
+      }
+      for (let i = 0; i < 70; i++) {
+        const x = q() * Sz, y = q() * Sz, len = 30 + q() * 90, w = 3 + q() * 8, al = 0.16 + q() * 0.16;
+        wrapX((ox) => { const gr = g.createLinearGradient(0, y, 0, y + len); gr.addColorStop(0, `rgba(40,34,28,${al})`); gr.addColorStop(1, 'rgba(40,34,28,0)'); g.fillStyle = gr; g.fillRect(x + ox, y, w, len); });
+      }
+      for (let i = 0; i < 2600; i++) {
+        const t = q(), x = q() * Sz, y = q() * Sz;
+        g.fillStyle = t < 0.3 ? `rgba(84,104,52,${0.25 + q() * 0.35})` : t < 0.45 ? `rgba(190,196,170,${0.25 + q() * 0.3})` : t < 0.52 ? `rgba(196,150,70,${0.25 + q() * 0.3})` : t < 0.7 ? `rgba(40,34,28,${0.15 + q() * 0.2})` : `rgba(246,236,206,${0.1 + q() * 0.18})`;
+        g.beginPath(); g.arc(x, y, 0.8 + q() * (t < 0.3 ? 4 : 2.6), 0, TAU); g.fill();
+      }
       return TX.toTexture(c);
     })();
     const stoneTex = (seed, base, k0 = 1) => { // ashlar blocks: 4 units wide, 2 tall per tile
@@ -307,12 +359,32 @@ export default {
     };
     const ashlar = stoneTex(71, [190, 172, 138]);
     const stoneMat = K.std({ map: ashlar, vertexColors: true, roughness: 0.88, side: T.DoubleSide });
+    const slateTex = (() => {
+      const c = TX.makeCanvas(256, 256), g = c.getContext('2d');
+      const rr = K.rng(33);
+      g.fillStyle = '#2a2c30'; g.fillRect(0, 0, 256, 256);
+      for (let row = 0; row < 16; row++) for (let i = 0; i < 12; i++) {
+        const x = i * 24 + (row % 2) * 12 - 12, y = row * 16;
+        const k = 0.72 + rr() * 0.4;
+        g.fillStyle = `rgb(${150 * k | 0},${156 * k | 0},${166 * k | 0})`;
+        g.fillRect(x + 1, y + 1, 22, 14);
+        g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(x + 1, y + 1, 22, 2);
+        g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x + 1, y + 13, 22, 2);
+      }
+      return TX.toTexture(c);
+    })();
+    const roofMat = K.std({ map: slateTex, vertexColors: true, roughness: 0.62, metalness: 0.05 });
+    // slate cones for towers and spires: UVs scaled so the slates stay small whatever the cone's size
+    const slateCone = (rad, hgt, segs) => {
+      const g = new T.ConeGeometry(rad, hgt, segs), uv = g.attributes.uv, sl = Math.hypot(rad, hgt);
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (TAU * rad) / 3.2, uv.getY(i) * sl / 2.4);
+      return g;
+    };
     const cobble = (() => { // granite setts in rows across the road, gutters along the edges; 13 x 13 units per tile
       const Sz = 512, rows = 28, rh = Sz / rows;
       const c = TX.makeCanvas(Sz, Sz), g = c.getContext('2d');
-      const hc = TX.makeCanvas(Sz, Sz), hg = hc.getContext('2d');
+      const Hc = new Float32Array(Sz * Sz); // sett domes for the normal map, rasterised in JS (no canvas read-back)
       g.fillStyle = '#4e4840'; g.fillRect(0, 0, Sz, Sz);
-      hg.fillStyle = '#000'; hg.fillRect(0, 0, Sz, Sz);
       const rr = K.rng(51);
       const gut = 34; // gutter width in px each side
       const sett = (x, y, w, h, dark) => {
@@ -321,9 +393,14 @@ export default {
         g.fillStyle = `rgb(${b[0] * k | 0},${b[1] * k | 0},${b[2] * k | 0})`;
         g.beginPath(); g.roundRect(x + 1.4, y + 1.4, w - 2.8, h - 2.8, 3.5); g.fill();
         g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(x + 3, y + 2, w - 6, 2);
-        const gr = hg.createRadialGradient(x + w / 2, y + h / 2, 0, x + w / 2, y + h / 2, Math.max(w, h) * 0.62);
-        gr.addColorStop(0, '#fff'); gr.addColorStop(1, '#777');
-        hg.fillStyle = gr; hg.beginPath(); hg.roundRect(x + 1.4, y + 1.4, w - 2.8, h - 2.8, 3.5); hg.fill();
+        const cx = x + w / 2, cy = y + h / 2, hx = w / 2 - 1.4, hy = h / 2 - 1.4, rc = 3.5, rf = Math.max(w, h) * 0.62;
+        for (let py = Math.max(0, Math.floor(cy - hy)); py < Math.min(Sz, Math.ceil(cy + hy)); py++) {
+          for (let px = Math.max(0, Math.floor(cx - hx)); px < Math.min(Sz, Math.ceil(cx + hx)); px++) {
+            const ex = Math.max(0, Math.abs(px + 0.5 - cx) - (hx - rc)), ey = Math.max(0, Math.abs(py + 0.5 - cy) - (hy - rc));
+            if (ex * ex + ey * ey > rc * rc) continue;
+            Hc[py * Sz + px] = 1 - 0.533 * Math.min(1, Math.hypot(px + 0.5 - cx, py + 0.5 - cy) / rf);
+          }
+        }
       };
       for (let row = 0; row < rows; row++) {
         let x = gut - rr() * 18;
@@ -332,7 +409,7 @@ export default {
       for (const x0 of [0, Sz - gut]) for (let y = 0; y < Sz; y += 23.27) for (let k = 0; k < 2; k++) sett(x0 + k * gut / 2, y + (k ? 11 : 0), gut / 2, 23.27, true);
       g.fillStyle = 'rgba(255,255,255,0.05)'; // tyre-polished tracks
       for (const cx of [0.3, 0.7]) g.fillRect(Sz * cx - 30, 0, 60, Sz);
-      const nrm = TX.normalFromHeight(TX.heightFromCanvasLuma(hc), Sz, Sz, 2.2);
+      const nrm = TX.normalFromHeight(Hc, Sz, Sz, 2.2);
       return { map: TX.toTexture(c), normalMap: TX.toTexture(nrm, { srgb: false }) };
     })();
 
@@ -359,6 +436,29 @@ export default {
       return g;
     };
     const merge = (parts) => BU.mergeGeometries(parts.map(tidy), false);
+    // world-scale box-projected UVs, chosen per triangle by its facing: masonry blocks keep their size on any
+    // box or tower (plain box / cylinder UVs stretch a 4 x 2 ashlar tile round a whole tower: it reads as wood)
+    const boxUV = (g, sx, sy, y0 = null) => {
+      if (g.index) g = g.toNonIndexed();
+      const p = g.attributes.position, n = p.count, uv = new Float32Array(n * 2);
+      let yb = y0;
+      if (yb === null) { yb = 1e9; for (let i = 0; i < n; i++) yb = Math.min(yb, p.getY(i)); }
+      for (let i = 0; i + 2 < n; i += 3) {
+        const ax = p.getX(i), ay = p.getY(i), az = p.getZ(i);
+        const e1x = p.getX(i + 1) - ax, e1y = p.getY(i + 1) - ay, e1z = p.getZ(i + 1) - az;
+        const e2x = p.getX(i + 2) - ax, e2y = p.getY(i + 2) - ay, e2z = p.getZ(i + 2) - az;
+        const fx = Math.abs(e1y * e2z - e1z * e2y), fy = Math.abs(e1z * e2x - e1x * e2z), fz = Math.abs(e1x * e2y - e1y * e2x);
+        for (let k = i; k < i + 3; k++) {
+          const x = p.getX(k), y = p.getY(k) - yb, z = p.getZ(k);
+          if (fy >= fx && fy >= fz) { uv[k * 2] = x / sx; uv[k * 2 + 1] = z / sy; } else if (fx >= fz) { uv[k * 2] = z / sx; uv[k * 2 + 1] = y / sy; } else { uv[k * 2] = x / sx; uv[k * 2 + 1] = y / sy; }
+        }
+      }
+      g.setAttribute('uv', new T.BufferAttribute(uv, 2));
+      return g;
+    };
+    const uvBox = new Map(); // material -> [units per tile across, up] for props built with prop() / frame()
+    const uvb = (g, mat) => { const b = uvBox.get(mat); return b ? boxUV(g, b[0], b[1], b[2] ?? null) : g; };
+    uvBox.set(stoneMat, [4, 2, 0]);
     const bakeQ = new Map();
     const CELL = 110;
     const bake = (geo, mat, x = 0, z = 0, cast = true) => {
@@ -386,11 +486,11 @@ export default {
     const vcSatin = K.phys({ vertexColors: true, roughness: 0.45, clearcoat: 0.3, clearcoatRoughness: 0.4 });
     const vcMetal = K.std({ vertexColors: true, roughness: 0.38, metalness: 0.7 });
     const glowMat = K.std({ vertexColors: true, emissive: 0xffd9a0, emissiveIntensity: 0.9, roughness: 0.4 });
-    const prop = (geo, col, o, mat = vc, cast = true) => { const g = colorize(xf(geo, o), col); bake(g, mat, o.x || 0, o.z || 0, cast); return g; };
+    const prop = (geo, col, o, mat = vc, cast = true) => { const g = uvb(colorize(xf(geo, o), col), mat); bake(g, mat, o.x || 0, o.z || 0, cast); return g; };
     // a group of parts in a local frame (cx, cy, cz, ry): build a prop in its own coordinates
     const frame = (cx, cy, cz, ry, s = 1) => {
       const M = new T.Matrix4().compose(new T.Vector3(cx, cy, cz), new T.Quaternion().setFromEuler(new T.Euler(0, ry, 0)), new T.Vector3(s, s, s));
-      return (geo, col, o, mat = vc, cast = true) => { const g = colorize(xf(geo, o), col); g.applyMatrix4(M); bake(g, mat, cx, cz, cast); return g; };
+      return (geo, col, o, mat = vc, cast = true) => { let g = colorize(xf(geo, o), col); g.applyMatrix4(M); g = uvb(g, mat); bake(g, mat, cx, cz, cast); return g; };
     };
     const blocked = [];
     const block = (x, z, hw, hd, ang = 0, pad = 0) => blocked.push({ x, z, hw: hw + pad, hd: hd + pad, c: Math.cos(ang), s: Math.sin(ang) });
@@ -478,11 +578,17 @@ export default {
       const tMat = K.std({ map: grassTex.map, normalMap: grassTex.normalMap, normalScale: V2(0.7), vertexColors: true, roughness: 0.95 });
       tMat.onBeforeCompile = (sh) => {
         sh.uniforms.rockMap = { value: rockTex };
-        sh.vertexShader = 'attribute float aRock;\nvarying float vRock;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvRock = aRock;');
-        sh.fragmentShader = 'uniform sampler2D rockMap;\nvarying float vRock;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
+        // rock is mapped tri-planar in world space (beds stay level and blocks keep their size on every face)
+        sh.vertexShader = 'attribute float aRock;\nvarying float vRock;\nvarying vec3 vWP;\nvarying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvRock = aRock;\nvWP = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\nvWN = normalize( mat3( modelMatrix ) * objectNormal );');
+        sh.fragmentShader = 'uniform sampler2D rockMap;\nvarying float vRock;\nvarying vec3 vWP;\nvarying vec3 vWN;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
           #ifdef USE_MAP
             vec4 gC = texture2D( map, vMapUv );
-            vec4 rC = texture2D( rockMap, vMapUv * 0.5 );
+            vec4 rC = gC;
+            if ( vRock > 0.01 ) {
+              vec3 bw = pow( abs( normalize( vWN ) ), vec3( 4.0 ) ); bw /= bw.x + bw.y + bw.z;
+              vec3 q = vWP / 24.0;
+              rC = texture2D( rockMap, vec2( q.z + 0.37, q.y ) ) * bw.x + texture2D( rockMap, vec2( q.x, q.y ) ) * bw.z + texture2D( rockMap, vec2( q.x, q.z ) ) * bw.y;
+            }
             diffuseColor *= mix( gC, rC, vRock );
           #endif`);
       };
@@ -653,6 +759,7 @@ export default {
           const q = track.place(sb + e * (half + 0.4), side * (W / 2 + 1.35));
           prop(new T.BoxGeometry(1.5, 1.9, 1.5), 0xe8e0d0, { x: q.x, y: 0.75, z: q.z, ry: -q.angle }, stoneMat);
           prop(new T.BoxGeometry(1.8, 0.3, 1.8), 0xf4eee4, { x: q.x, y: 1.8, z: q.z, ry: -q.angle }, stoneMat);
+          K.circle(q.x, q.z, 0.95, 3);
         }
       }
       // arch faces under the deck on both sides: a segmental arch over the water
@@ -755,13 +862,17 @@ export default {
         for (let i = 0; i < pa.count; i++) if (pa.getY(i) > 0) pa.setY(i, wallTop(pa.getZ(i)));
         g.computeVertexNormals();
         bake(g, stoneMat, wx, wzc);
-        // crenellations
-        for (let z = WZ.z0 + 3; z < WZ.z1 - 1; z += 2.2) prop(new T.BoxGeometry(4.0, 1.1, 1.2), 0xe8dfcc, { x: wx, y: wallTop(z) + 0.5, z }, stoneMat);
+        // a parapet with merlons along both edges of the wall walk
+        for (const e of [-1, 1]) {
+          const pf = fr.map((f) => ({ ...f, x: wx + e * 1.55, y: wallTop(f.z) }));
+          bake(sweep(pf, [[-0.35, -0.05, 0.9], [-0.35, 0.5, 1.0], [0.35, 0.5, 1.05], [0.35, -0.05, 0.95]], { uS: 4, vS: 2, col: 0.95 }), stoneMat, wx, wzc);
+          for (let z = WZ.z0 + 2.4; z < WZ.z1 - 1; z += 2.1) prop(new T.BoxGeometry(0.7, 0.8, 1.0), 0xece4d2, { x: wx + e * 1.55, y: wallTop(z) + 0.85, z }, stoneMat);
+        }
         // round towers with slate cones: the hairpin tower and two along the wall
         for (const [tz, tr, th] of [[HP.z + 0.6, 3.4, 17], [PL.z0 - 2, 3.0, 15], [PL.z0 + 33, 3.2, 14]]) {
           prop(new T.CylinderGeometry(tr, tr + 0.4, th, 24), 0xe4dac6, { x: wx, y: th / 2 - 0.3, z: tz }, stoneMat);
           prop(new T.CylinderGeometry(tr + 0.35, tr + 0.35, 0.6, 24), 0xf0e8d8, { x: wx, y: th - 0.2, z: tz }, stoneMat);
-          prop(new T.ConeGeometry(tr + 0.6, tr * 1.5, 24), 0x4c525c, { x: wx, y: th + tr * 0.75, z: tz }, vcSatin);
+          prop(slateCone(tr + 0.6, tr * 1.5, 24), 0x5a606a, { x: wx, y: th + tr * 0.75, z: tz }, roofMat);
           for (let k = 0; k < 4; k++) { const a = k * PI / 2 + 0.4; prop(new T.BoxGeometry(0.5, 1.1, 0.4), 0x1e1a16, { x: wx + Math.cos(a) * (tr + 0.12), y: th * 0.6, z: tz + Math.sin(a) * (tr + 0.12), ry: -a + PI / 2 }); }
           if (tz > PL.z0) K.circle(wx, tz, tr, th);
         }
@@ -776,6 +887,9 @@ export default {
       // a fortification parapet along the plateau's south side
       prop(new T.BoxGeometry(PL.x1 - PL.x0 - 4, 1.4, 1.2), 0xe6dccb, { x: (PL.x0 + PL.x1) / 2, y: PL.h + 0.7, z: 96.2 }, stoneMat);
       K.box((PL.x0 + PL.x1) / 2, 96.2, (PL.x1 - PL.x0) / 2, 0.8, 0, PL.h + 3);
+      // and along its east edge, where the plateau meets the wooded knoll (no dropping off into the hill)
+      prop(new T.BoxGeometry(1.2, 1.4, PL.z1 - PL.z0 - 4.5), 0xe6dccb, { x: PL.x1 - 0.9, y: PL.h + 0.7, z: (PL.z0 + PL.z1) / 2 - 1.6 }, stoneMat);
+      K.box(PL.x1 - 0.9, (PL.z0 + PL.z1) / 2, 0.8, (PL.z1 - PL.z0) / 2, 0, PL.h + 3);
     }
 
     // ---------------------------------------------------------------- terrain rising beside the road stops cars (rock faces, the knoll)
@@ -848,6 +962,18 @@ export default {
           prop(new T.BoxGeometry(PT + 0.5, 0.45, VW + 0.6), 0xf2e8d6, { x: a.x, y: cyy + 0.1, z: a.z, ry: -ang }, stoneMat);
           if (inRiver(a.x, a.z, 1)) for (const e of [-1, 1]) prop(new T.CylinderGeometry(1.4, 1.6, 4.5, 4), 0xd8ccb4, { x: a.x - a.tz * e * (VW / 2 + 0.4), y: rivBed(rivA(a.x, a.z)) + 1.6, z: a.z + a.tx * e * (VW / 2 + 0.4), ry: -ang + PI / 4 }, stoneMat);
           K.box(a.x, a.z, PT / 2, VW / 2, ang, VIA_H + 1);
+          // a pier standing just off the bank: a low wall from it to the quay leaves no car-sized pocket between
+          const hwR = rivHW(rivA(a.x, a.z)), rd0 = rivD(a.x, a.z);
+          if (!inRiver(a.x, a.z, 1) && rd0 < hwR + 10) {
+            const sg = rivD(a.x + a.tx, a.z + a.tz) < rd0 ? 1 : -1;
+            let d = 0;
+            while (d < 12 && rivD(a.x + a.tx * sg * d, a.z + a.tz * sg * d) > hwR + 1.0) d += 0.25;
+            if (d > PT / 2 && d < 12) {
+              const ex = a.x + a.tx * sg * d, ez = a.z + a.tz * sg * d;
+              K.capsule(a.x, a.z, ex, ez, 1.4, 4);
+              prop(new T.BoxGeometry(d, 2.2, 2.6), 0xd8ccb4, { x: (a.x + ex) / 2, y: 0.8, z: (a.z + ez) / 2, ry: -ang }, stoneMat);
+            }
+          }
         }
         block((a.x + b.x) / 2, (a.z + b.z) / 2, Lc / 2 + 1, VW / 2 + 1.5, Math.atan2(b.z - a.z, b.x - a.x));
       }
@@ -908,7 +1034,7 @@ export default {
     {
       const p = track.at(S.bock), ang = p.angle;
       // the bridge: a stone arch across the road (its own material so it can turn see-through over a car)
-      const span = W + 2.4, rr = span / 2, deck = rr + 1.9, len = 24, wid = 5.2;
+      const span = W + 2.4, rr = span / 2, deck = rr + 3.0, len = 24, wid = 5.2;
       const sh = new T.Shape();
       sh.moveTo(-len / 2, -0.5); sh.lineTo(len / 2, -0.5); sh.lineTo(len / 2, deck); sh.lineTo(-len / 2, deck); sh.closePath();
       const hole = new T.Path(); hole.moveTo(-rr, -1); hole.lineTo(rr, -1); hole.lineTo(rr, 0.6); hole.absarc(0, 0.6, rr, 0, PI, false); hole.lineTo(-rr, -1);
@@ -918,21 +1044,27 @@ export default {
       const uvA = eg.attributes.uv; for (let k = 0; k < uvA.count; k++) uvA.setXY(k, uvA.getX(k) / 4, uvA.getY(k) / 2);
       const parts = [colorize(eg, 0xe0d2b8)];
       // parapets and a lantern on the bridge
-      for (const e of [-1, 1]) parts.push(colorize(xf(new T.BoxGeometry(len, 1.0, 0.5), { y: deck + 0.5, z: e * (wid / 2 - 0.25) }), 0xece2cc));
-      const bg = merge(parts);
+      for (const e of [-1, 1]) {
+        parts.push(colorize(xf(new T.BoxGeometry(len, 1.25, 0.6), { y: deck + 0.62, z: e * (wid / 2 - 0.3) }), 0xf4ecdc));
+        parts.push(colorize(xf(new T.BoxGeometry(len + 0.3, 0.22, 0.8), { y: deck + 1.33, z: e * (wid / 2 - 0.3) }), 0xfaf4e8));
+        parts.push(colorize(xf(new T.BoxGeometry(len + 0.2, 0.35, 0.3), { y: deck - 0.35, z: e * (wid / 2 + 0.1) }), 0xf0e6d2)); // string course
+      }
+      let bg = merge(parts);
       xf(bg, { x: p.x, z: p.z, ry: -ang + PI / 2 });
+      bg = boxUV(bg, 4, 2, 0);
       const bMat = K.std({ map: ashlar, vertexColors: true, roughness: 0.88, transparent: true, opacity: 1 });
       const bm = new T.Mesh(bg, bMat); bm.castShadow = true; bm.receiveShadow = true; K.group.add(bm); keep.push(bm);
       // the cobbled path over the top and two lanterns
-      const tMat = K.std({ map: cobble.map, normalMap: cobble.normalMap, roughness: 0.85, color: 0xd0c8bc, transparent: true, opacity: 1 });
+      const tMat = K.std({ map: cobble.map, normalMap: cobble.normalMap, roughness: 0.85, color: 0x9c948a, transparent: true, opacity: 1 });
       const tg = new T.PlaneGeometry(len, wid - 1.0); tg.rotateX(-PI / 2);
-      const tuv = tg.attributes.uv; for (let k = 0; k < tuv.count; k++) tuv.setXY(k, tuv.getX(k) * 0.4 + 0.3, tuv.getY(k) * len / 13);
+      const tuv = tg.attributes.uv; for (let k = 0; k < tuv.count; k++) { const u0 = tuv.getX(k), v0 = tuv.getY(k); tuv.setXY(k, 0.3 + v0 * 0.4, u0 * len / 13); }
       xf(tg, { y: deck + 0.02 }); xf(tg, { x: p.x, z: p.z, ry: -ang + PI / 2 });
       const tm = new T.Mesh(tg, tMat); tm.receiveShadow = true; bm.add(tm); tm.position.set(0, 0, 0);
       bm.remove(tm); K.group.add(tm); keep.push(tm);
       const lan = [];
       for (const e of [-1, 1]) { const [lx, lz] = local(p.x, p.z, ang - PI / 2, e * (rr + 1.2), 0); lan.push([lx, lz]); }
       A.bockBridge = { mat: bMat, mat2: tMat, mesh: bm, s: S.bock, lan };
+      block(p.x, p.z, len / 2 + 2.5, wid / 2 + 2.5, ang + PI / 2);
       for (const [lx, lz] of lan) {
         const fl = frame(lx, deck, lz, 0);
         fl(new T.CylinderGeometry(0.1, 0.14, 2.6, 8), 0x23332c, { y: 1.3 }, vcSatin);
@@ -945,19 +1077,34 @@ export default {
       cg.fillStyle = '#c8b894'; cg.beginPath(); cg.moveTo(4, 96); cg.lineTo(4, 34); cg.arc(32, 34, 28, PI, 0); cg.lineTo(60, 96); cg.closePath(); cg.fill();
       cg.fillStyle = '#16120e'; cg.beginPath(); cg.moveTo(14, 90); cg.lineTo(14, 36); cg.arc(32, 36, 18, PI, 0); cg.lineTo(50, 90); cg.closePath(); cg.fill();
       const cmat = K.std({ map: TX.toTexture(cc, { wrap: false }), transparent: true, alphaTest: 0.5, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+      // rows of embrasures at gallery levels in the south faces of the Bock and its spur (the casemates)
       const wins = [];
-      for (let i = 0; i < 6000 && wins.length < 70; i++) {
-        const x = r.range(-46, 16), z = r.range(-104, -45);
-        const h = gy(x, z);
-        if (h < 2.2 || h > 22) continue;
-        const e = 0.6, hx = (gy(x + e, z) - gy(x - e, z)) / (2 * e), hz = (gy(x, z + e) - gy(x, z - e)) / (2 * e);
-        const sl = Math.hypot(hx, hz);
-        if (sl < 1.4 || hz > -0.9) continue; // steep and facing south (towards the camera)
-        if (wins.some((w) => Math.hypot(w.x - x, w.z - z) < 2.6 && Math.abs(w.y - h) < 2.5)) continue;
-        const nxw = -hx / sl, nzw = -hz / sl;
-        wins.push({ x: x + nxw * 0.3, y: h + 0.15, z: z + nzw * 0.3, ry: Math.atan2(nxw, nzw), rx: -(PI / 2 - Math.atan(sl)) * 0.8, s: r.range(0.9, 1.25) });
+      const winAt = (x, z0, z1, Y) => {
+        for (let z = z0; z > z1; z -= 0.25) {
+          const h = gy(x, z);
+          if (h < Y) continue;
+          const e = 0.6, hx = (gy(x + e, z) - gy(x - e, z)) / (2 * e), hz = (gy(x, z + e) - gy(x, z - e)) / (2 * e);
+          const sl = Math.hypot(hx, hz);
+          if (sl < 1.3 || hz > -0.8 || roadD(x, z) < 1) return;
+          const nxw = -hx / sl, nzw = -hz / sl;
+          wins.push({ x: x + nxw * 0.3, y: h + 0.1, z: z + nzw * 0.3, ry: Math.atan2(nxw, nzw), rx: -(PI / 2 - Math.atan(sl)) * 0.8, s: r.range(0.95, 1.15) });
+          return;
+        }
+      };
+      for (const [Y, x0, x1, z0, z1, step] of [[6, -46, 16, -66, -104, 2.7], [11, -46, 16, -66, -104, 2.7], [15.5, -46, 16, -66, -104, 3.2], [2.6, -36, 13, -48.5, -56, 2.5]]) {
+        for (let x = x0; x < x1; x += step) if (r() < 0.8) winAt(x + r.range(-0.2, 0.2), z0, z1, Y);
       }
       K.instances(new T.PlaneGeometry(1.1, 1.6), cmat, wins, { cast: false });
+      // the spur south of the cutting is solid rock (the terrain is only a picture): fill its footprint so nobody
+      // can slip in at its low ends and get trapped between the rock and the quay wall
+      for (let z = -48.4; z >= -57; z -= 1.9) {
+        let x0 = null;
+        for (let x = -42; x <= 18.01; x += 0.5) {
+          const solid = x < 18 && gy(x, z) > 1.2 && roadD(x, z) > 1.4 && !inRiver(x, z, 1.2);
+          if (solid && x0 === null) x0 = x;
+          if (!solid && x0 !== null) { if (x - x0 > 1.2) K.capsule(x0 + 0.5, z, x - 0.5, z, 1.2, 7); x0 = null; }
+        }
+      }
       // ruined castle walls and a tower stump on top of the Bock
       for (const [x, z, w, d, rot] of [[-30, -84, 10, 1.4, 0.2], [-14, -80, 12, 1.4, -0.1], [-2, -88, 1.4, 9, 0.1], [-22, -95, 8, 1.4, 0]]) {
         const y = gy(x, z);
@@ -970,9 +1117,11 @@ export default {
     {
       const pts = [];
       const lane = 3.6;
-      const sOn = S.rivesA + 4, sOff = S.rivesB - 2; // the road runs westwards: s grows from the east end to the west end
+      // the road runs westwards: s grows from the east end to the west end. The east gate stands well west of the
+      // bend out of the ford, so drivers running wide out of it are back in the left lane before they meet the train
+      const GXE = 76, sOn = sAt(GXE - 4, -63), sOff = S.rivesB - 2;
       const pOn = track.place(sOn, lane), pOff = track.place(sOff, lane);
-      pts.push([98, -96], [93, -88], [91, -80], [pOn.x + 4, pOn.z - 4]);
+      pts.push([96, -98], [86, -95.6], [78.2, -91.5], [GXE, -85.5], [GXE, -80], [pOn.x + 4, pOn.z - 4]);
       for (let s = sOn; s <= sOff; s += 8) { const q = track.place(s, lane); pts.push([q.x, q.z]); }
       pts.push([pOff.x - 4, pOff.z - 3.5], [pOff.x - 6, pOff.z - 12], [pOff.x - 6.5, -86], [pOff.x - 4, -95], [pOff.x + 20, -99.5], [60, -100.5], [85, -100]);
       const rt = new Track(pts, { width: 4, spacing: 0.5 });
@@ -1026,7 +1175,18 @@ export default {
         });
       });
       // the two gates: archways through the row of houses (the train vanishes behind them)
-      A.rtGates = [[91, -80], [pOff.x - 6.2, -80]];
+      A.rtGates = [[GXE, -80], [pOff.x - 6.2, -80]];
+      A.rt.gE = rt.distTo(GXE, -77).s; A.rt.gW = rt.distTo(pOff.x - 6.2, -77).s;
+      // the train's loop in race-track coordinates where it runs on (or pulls out onto) the road: CPU drivers
+      // read it in tick() to keep to the left lane past it, or to follow it when they are boxed in
+      const mStep = 0.5, mN = Math.ceil(rt.length / mStep);
+      A.rt.mStep = rt.length / mN; A.rt.mN = mN;
+      A.rt.mS = new Float32Array(mN); A.rt.mLat = new Float32Array(mN); A.rt.mNear = new Uint8Array(mN);
+      for (let k = 0; k < mN; k++) {
+        const q = rt.at(k * A.rt.mStep), n = track.distTo(q.x, q.z);
+        A.rt.mS[k] = n.s; A.rt.mLat[k] = n.lateral;
+        A.rt.mNear[k] = Math.abs(n.lateral) < W / 2 + 9 && inS(n.s, S.rivesA - 25, S.rivesB + 25) ? 1 : 0;
+      }
     }
 
     // ---------------------------------------------------------------- houses: plastered facades, slate roofs with dormers
@@ -1073,22 +1233,7 @@ export default {
       return K.std({ map: TX.toTexture(c), roughness: 0.86, vertexColors: true });
     };
     const FAC = {};
-    for (const k of ['town', 'cottage', 'shop', 'abbey', 'church', 'barracks']) FAC[k] = facade(k);
-    const slateTex = (() => {
-      const c = TX.makeCanvas(256, 256), g = c.getContext('2d');
-      const rr = K.rng(33);
-      g.fillStyle = '#2a2c30'; g.fillRect(0, 0, 256, 256);
-      for (let row = 0; row < 16; row++) for (let i = 0; i < 12; i++) {
-        const x = i * 24 + (row % 2) * 12 - 12, y = row * 16;
-        const k = 0.72 + rr() * 0.4;
-        g.fillStyle = `rgb(${150 * k | 0},${156 * k | 0},${166 * k | 0})`;
-        g.fillRect(x + 1, y + 1, 22, 14);
-        g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(x + 1, y + 1, 22, 2);
-        g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x + 1, y + 13, 22, 2);
-      }
-      return TX.toTexture(c);
-    })();
-    const roofMat = K.std({ map: slateTex, vertexColors: true, roughness: 0.62, metalness: 0.05 });
+    for (const k of ['town', 'cottage', 'shop', 'abbey', 'church', 'barracks']) { FAC[k] = facade(k); uvBox.set(FAC[k], [8, 12]); }
     const PLASTER = [0xf2e8d2, 0xecd29c, 0xeac6b4, 0xf6f4ee, 0xd2d8d8, 0xd2dcc0, 0xf2cca4, 0xe2dace, 0xd8c0a8];
     const house = ({ x, z, ry = 0, len = 9, dep = 8, wall = 8, rise = 3.6, kind = 'town', tint = null, over = 0.5, chimney = true, door = true, dorm = true, y0 = null, coll = true, slate = 0x5a606a }) => {
       const base = y0 ?? Math.max(0, gy(x, z));
@@ -1158,7 +1303,7 @@ export default {
         let hmin = 1e9, hmax = -1e9;
         for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0]]) {
           const lx = (a * len) / 2, lz = (b * dep) / 2, qx = x + lx * ca - lz * sa, qz = z + lx * sa + lz * ca;
-          if (roadD(qx, qz) < set - 0.6 || inRiver(qx, qz, 2.5) || isBlocked(qx, qz, -1.35) || PLAZA.some(([px, pz, pr]) => Math.hypot(qx - px, qz - pz) < pr)) ok = false;
+          if (roadD(qx, qz) < set - 0.6 || inRiver(qx, qz, 5.5) || isBlocked(qx, qz, -1.35) || PLAZA.some(([px, pz, pr]) => Math.hypot(qx - px, qz - pz) < pr)) ok = false;
           if (qx < BOUNDS.minX + 3 || qx > BOUNDS.maxX - 3 || qz < BOUNDS.minZ + 3 || qz > BOUNDS.maxZ - 3) ok = false;
           const hh = gy(qx, qz); hmin = Math.min(hmin, hh); hmax = Math.max(hmax, hh);
         }
@@ -1178,9 +1323,10 @@ export default {
       house({ x: cx + half - wd / 2, z: cz, ry: PI / 2, len: half * 2 - wd * 2, dep: wd, wall, kind: 'abbey', tint: 0xeae0ce, door: false, rise: 3.2, chimney: false, dorm: false });
       // cloister garden: lawn quarters, gravel cross paths, a well, the arcade walks round it
       const inner = half - wd;
+      const lq = K.rng(61);
       const lawn = TX.paint(128, 128, (x, y, u, v, o) => {
         const path = Math.abs(u - 0.5) < 0.06 || Math.abs(v - 0.5) < 0.06 || Math.max(Math.abs(u - 0.5), Math.abs(v - 0.5)) > 0.42;
-        const n = Math.random() * 20;
+        const n = lq() * 20;
         if (path) { o[0] = 196 + n; o[1] = 184 + n; o[2] = 160 + n; } else { const st = Math.floor(u * 12) % 2 ? 8 : -8; o[0] = 78 + n + st; o[1] = 128 + n + st; o[2] = 52 + n; }
       });
       K.mesh(new T.PlaneGeometry(inner * 2, inner * 2), K.std({ map: TX.toTexture(lawn, { wrap: false }), roughness: 0.92 }), cx, 0.05, cz, { rx: -PI / 2, cast: false });
@@ -1205,7 +1351,7 @@ export default {
       const tx0 = chx - 9.5;
       prop(new T.BoxGeometry(5, 15, 5), 0xece2cc, { x: tx0, y: 6.3, z: chz }, FAC.church);
       prop(new T.BoxGeometry(5.5, 0.5, 5.5), 0xd8ccb4, { x: tx0, y: 13.9, z: chz }, stoneMat);
-      prop(new T.ConeGeometry(3.6, 9, 8), 0x4c525c, { x: tx0, y: 18.6, z: chz, ry: PI / 8 }, roofMat);
+      prop(slateCone(3.6, 9, 8), 0x4c525c, { x: tx0, y: 18.6, z: chz, ry: PI / 8 }, roofMat);
       prop(new T.CylinderGeometry(0.07, 0.07, 1.8, 5), 0xd8b040, { x: tx0, y: 23.8, z: chz }, vcMetal);
       prop(new T.BoxGeometry(0.9, 0.08, 0.08), 0xd8b040, { x: tx0, y: 24.1, z: chz }, vcMetal);
       for (const [dx, dz, ry] of [[0, 2.52, 0], [0, -2.52, PI], [2.52, 0, PI / 2], [-2.52, 0, -PI / 2]]) prop(new T.PlaneGeometry(1.0, 2.0), 0x1e1a16, { x: tx0 + dx, y: 11, z: chz + dz, ry });
@@ -1233,15 +1379,24 @@ export default {
       for (let i = 0; i < fr.length - 3; i += 3) { const a = fr[i], b = fr[Math.min(fr.length - 1, i + 3)]; K.capsule(a.x + a.nx * 0.45, a.z + a.nz * 0.45, b.x + b.nx * 0.45, b.z + b.nz * 0.45, 0.55, 2.6); }
       for (const f of fr) if (r() < 0.25) block(f.x + f.nx * 0.45, f.z + f.nz * 0.45, 0.8, 0.8);
     };
-    hedge(S.br3 + 22, L + S.start - 22, -1, 3.0); // inside the west loop
+    hedge(S.br3 + 11.5, L + S.start - 18, -1, 3.0); // inside the west loop, from the bridge to the first house
     hedge(S.r3b + 1, S.r3b + 21, 1, 2.6); // inside the bend at the foot of the descent
 
     // ---- the Rham plateau: two long barracks blocks, a round tower, an orchard
     house({ x: 60, z: 47.5, ry: PI, len: 32, dep: 7, wall: 6.4, kind: 'barracks', tint: 0xeee6d8, y0: PL.h, rise: 3.2, slate: 0x50565e });
     house({ x: 60, z: 59, ry: 0, len: 30, dep: 7, wall: 6.0, kind: 'barracks', tint: 0xe8dcc6, y0: PL.h, rise: 3.0, slate: 0x50565e });
+    // courtyard walls with closed carriage gates between the two blocks (no squeezing through to the far side)
+    for (const wx of [45.6, 74.4]) {
+      prop(new T.BoxGeometry(1.2, 4.2, 5.2), 0xe6dccb, { x: wx, y: PL.h + 1.9, z: 53.3 }, stoneMat);
+      prop(new T.BoxGeometry(1.5, 0.35, 5.5), 0xf2ead8, { x: wx, y: PL.h + 4.1, z: 53.3 }, stoneMat);
+      const e = wx < 60 ? -1 : 1;
+      prop(new T.BoxGeometry(0.12, 2.8, 3.0), 0x5a3a24, { x: wx + e * 0.62, y: PL.h + 1.4, z: 53.3 });
+      prop(new T.BoxGeometry(0.14, 0.2, 3.2), 0x2a2a2a, { x: wx + e * 0.66, y: PL.h + 2.0, z: 53.3 });
+      K.box(wx, 53.3, 0.7, 2.9, 0, PL.h + 5);
+    }
     for (const [tx, tz] of [[93.5, 88], [32, 90]]) {
       prop(new T.CylinderGeometry(3.1, 3.4, 9, 22), 0xe4d8c2, { x: tx, y: PL.h + 4.2, z: tz }, stoneMat);
-      prop(new T.ConeGeometry(3.6, 4.6, 22), 0x4c525c, { x: tx, y: PL.h + 11, z: tz }, roofMat);
+      prop(slateCone(3.6, 4.6, 22), 0x4c525c, { x: tx, y: PL.h + 11, z: tz }, roofMat);
       K.circle(tx, tz, 3.2, PL.h + 12); block(tx, tz, 3.6, 3.6, 0, 1); AO(tx, tz, 4.5, 4.5, 0.5, 0, PL.h);
     }
 
@@ -1256,12 +1411,12 @@ export default {
     rowAlong(S.br2 + 12, S.br3 - 40, -1, { set: 3, wallR: [7.5, 9.5], kinds: ['town', 'shop'] }); // Grund, east of the abbey
     rowAlong(S.br3 + 14, L + S.start - 30, 1, { set: 3, wallR: [6.5, 8.5], kinds: ['cottage', 'town'] }); // west bank, outside the west loop
     // Clausen between the climb and the descent: houses and the little church of St Cunegonde
-    for (const [x, z, ry, len, wall, kind] of [[52, 28, 0, 9, 8, 'town'], [62, 29, 0, 8, 7.5, 'shop'], [52, 15, PI / 2, 8, 7, 'cottage'], [69.5, 18, -PI / 2, 9, 8, 'town'], [66, -4, PI, 9, 7.5, 'town'], [55, -6, PI, 8, 7, 'cottage']]) house({ x, z, ry, len, wall, kind });
+    for (const [x, z, ry, len, wall, kind] of [[52, 28, 0, 9, 8, 'town'], [62, 29, 0, 8, 7.5, 'shop'], [52, 15, PI / 2, 8, 7, 'cottage'], [71.3, 18, -PI / 2, 9, 8, 'town'], [66, -4, PI, 9, 7.5, 'town'], [55, -6, PI, 8, 7, 'cottage']]) house({ x, z, ry, len, wall, kind });
     {
       const chx = 61, chz = 7;
       house({ x: chx, z: chz, ry: PI / 2, len: 12, dep: 6.5, wall: 6.5, rise: 3.6, kind: 'church', tint: 0xf2ece2, door: false, dorm: false, chimney: false });
       prop(new T.BoxGeometry(4, 12, 4), 0xf0e8da, { x: chx, y: 5.5, z: chz + 7.5 }, FAC.church);
-      prop(new T.ConeGeometry(2.9, 7, 4), 0x4c525c, { x: chx, y: 14.9, z: chz + 7.5, ry: PI / 4 }, roofMat);
+      prop(slateCone(2.9, 7, 4), 0x4c525c, { x: chx, y: 14.9, z: chz + 7.5, ry: PI / 4 }, roofMat);
       prop(new T.SphereGeometry(0.3, 8, 6), 0xd8b040, { x: chx, y: 18.6, z: chz + 7.5 }, vcMetal);
       K.box(chx, chz + 7.5, 2, 2, 0, 18); block(chx, chz + 7.5, 2.5, 2.5, 0, 1); AO(chx, chz + 7.5, 3.4, 3.4, 0.5);
     }
@@ -1269,10 +1424,11 @@ export default {
     for (let x = -158; x < 160;) {
       const len = r.range(7, 10.5);
       const xm = x + len / 2;
-      let zt = -97;
-      for (let z = -104; z < -60; z += 0.5) { if (gy(xm, z) < gy(xm, -104) - 1.5) { zt = z - 5.5; break; } }
-      const okSpot = !(xm > 88 && xm < 104) && zt < -86 && zt > -101 && gy(xm, zt) > 18;
-      if (okSpot) house({ x: xm, z: zt, ry: 0, len: len - 0.2, dep: 7, wall: r.range(8, 11), kind: r.pick(['town', 'town', 'shop']), y0: gy(xm, zt) - 0.4, coll: false });
+      let ze = -91.5; // the cliff edge
+      for (let z = -104; z < -60; z += 0.5) { if (gy(xm, z) < gy(xm, -104) - 1.5) { ze = z; break; } }
+      const dep = clamp(ze - 1 - (BOUNDS.minZ + 0.6), 0, 7), zt = ze - 1 - dep / 2; // fit between the board's back edge and the drop
+      const okSpot = !(xm > 88 && xm < 104) && dep > 4.5 && zt < -86 && gy(xm, zt) > 18;
+      if (okSpot) house({ x: xm, z: zt, ry: 0, len: len - 0.2, dep, wall: r.range(8, 11), kind: r.pick(['town', 'town', 'shop']), y0: gy(xm, zt) - 0.4, coll: false });
       x += len + r.range(0, 0.6);
     }
 
@@ -1315,6 +1471,16 @@ export default {
       }
       // gates: stone archways through the house row (the road-train comes and goes through them)
       const gateSign = K.std({ map: TX.labelTexture(256, 64, (g2) => { g2.fillStyle = '#2f6a3e'; g2.fillRect(0, 0, 256, 64); g2.strokeStyle = '#d8b040'; g2.lineWidth = 4; g2.strokeRect(5, 5, 246, 54); g2.fillStyle = '#f4f0e0'; g2.font = '700 26px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('Petit Train · Tours', 128, 42); }), roughness: 0.5 });
+      // amber lamps on each gate flash while the train is about to come out of it or go into it
+      A.gateLamps = [0, 1].map(() => K.std({ color: 0xffb040, emissive: 0xff8a10, emissiveIntensity: 0, roughness: 0.3 }));
+      A.rtGates.forEach(([gx, gz], gi) => {
+        for (const e of [-1, 1]) {
+          prop(new T.BoxGeometry(0.9, 1.1, 0.5), 0x23332c, { x: gx + e * 3.4, y: 4.9, z: gz + 3.7 }, vcSatin);
+          K.mesh(new T.SphereGeometry(0.36, 12, 8), A.gateLamps[gi], gx + e * 3.4, 4.9, gz + 4.0, { cast: false });
+        }
+      });
+      // the depot sheds behind the gates, built against the rock: the train is out of sight until it rolls out
+      for (const [gx] of A.rtGates) house({ x: gx - 0.4, z: -88.2, ry: 0, len: 7.8, dep: 9, wall: 6.6, rise: 3.2, kind: 'barracks', tint: 0xe2d8c4, y0: 0, door: false, chimney: false, dorm: false });
       for (const [gx, gz] of A.rtGates) {
         const sh = new T.Shape();
         sh.moveTo(-4.4, -0.5); sh.lineTo(4.4, -0.5); sh.lineTo(4.4, 6.8); sh.lineTo(-4.4, 6.8); sh.closePath();
@@ -1329,6 +1495,7 @@ export default {
         prop(new T.BoxGeometry(5.6, 6, 0.1), 0x0e0c0a, { x: gx, y: 2.5, z: gz - 2.9 }, vc, false);
         prop(new T.PlaneGeometry(3.6, 0.9), 0xffffff, { x: gx, y: 6.0, z: gz + 3.53 }, gateSign, false);
         for (const e of [-1, 1]) K.box(gx + e * 3.45, gz, 0.95, 3.5, 0, 9);
+        K.box(gx, gz - 2.4, 2.6, 0.7, 0, 7); // the dark depot doors (cars stop there; the train is kinematic)
         block(gx, gz, 4.6, 3.8, 0, 0.5);
       }
     }
@@ -1355,6 +1522,42 @@ export default {
       K.instances(new T.IcosahedronGeometry(1, 1), K.std({ color: 0xf4fbff, roughness: 0.3, transparent: true, opacity: 0.85 }), bub, { cast: false });
     }
 
+    // ---------------------------------------------------------------- a gravel promenade along the Alzette below the Rives, benches
+    const strollers = [];
+    {
+      const gc = TX.makeCanvas(128, 128), gg = gc.getContext('2d'), q = K.rng(91);
+      gg.fillStyle = '#cbbd9c'; gg.fillRect(0, 0, 128, 128);
+      for (let i = 0; i < 900; i++) { const t = q(); gg.fillStyle = t < 0.4 ? '#a8987a' : t < 0.75 ? '#ddd2b6' : '#8e826a'; gg.beginPath(); gg.arc(q() * 128, q() * 128, 0.6 + q() * 1.4, 0, TAU); gg.fill(); }
+      const pathMat = K.std({ map: TX.toTexture(gc), roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+      const segs = [];
+      let cur = [];
+      for (const f of A.rivFrames) {
+        const o = rivHW(f.d) + 4.4, x = f.x + f.nx * o, z = f.z + f.nz * o;
+        const ok = f.x > -4 && f.x < 93 && roadD(x, z) > 2.6 && !isBlocked(x, z, 0.5);
+        if (ok) cur.push({ x, z, nx: f.nx, nz: f.nz, y: 0.02 }); else if (cur.length) { segs.push(cur); cur = []; }
+      }
+      if (cur.length) segs.push(cur);
+      const benches = [];
+      for (const sg of segs) {
+        if (sg.length < 6) continue;
+        const g = sweep(sg, [[-1.15, 0.02, 0.92], [-0.9, 0.05, 1], [0.9, 0.05, 1], [1.15, 0.02, 0.92]], { uS: 6, vS: 6 });
+        const m = new T.Mesh(g, pathMat); m.receiveShadow = true; keep.push(m); K.group.add(m);
+        sg.forEach((f, i) => {
+          if (i % 2 === 0) block(f.x, f.z, 1.4, 1.4);
+          if (i % 14 === 7) { const bx = f.x - f.nx * 1.9, bz = f.z - f.nz * 1.9; benches.push({ x: bx, y: 0, z: bz, ry: Math.atan2(-f.nx, -f.nz) }); K.circle(bx, bz, 0.9, 2); block(bx, bz, 1.6, 1.2); }
+          if (i % 9 === 4 && r() < 0.7) strollers.push([f.x + f.nx * r.range(-0.6, 0.6), f.z + f.nz * r.range(-0.6, 0.6)]);
+        });
+      }
+      const benchGeo = merge([
+        colorize(new T.BoxGeometry(2.4, 0.12, 0.7).translate(0, 0.62, 0), 0x8a5a32),
+        colorize(new T.BoxGeometry(2.4, 0.5, 0.1).translate(0, 1.0, -0.36).rotateX(-0.12), 0x8a5a32),
+        colorize(new T.BoxGeometry(0.1, 0.62, 0.66).translate(-1.05, 0.31, 0), 0x2e3a30),
+        colorize(new T.BoxGeometry(0.1, 0.62, 0.66).translate(1.05, 0.31, 0), 0x2e3a30),
+      ]);
+      if (benches.length) K.instances(benchGeo, vc, benches);
+      for (const bn of benches) AO(bn.x, bn.z, 1.6, 0.8, 0.35, -bn.ry, 0);
+    }
+
     // ---------------------------------------------------------------- the climb's footprint is not for trees or houses
     block(24, 14, 21, 27); block(RAMP3.x, RAMP3.z, 9.5, 18); block(24, 54, 3, 46);
     const GLUE = (() => { const s = sAt(58, 73), p = track.place(s, 3.2); return { s, p, bx: p.x + 9, bz: p.z + 13, ba: 0.35 }; })();
@@ -1362,17 +1565,45 @@ export default {
 
     // ---------------------------------------------------------------- trees (flocked foam), bushes, ivy, grass tufts, flowers
     {
-      const flock = (() => { const Sz = 256, h = new Float32Array(Sz * Sz); const q = K.rng(17); for (let i = 0; i < h.length; i++) h[i] = q(); const t = TX.toTexture(TX.normalFromHeight(h, Sz, Sz, 2.6), { srgb: false }); t.repeat.set(3, 3); return t; })();
+      // foam flock: clumpy bumps a few pixels across at play distance (the clumps need UVs for it, see foamUV)
+      const flock = (() => {
+        const Sz = 256, h = new Float32Array(Sz * Sz), q = K.rng(17);
+        const fA = TX.noiseField(Sz, { seed: 19, period: 22, oct: 2 });
+        for (let i = 0; i < h.length; i++) h[i] = fA[i] * 0.8 + q() * 0.2;
+        return TX.toTexture(TX.normalFromHeight(h, Sz, Sz, 3.2), { srgb: false });
+      })();
+      // one oblique planar projection per clump: UVs linear in position keep the normal-mapped shading smooth
+      const foamUV = (g, k = 1.1) => {
+        const p = g.attributes.position, uv = new Float32Array(p.count * 2);
+        for (let i = 0; i < p.count; i++) {
+          uv[i * 2] = (p.getX(i) + p.getZ(i) * 0.55) * k; uv[i * 2 + 1] = (p.getY(i) - p.getZ(i) * 0.4 + p.getX(i) * 0.2) * k;
+        }
+        g.setAttribute('uv', new T.BufferAttribute(uv, 2));
+        return g;
+      };
+      // bend the clump normals towards the outside of the whole crown: it shades as one soft mass, the lobes
+      // only break up its outline (low-poly lobes with their own normals read as faceted plastic)
+      const bendN = (g, cy, k = 0.6) => {
+        const p = g.attributes.position, n = g.attributes.normal;
+        for (let i = 0; i < p.count; i++) {
+          let ox = p.getX(i), oy = (p.getY(i) - cy) * 0.8, oz = p.getZ(i);
+          const l = Math.hypot(ox, oy, oz) || 1; ox /= l; oy /= l; oz /= l;
+          const nx = n.getX(i) * (1 - k) + ox * k, ny = n.getY(i) * (1 - k) + oy * k + 0.08, nz = n.getZ(i) * (1 - k) + oz * k, m = Math.hypot(nx, ny, nz) || 1;
+          n.setXYZ(i, nx / m, ny / m, nz / m);
+        }
+        return g;
+      };
       const decGeo = (() => { // low-poly foam clumps (the flock normal map does the rest)
         const P = [], q = K.rng(12);
-        P.push(colorize(new T.CylinderGeometry(0.045, 0.07, 0.5, 5).translate(0, 0.25, 0), 0x4a3a2c));
-        for (let k = 0; k < 7; k++) {
-          const a = (k / 6) * TAU + q(), d = k ? 0.17 + q() * 0.1 : 0, y = 0.55 + (k ? q() * 0.3 : 0.26);
-          let g = new T.IcosahedronGeometry(0.24 + q() * 0.09, 0);
+        P.push(colorize(new T.CylinderGeometry(0.045, 0.07, 0.5, 5, 1, true).translate(0, 0.25, 0), 0x4a3a2c));
+        for (let k = 0; k < 6; k++) {
+          const a = (k / 5) * TAU + q(), d = k ? 0.18 + q() * 0.1 : 0, y = 0.55 + (k ? q() * 0.3 : 0.26);
+          let g = new T.IcosahedronGeometry(0.25 + q() * 0.09, 0);
           g.deleteAttribute('uv'); g = BU.mergeVertices(g);
           const pp = g.attributes.position; for (let i = 0; i < pp.count; i++) { const k2 = 1 + (q() - 0.5) * 0.3; pp.setXYZ(i, pp.getX(i) * k2, pp.getY(i) * k2 * 0.9, pp.getZ(i) * k2); }
           g.computeVertexNormals();
           xf(g, { x: Math.cos(a) * d, y, z: Math.sin(a) * d, rx: q() * 3, ry: q() * 3 });
+          foamUV(g); bendN(g, 0.66);
           P.push(colorize(g, new T.Color(1, 1, 1).multiplyScalar(0.78 + (y - 0.5) * 0.6)));
         }
         return merge(P);
@@ -1389,10 +1620,10 @@ export default {
       })();
       const bushGeo = (() => {
         const P = [], q = K.rng(14);
-        for (let k = 0; k < 4; k++) { let g = new T.IcosahedronGeometry(0.3 + q() * 0.1, 0); g.deleteAttribute('uv'); g = BU.mergeVertices(g); g.computeVertexNormals(); xf(g, { x: (q() - 0.5) * 0.55, y: 0.25 + q() * 0.12, z: (q() - 0.5) * 0.55, sy: 0.8, ry: q() * 3 }); P.push(colorize(g, new T.Color(1, 1, 1).multiplyScalar(0.8 + q() * 0.3))); }
+        for (let k = 0; k < 4; k++) { let g = new T.IcosahedronGeometry(0.3 + q() * 0.1, 0); g.deleteAttribute('uv'); g = BU.mergeVertices(g); g.computeVertexNormals(); xf(g, { x: (q() - 0.5) * 0.55, y: 0.25 + q() * 0.12, z: (q() - 0.5) * 0.55, sy: 0.8, ry: q() * 3 }); foamUV(g, 1.6); bendN(g, 0.2, 0.55); P.push(colorize(g, new T.Color(1, 1, 1).multiplyScalar(0.8 + q() * 0.3))); }
         return merge(P);
       })();
-      const treeMat = K.std({ vertexColors: true, roughness: 0.95, normalMap: flock, normalScale: V2(1.4) });
+      const treeMat = K.std({ vertexColors: true, roughness: 0.95, normalMap: flock, normalScale: V2(0.75) });
       const decs = [], cons = [], bushes = [];
       const decCols = [0x4f7a2e, 0x5f8a34, 0x6a9a3a, 0x48702a, 0x7a9a3c, 0x587e30, 0x3f6a28];
       const conCols = [0x2c4a2a, 0x355630, 0x2a4224, 0x3c5a34];
@@ -1405,12 +1636,24 @@ export default {
         if (PLAZA.some(([px, pz, pr]) => Math.hypot(x - px, z - pz) < pr)) return false;
         return true;
       };
+      // a trunk about a car's length from a wall or another trunk leaves a pocket a car can't turn out of: such
+      // trees are left out (trunks near the road are colliders so cars don't drive through them)
+      const cramped = (x, z, rad) => {
+        for (const c of PH.colliders) {
+          if (c.moverFn || (c.bb && (x + rad < c.bb[0] || x - rad > c.bb[2] || z + rad < c.bb[1] || z - rad > c.bb[3]))) continue;
+          if (PH.circleVsCollider(x, z, rad, c)) return true;
+        }
+        return false;
+      };
       const addTree = (kind, x, z, hgt, col) => {
+        const coll = (kind === 'dec' || kind === 'con') && roadD(x, z) < 16;
+        if (coll && cramped(x, z, 0.65 + 5.4)) return false;
         const y = gy(x, z) - 0.15;
         const t = { x, y, z, ry: r() * TAU, rx: r.range(-0.05, 0.05), rz: r.range(-0.05, 0.05), color: col };
         if (kind === 'con') { t.sx = t.sz = hgt; t.sy = hgt; cons.push(t); } else if (kind === 'dec') { t.sx = t.sz = hgt * 0.8; t.sy = hgt; decs.push(t); } else if (kind === 'ivy') { t.sx = t.sz = hgt; t.sy = hgt * 0.55; t.y -= 0.3; bushes.push(t); } else { t.sx = t.sz = hgt; t.sy = hgt * 0.8; bushes.push(t); }
-        if (kind !== 'bush' && roadD(x, z) < 16) K.circle(x, z, 0.65, y + hgt);
+        if (coll) K.circle(x, z, 0.65, y + hgt);
         if (kind !== 'ivy') AO(x, z, hgt * (kind === 'bush' ? 0.4 : 0.3), hgt * (kind === 'bush' ? 0.4 : 0.3), 0.33, 0, y + 0.15);
+        return true;
       };
       // woods on the valley sides and round the knoll (clumps from noise)
       for (let i = 0; i < 14000 && decs.length + cons.length < 470; i++) {
@@ -1453,15 +1696,26 @@ export default {
         if (rk > 0.45 && n1(x, z, 0.12, 9) > 0.52) addTree('ivy', x, z, r.range(1.6, 3.0), r.pick([0x4a6a2a, 0x3f5e26, 0x5a7a30]));
         else if (rk < 0.4 && h > 14 && r() < 0.5) addTree('bush', x, z, r.range(2, 3.4), r.pick(decCols));
       }
-      chunked(decGeo, treeMat, decs, { colors: true }, 170);
-      chunked(conGeo, treeMat, cons, { colors: true }, 200);
-      chunked(bushGeo, treeMat, bushes.filter((b) => b.sy > b.sx * 0.79), { colors: true }, 170);
-      chunked(bushGeo, treeMat, bushes.filter((b) => b.sy <= b.sx * 0.79), { colors: true, cast: false }, 200);
+      // the Rham knoll the viaduct runs into: a wood on top, scrub and ivy on its rocky west face
+      for (let i = 0, n = 0; i < 5000 && n < 95; i++) {
+        const x = r.range(100, TX1 - 3), z = r.range(18, TZ1 - 3);
+        const h = gy(x, z), rk = rockAt(x, z);
+        if (h < 2 || isBlocked(x, z, 0.5) || roadD(x, z) < 5) continue;
+        if (rk > 0.42) { if (n1(x, z, 0.15, 31) > 0.45) { addTree('ivy', x, z, r.range(1.8, 3.2), r.pick([0x4a6a2a, 0x3f5e26, 0x5a7a30])); n++; } continue; }
+        if (n1(x, z, 0.09, 77) < 0.3 || !okTree(x, z, 1.4, 5)) continue;
+        if (r() < 0.25) addTree('bush', x, z, r.range(2.2, 3.6), r.pick(decCols));
+        else { const con = r() < 0.3; addTree(con ? 'con' : 'dec', x, z, r.range(7, 11.5), con ? r.pick(conCols) : r.pick(decCols)); }
+        n++;
+      }
+      chunked(decGeo, treeMat, decs, { colors: true }, 85);
+      chunked(conGeo, treeMat, cons, { colors: true }, 110);
+      chunked(bushGeo, treeMat, bushes.filter((b) => b.sy > b.sx * 0.79), { colors: true, cast: false }, 85);
+      chunked(bushGeo, treeMat, bushes.filter((b) => b.sy <= b.sx * 0.79), { colors: true, cast: false }, 110);
       // static grass tufts and flowers
       const Q = (K.quality && K.quality.grass) || 0.7;
       const pos = [], nrm = [], col = [], idx = [];
       const tr = K.rng(77);
-      for (let b = 0; b < 5; b++) {
+      for (let b = 0; b < 4; b++) {
         const a = tr() * TAU, rad = tr() * 0.25, ox = Math.cos(a) * rad, oz = Math.sin(a) * rad;
         const h = 0.55 + tr() * 0.4, w = 0.1 + tr() * 0.05, rot = tr() * TAU, lean = 0.08 + tr() * 0.18, la = a + tr.range(-0.6, 0.6);
         const cr = Math.cos(rot), sr = Math.sin(rot), base = pos.length / 3;
@@ -1486,7 +1740,7 @@ export default {
         i++;
         if (tr() < 0.07) flowers.push({ x: x + 0.3, y: gy(x, z) + tr.range(0.35, 0.7), z, s: tr.range(0.1, 0.17), color: tr.pick([0xffffff, 0xf6e04a, 0xe84a6a, 0xb07ad8, 0xf2f0a0]) });
       }
-      chunked(tuft, K.std({ vertexColors: true, side: T.DoubleSide, roughness: 0.85 }), tufts, { colors: true, cast: false, receive: false }, 120);
+      chunked(tuft, K.std({ vertexColors: true, side: T.DoubleSide, roughness: 0.85 }), tufts, { colors: true, cast: false, receive: false }, 90);
       chunked(new T.IcosahedronGeometry(1, 0), K.std({ color: 0xffffff, roughness: 0.6 }), flowers, { colors: true, cast: false, receive: false }, 200);
     }
 
@@ -1503,10 +1757,14 @@ export default {
       const lamps = [];
       const skip = (s) => [S.br1, S.br2, S.br3, S.ford, S.bock].some((b) => Math.abs(sDist(b, s)) < 13) || (elevated(s) && roadG[track.idx(s)] < PL.h - 0.5);
       let side = 1;
-      for (let s = 6; s < L - 4; s += 23) {
+      for (let s = 6; s < L - 4; s += 17) {
         if (skip(s)) continue;
         side = -side;
-        const p = track.place(s, side * (W / 2 + 1.75)), y = roadG[track.idx(s)];
+        const k = track.at(s).curv;
+        const kk = [k, track.at(s + 8).curv, track.at(s - 8).curv].reduce((m, v) => (Math.abs(v) > Math.abs(m) ? v : m), 0);
+        const bend = Math.abs(kk) > 1 / 55;
+        if (bend && kk * side < 0) continue; // never on the outside of a bend, where cars run wide
+        const p = track.place(s, side * (W / 2 + (bend ? 3.3 : 2.6))), y = roadG[track.idx(s)]; // further out on the inside (apexes)
         if (isBlocked(p.x, p.z, 0.2) || inRiver(p.x, p.z, 1.5) || PLAZA.some(([px, pz, pr]) => Math.hypot(p.x - px, p.z - pz) < pr)) continue;
         lamps.push({ x: p.x, y, z: p.z, ry: r() * TAU, color: 0x23332c });
         K.circle(p.x, p.z, 0.35, y + 6);
@@ -1535,7 +1793,7 @@ export default {
         K.circle(x, z, 0.3, y + 4);
       };
       const signAt = (txt, s, side) => {
-        const p = track.place(s, side * (W / 2 + 2.3)), y = roadG[track.idx(s)];
+        const p = track.place(s, side * (W / 2 + 2.8)), y = roadG[track.idx(s)];
         if (isBlocked(p.x, p.z, 0)) return;
         plate(txt, p.x, p.z, 0, y);
       };
@@ -1555,7 +1813,7 @@ export default {
       });
       const wm = K.std({ map: warn, transparent: true, alphaTest: 0.4, roughness: 0.4, side: T.DoubleSide });
       for (const e of [-1, 1]) {
-        const s = S.ford + e * 15, p = track.place(s, -(W / 2 + 2.2) * e);
+        const s = S.ford + e * 15, p = track.place(s, -(W / 2 + 2.8) * e);
         prop(new T.CylinderGeometry(0.09, 0.09, 3.8, 6), 0x2a2a2a, { x: p.x, y: 1.9, z: p.z });
         K.mesh(new T.PlaneGeometry(1.6, 1.6), wm, p.x, 3.6, p.z, { ry: Math.atan2(-p.tx * e, -p.tz * e) });
         K.circle(p.x, p.z, 0.3, 4);
@@ -1580,6 +1838,7 @@ export default {
       const [ccx, ccz, ci] = A.cloister;
       for (let k = 0; k < 6; k++) person(ccx + r.range(-ci + 1, ci - 1), ccz + r.range(-ci + 1, ci - 1), 0.05);
       for (const [x, z] of [[-74, -4.5], [-69, -4], [-60, 4]]) person(x, z);
+      for (const [x, z] of strollers) person(x, z, 0.04);
       const sitters = terrace.sitters.map(([x, z, y, a]) => ({ x, y, z, ry: a, s: 1, color: r.pick(shirt) }));
       K.instances(figGeo, vcSatin, people, { colors: true });
       K.instances(sitGeo, vcSatin, sitters, { colors: true });
@@ -1597,7 +1856,7 @@ export default {
     // ---------------------------------------------------------------- the model-maker's glue: a brush left on the plateau, PVA spilt over the road
     {
       const p = GLUE.p;
-      const glue = K.phys({ color: 0xf6f4ee, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.9, sheen: 0.5, sheenColor: new T.Color(0xffffff) });
+      const glue = K.phys({ color: 0xece8de, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.8, sheen: 0.5, sheenColor: new T.Color(0xffffff) });
       const sp = K.spill(p.x, p.z, 4.6, glue, { lump: 0.4, stretch: 1.6, angle: p.angle, y: PL.h + 0.12, thick: 0.22 });
       K.surface('sticky', { poly: sp.poly });
       for (let i = 1; i < 5; i++) K.spill(p.x + r.range(-1.5, 1.5) + i * 0.6, p.z + 5 + i * 2.2, r.range(0.6, 1.2), glue, { y: PL.h + 0.1, thick: 0.15, n: 18 });
@@ -1640,7 +1899,7 @@ export default {
         K.mesh(new T.PlaneGeometry(hw * 2, wl - b), secMat, x, (wl + b) / 2, z, { ry, cast: false });
       }
       // hobby table: a pale beech worktop far larger than the board
-      const beech = TX.woodTextures({ size: 1024, seed: 31, planks: 6, base: 0xc8a272, dark: 0x9a7448, light: 0xe0c094, ringFreq: 14, gap: 0.003, roughBase: 0.55 });
+      const beech = TX.woodTextures({ size: 256, seed: 31, planks: 6, base: 0xc8a272, dark: 0x9a7448, light: 0xe0c094, ringFreq: 14, gap: 0.003, roughBase: 0.55 });
       for (const t of Object.values(beech)) t.repeat.set(4, 3);
       K.mesh(new T.BoxGeometry(760, 4, 560), K.std({ map: beech.map, normalMap: beech.normalMap, roughnessMap: beech.roughnessMap, normalScale: V2(0.5) }), 0, TABLE_Y - 2, 0, { cast: false });
       // green self-healing cutting mat with a printed grid under and around the board
@@ -1708,6 +1967,19 @@ export default {
       prop(new T.ConeGeometry(0.85, 2.4, 20), 0xe86a1a, { x: -150, y: MY + 10.6, z: 112 }, vcSatin);
       K.mesh(new T.CylinderGeometry(2.42, 2.42, 3.6, 32, 1, true), K.std({ map: TX.labelTexture(256, 64, (g2) => { g2.fillStyle = '#2a6aa8'; g2.fillRect(0, 0, 256, 64); g2.fillStyle = '#fff'; g2.font = '700 26px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('WOOD & PVA', 128, 32); g2.font = '16px Rubik, Arial'; g2.fillText('dries clear', 128, 54); }), roughness: 0.5 }), -150, MY + 3.9, 112, { ry: 0.5 });
       AO(-150, 112, 3.2, 3.2, 0.45, 0, MY - 0.05);
+      // open glue pots with a brush standing in them (front left and by the east edge)
+      const potLabel = K.std({ map: TX.labelTexture(256, 64, (g2) => { g2.fillStyle = '#f4f2ea'; g2.fillRect(0, 0, 256, 64); g2.fillStyle = '#c8302e'; g2.fillRect(0, 0, 256, 12); g2.fillRect(0, 52, 256, 12); g2.fillStyle = '#2a2a2a'; g2.font = '700 22px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('HOBBY GLUE', 64, 40); g2.fillText('HOBBY GLUE', 192, 40); }), roughness: 0.45 });
+      const potWet = K.phys({ color: 0xf8f6f0, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05 });
+      const pot = K.lathe([[2.4, 0], [2.6, 0.3], [2.65, 3.1], [2.85, 3.25], [2.85, 3.5], [2.45, 3.5], [2.4, 0.4], [0, 0.35]], 32);
+      for (const [gx, gz, a] of [[-46, 106.5, 0.5], [176, -60, 2.2]]) {
+        prop(pot, 0xf0eee8, { x: gx, y: MY, z: gz }, vcSatin);
+        K.mesh(new T.CylinderGeometry(2.67, 2.67, 1.9, 32, 1, true), potLabel, gx, MY + 1.65, gz, { ry: a });
+        K.mesh(new T.CircleGeometry(2.42, 28), potWet, gx, MY + 2.7, gz, { rx: -PI / 2, cast: false });
+        const ca = Math.cos(a), sa = Math.sin(a);
+        prop(new T.CylinderGeometry(0.3, 0.22, 12, 10), 0x1e3a6a, { x: gx + ca * 1.9, y: MY + 7.6, z: gz + sa * 1.9, rx: sa * 0.32, rz: -ca * 0.32 }, vcSatin);
+        prop(new T.CylinderGeometry(0.33, 0.3, 1.6, 10), 0xc8b070, { x: gx + ca * 0.7, y: MY + 2.6, z: gz + sa * 0.7, rx: sa * 0.32, rz: -ca * 0.32 }, vcMetal);
+        AO(gx, gz, 3.4, 3.4, 0.45, 0, MY - 0.05);
+      }
       const jar = K.lathe([[2.9, 0], [3.1, 0.3], [3.1, 7.5], [3.3, 7.8], [3.0, 7.9], [2.85, 7.6], [2.85, 0.5], [0, 0.4]], 32);
       K.mesh(jar, K.glass(0xeef4f6, 0.22), -186, MY, -36, { cast: false });
       K.mesh(new T.CylinderGeometry(2.8, 2.8, 4.2, 28), K.liquid(0x9aa8a0, { transparent: true, opacity: 0.55 }), -186, MY + 2.5, -36);
@@ -1720,7 +1992,7 @@ export default {
       prop(new T.BoxGeometry(31, 0.12, 2.6), 0xd8dade, { x: 178, y: MY + 0.06, z: -18, ry: PI / 2 - 0.08 }, vcMetal);
       K.mesh(new T.PlaneGeometry(31, 2.6), K.std({ map: rule, roughness: 0.35, metalness: 0.6 }), 178, MY + 0.125, -18, { rx: -PI / 2, cast: false }).rotation.set(-PI / 2, 0, PI / 2 - 0.08);
       AO(178, -18, 1.8, 16, 0.3, -0.08, MY - 0.05);
-      const flk = TX.labelTexture(256, 128, (g2) => { g2.fillStyle = '#6a9a3a'; g2.fillRect(0, 0, 256, 128); for (let i = 0; i < 400; i++) { g2.fillStyle = `rgba(${40 + Math.random() * 60},${90 + Math.random() * 70},${30 + Math.random() * 30},0.8)`; g2.fillRect(Math.random() * 256, Math.random() * 128, 2, 4); } g2.fillStyle = '#f4f2ea'; g2.fillRect(20, 30, 216, 52); g2.fillStyle = '#2a4a1e'; g2.font = '700 28px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('STATIC GRASS', 128, 64); g2.font = '16px Rubik, Arial'; g2.fillText('spring meadow · 4 mm', 128, 100); });
+      const fq = K.rng(62), flk = TX.labelTexture(256, 128, (g2) => { g2.fillStyle = '#6a9a3a'; g2.fillRect(0, 0, 256, 128); for (let i = 0; i < 400; i++) { g2.fillStyle = `rgba(${40 + fq() * 60 | 0},${90 + fq() * 70 | 0},${30 + fq() * 30 | 0},0.8)`; g2.fillRect(fq() * 256, fq() * 128, 2, 4); } g2.fillStyle = '#f4f2ea'; g2.fillRect(20, 30, 216, 52); g2.fillStyle = '#2a4a1e'; g2.font = '700 28px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('STATIC GRASS', 128, 64); g2.font = '16px Rubik, Arial'; g2.fillText('spring meadow · 4 mm', 128, 100); });
       prop(new T.BoxGeometry(7, 4.5, 4.4), 0x5a8a32, { x: 182, y: MY + 2.25, z: 22, ry: 0.3 }, vc);
       const flm = K.std({ map: flk, roughness: 0.7 });
       K.mesh(new T.PlaneGeometry(7, 4.4), flm, 182, MY + 4.52, 22, { rx: -PI / 2, cast: false }).rotation.set(-PI / 2, 0, 0.3);
@@ -1795,6 +2067,48 @@ export default {
       const g = game.physics.groundAt(c.x, c.z).g;
       if (g > c.y + 0.85) c.y = g;
     }
+    // ---- the tourist road-train on the Rives: CPU drivers keep to the left lane past it, and follow it
+    // (waiting for a gap) when they are stuck behind it with another car alongside
+    const R = A.rt;
+    if (!R || !R.mS) return;
+    // at a race start, time the first trip so the train is out on the Rives ~4 s before the leaders get there
+    if (game.state === 'countdown' && game.countFull && game.countT > 3.0 && !A.rtSynced) { R.t0 = time + game.countT - 0.9; A.rtSynced = true; }
+    if (game.state !== 'countdown') A.rtSynced = false;
+    const head = roadTrainHead(time), Lt = R.L, Lr = A.L, s0 = A.S.rivesA;
+    const rel = (s) => { const d = (((s - s0) % Lr) + Lr) % Lr; return d > Lr - 80 ? d - Lr : d; };
+    let rear = 1e9, front = -1e9, latMin = 99;
+    for (let i = 0; i < RTRAIN.lens.length; i++) {
+      const hs = head - R.off[i];
+      for (let f = 0; f <= 2; f++) {
+        const q = hs - (RTRAIN.lens[i] * f) / 2, k = Math.round((((q % Lt) + Lt) % Lt) / R.mStep) % R.mN;
+        if (!R.mNear[k]) continue;
+        const rs = rel(R.mS[k]);
+        if (rs < rear) rear = rs;
+        if (rs > front) front = rs;
+        if (R.mLat[k] < latMin) latMin = R.mLat[k];
+      }
+    }
+    if (latMin > 50) return;
+    const vT = Math.max(0, (head - roadTrainHead(time - 0.1)) / 0.1);
+    const safe = latMin - RTRAIN.r - 1.9; // a car centred left of this line clears the train
+    for (const e of game.cars) {
+      const ai = e.ai || (e.finished ? e.cooldown : null);
+      if (!ai || e.out) continue;
+      const c = e.car;
+      if (c.state !== 'drive' || c.airborne) continue;
+      const cs = rel(e.trackS), dRear = rear - cs;
+      if (cs > front + 3 || dRear > 50 || cs < -70) continue;
+      const lo = ai.lineOffset(e.trackS + 6 + Math.max(0, c.fwdSpeed) * 0.28);
+      const tgt = safe - (e.lateral > safe - 1 && dRear < 35 ? 2.4 : 0.8); // aim well left when it's still in the train's lane
+      if (lo + ai.avoid > tgt) ai.avoid = tgt - lo;
+      if (e.lateral <= safe || dRear < -1.5) continue;
+      // still in the train's lane behind it (wide out of the bend, or boxed in): brake only as hard as needed to
+      // stay off its tail while the line above takes the car left; close behind it, it waits for the gap
+      const vmax = vT + Math.sqrt(2 * 60 * Math.max(0, dRear - 4.5));
+      const sp = Math.max(0, c.fwdSpeed);
+      if (sp > vmax) { const k = vmax / Math.max(sp, 0.01); c.vx *= k; c.vz *= k; }
+      if (sp > vmax || dRear < 8) { e.holdT = 0.3; ai.stuckT = 0; }
+    }
   },
 
   animate(time, dt, game) {
@@ -1831,8 +2145,14 @@ export default {
         m.position.set(x, 0, z); m.rotation.set(0, -a, 0);
         const sh = A.rtShadow[i]; sh.position.set(x, 0.1, z); sh.rotation.z = -a;
       });
-      const out = head > 6 && head < A.rt.L - 40;
-      A.rtBeacon.material.emissiveIntensity = out && Math.floor(time * 3) % 2 === 0 ? 3 : 0.1;
+      // warnings: the loco's beacon and the gate lamps flash from 2.5 s before it leaves the depot
+      const R = A.rt, u = (((time - R.t0) % R.P) + R.P) % R.P;
+      const soon = u < RTRAIN.dwell && u > RTRAIN.dwell - 2.5;
+      const out = soon || (head > 0 && head < R.gW + R.TL + 4);
+      const blink = Math.floor(time * 3) % 2 === 0;
+      A.rtBeacon.material.emissiveIntensity = out && blink ? 3 : 0.1;
+      A.gateLamps[0].emissiveIntensity = (soon || (head > 0 && head < R.gE + R.TL + 3)) && blink ? 3.2 : 0;
+      A.gateLamps[1].emissiveIntensity = head > R.gW - 26 && head < R.gW + R.TL + 3 && !blink ? 3.2 : 0;
       // a toot when it leaves the gate
       if (snd && head > 0 && A.lastHead === 0) { const p = rt.at(head); if (game.onScreen(p.x, 1, p.z, 0.4)) { game.sound.tone(880, 0.18, { type: 'square', vol: 0.03 }); game.sound.tone(880, 0.22, { type: 'square', vol: 0.03, when: 0.26 }); } }
       A.lastHead = head;

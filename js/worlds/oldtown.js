@@ -27,15 +27,24 @@ const GS = { x0: -123, z0: 35.5, nx: 32, nz: 8 }; // south section x -123..101, 
 // ---- the circuit: a closed polygon with a fillet radius at every corner (exact radii, smooth arcs)
 const POLY = [
   [-106, 78, 16], // landing -> Avenue de la Liberté
-  [-10, 78, 15], [0, 70, 15], [30, 70, 15], [40, 78, 15], // Gare chicane
+  [-8, 78, 11], [4, 62, 11], [20, 62, 11], [32, 78, 11], // Gare chicane round the Place de Paris flower beds
   [88, 78, 16], // onto the Passerelle
   [88, 5, 12], // Boulevard Roosevelt
   [-52, 5, 15], [-52, -25, 15], // Rue Chimay hairpin
-  [139, -25, 16], // onto the Corniche
-  [139, -80, 13], [113, -80, 13], // round the Bock
+  [140.5, -25, 16], // onto the Corniche
+  [140.5, -80, 13], [113, -80, 13], // round the Bock
   [113, -53, 13], // Marché-aux-Herbes
-  [45, -53, 15], [35, -61, 15], [0, -61, 15], [-10, -53, 15], // Rue de l'Eau chicane
-  [-106, -53, 16], // Boulevard Royal, straight down to the Adolphe Bridge
+  [50, -53, 11], [38, -69, 11], [8, -69, 11], [-4, -53, 11], // Rue de l'Eau chicane round the Krautmaart planters
+  [-106, -53, 16], // Grand-Rue, then Boulevard Royal straight down to the Adolphe Bridge
+];
+// kerbed islands inside both chicanes (they jog north) and the Rue Chimay hairpin, so nobody drives straight through:
+// track points where the island's ring starts and ends (ext = how far beyond them it runs), its side of the road
+// (+1 right, -1 left), the line that closes it (ax 1: z <= v, ax 0: x <= v) and what stands in it
+const KERB = 1.6; // island kerb line, this far off the road edge
+const ISL = [
+  { a: [-8, 78], b: [32, 78], ext: 9, side: 1, ax: 1, v: 78 + 6.25 + KERB, kind: 'fountain', mx: 12, mz: 77.5, mr: 4.2 },
+  { a: [50, -53], b: [-4, -53], ext: 9, side: -1, ax: 1, v: -53 + 6.25 + KERB, kind: 'statue', mx: 23, mz: -53.5, mr: 2.8 },
+  { a: [-23, 5], b: [-23, -25], ext: 0, side: 1, ax: 0, v: -23, kind: 'houses', mx: -32.5, mz: -10, mr: 99 },
 ];
 function filletLoop(V, stepDeg = 12, straightStep = 20) {
   const n = V.length, C = [];
@@ -60,15 +69,15 @@ function filletLoop(V, stepDeg = 12, straightStep = 20) {
 }
 const W0 = 12.5;
 const widthAt = (x, z) => {
-  if (Math.abs(x + 106) < 4 && z > -22 && z < 64) return 13.5; // Adolphe Bridge approach, jump and landing
-  if (x > 131 && z < -36 && z > -72) return 12; // the Corniche: narrow, along the edge
+  if (Math.abs(x + 106) < 4 && z > -22 && z < 64) return 13; // Adolphe Bridge approach, jump and landing
+  if (x > 132 && z < -36 && z > -72) return 12; // the Corniche: narrow, along the edge
   return W0;
 };
 const TRACK = filletLoop(POLY).map(([x, z]) => [Math.round(x * 100) / 100, Math.round(z * 100) / 100, widthAt(x, z)]);
 
 // ---- special places
 const JUMP = { x: -106, z0: 8, z1: 23, h: 3.4, wid: 13.6 }; // take-off: the north half of the Adolphe Bridge
-const LAND = { z0: 33, z1: 43, h: 1.3 }; // landing: the south half
+const LAND = { z0: 33, z1: 43, h: 1.3, wid: 17.6 }; // landing: the south half, wider than the road so a crooked jump still lands
 const PASS = { x: 88, z0: 18.5, z1: 37.5, hw: 6.9 }; // the Passerelle deck spanning the gap
 const BOUNDS = { minX: -150, maxX: 150, minZ: -95, maxZ: 95, poly: [[-150, -95], [150, -95], [150, 23], [138, 23], [138, 95], [-138, 95], [-138, 23], [-150, 23]] };
 
@@ -105,7 +114,6 @@ export default {
     const BU = K.BufferGeometryUtils;
     const lowQ = K.quality && K.quality.tilt === false;
     A = { steam: [], flags: [], jumpRespawnS: 0, gapZ: [TN.z1, TS.z0] };
-    const TT0 = performance.now(), TL = (m) => console.log('OTTIME', m, Math.round(performance.now() - TT0));
 
     // ================================================================== helpers
     const V2 = (a, b = a) => new T.Vector2(a, b);
@@ -162,7 +170,6 @@ export default {
     const onN = (x, z) => x >= TN.x0 && x <= TN.x1 && z >= TN.z0 && z <= TN.z1;
     const onS = (x, z) => x >= TS.x0 && x <= TS.x1 && z >= TS.z0 && z <= TS.z1;
     const roadD = (x, z) => { const n = track.distTo(x, z); return n.dist - track.w[n.i] / 2; }; // < 0 on the road
-    const warnRoad = (what, x, z, m = 0.5) => { if (roadD(x, z) < m) console.warn(`oldtown: ${what} on road at ${x.toFixed(1)},${z.toFixed(1)}`); };
 
     // ================================================================== room: parquet floor, rug, the two coffee tables
     {
@@ -304,10 +311,10 @@ export default {
       // pick the cell nearest to a road point, off the ideal line
       const pick = (sec, x, z) => { const [i, j] = cellOf(sec.G, x, z); return { i, j }; };
       const want = [
-        // all at the road edge in the middle of long straights, half off the tarmac
-        [secN, 27.5, 0.5], // Boulevard Roosevelt, right-hand side
-        [secN, 62.5, -20.5], // Rue de la Reine, right-hand side
-        [secN, 76.5, -48.5], // Marché-aux-Herbes, left-hand side
+        // all at the road edge in the middle of straights, on the side away from the line into the next corner
+        [secN, 27.5, 0.5], // Boulevard Roosevelt, right-hand side (the line into the hairpin is on the left)
+        [secN, -56.5, -48.5], // Grand-Rue, left-hand side (the line into Boulevard Royal is on the right)
+        [secS, -77.5, 74], // start straight before the grid, left-hand side (the exit line of the corner is on the right)
       ];
       want.forEach(([sec, x, z], k) => { const c = pick(sec, x, z); holeSpots[k] = [sec, c.i, c.j]; });
     }
@@ -361,7 +368,7 @@ export default {
       [4, [[-30, -34], [10, -34]]], [3.5, [[-12, -34], [-12, -45]]], [4, [[90, -34], [104, -34]]],
       [3.5, [[50, -12], [62, -12], [62, -4]]],
       [4.5, [[-118, 56], [-60, 58], [0, 58], [60, 57], [96, 57]]], [3.5, [[-40, 58], [-40, 72]]], [3.5, [[70, 57], [70, 72]]],
-      [3.5, [[-30, 84.5], [-30, 92]]], [3.5, [[20, 84.5], [20, 92]]],
+      [3.5, [[-30, 84.5], [-30, 92]]], [3.5, [[55, 84.5], [55, 92]]],
     ];
 
     const drawSection = (sec) => {
@@ -597,8 +604,10 @@ export default {
         g.font = `italic 700 ${size}px Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillStyle = 'rgba(240,234,220,0.32)'; g.fillText(text, 0, 0); g.restore();
       };
-      roadName(30, 'Avenue de la Liberté'); roadName(185, 'Avenue de la Gare');
-      roadName(340, 'Boulevard Roosevelt'); roadName(520, 'Rue de la Reine'); roadName(735, 'Marché-aux-Herbes'); roadName(910, 'Boulevard Royal');
+      const nameAt = (x, z, text) => roadName(track.distTo(x, z).s, text);
+      nameAt(-106, 53, 'Avenue de la Liberté'); nameAt(56, 78, 'Avenue de la Gare');
+      nameAt(48, 5, 'Boulevard Roosevelt'); nameAt(20, -25, 'Rue de la Reine'); nameAt(94, -53, 'Marché-aux-Herbes'); nameAt(22, -69, "Rue de l'Eau");
+      nameAt(-32, -53, 'Grand-Rue'); nameAt(140.5, -58, 'Chemin de la Corniche'); nameAt(-106, -22, 'Boulevard Royal');
       g.restore();
 
       // ---- labels
@@ -614,7 +623,6 @@ export default {
       label(-79.5, 10.8, 'Place de la Constitution', 1.45);
       label(45, -33.2, 'Palais Grand-Ducal', 1.4); label(79, -45.2, 'Clairefontaine', 1.2);
       label(14, -3.4, 'Cathédrale Notre-Dame', 1.35);
-      label(146.8, -50, 'Chemin de la Corniche', 1.5, PI / 2);
       label(112, 4, 'Plateau du Saint-Esprit', 1.3);
       label(126, -84, 'Le Bock', 1.5);
       label(-20, 47, 'Vallée de la Pétrusse', 2.2, 0, '#2f4a22');
@@ -643,11 +651,8 @@ export default {
       }
       sec.canvas = c; sec.wx0 = wx0; sec.wz0 = wz0; sec.ww = ww; sec.wh = wh; sec.g = g;
     };
-    TL('pre-print');
     drawSection(secN);
-    TL('secN');
     drawSection(secS);
-    TL('secS');
     // the picture on the box lid: the whole map, scaled down (copied before the cut lines go in)
     const lidPic = cv(1024, 720, (g, w, h) => {
       g.fillStyle = '#18324f'; g.fillRect(0, 0, w, h);
@@ -722,7 +727,6 @@ export default {
       g.restore();
     }
 
-    TL('cuts');
     // ---- groove normal map: the cut lines pressed into the card, plus a fine linen weave (tiles every Q pieces)
     const grooveTex = (() => {
       const S = lowQ ? 512 : 1024, U = Q * P, k = S / U;
@@ -743,7 +747,6 @@ export default {
       return nt;
     })();
 
-    TL('groove');
     // ---- puzzle tiles: each section split into textures no wider than 1024 px
     const puzzleMats = [];
     for (const sec of sections) {
@@ -762,7 +765,6 @@ export default {
       }
     }
 
-    TL('tiles');
     // ================================================================== shared materials for the pop-ups
     const slateTex = TX.toTexture(cv(256, 256, (g, w, h) => {
       g.fillStyle = '#4a545e'; g.fillRect(0, 0, w, h);
@@ -991,6 +993,11 @@ export default {
       g.clearGroups();
       return g;
     };
+    // pop-up base card: a thin white card glued to the print, with its fold line
+    const card = (x, z, w, d) => {
+      part(box(w, 0.07, d), paperMat, { x, y: PY + 0.035, z }, 0xf7f1e4, false);
+      part(box(w - 0.6, 0.02, 0.08), paperMat, { x, y: PY + 0.075, z: z + d / 2 - 0.5 }, 0xc9bfa8, false);
+    };
     const lamp = (x, y, z, hgt = 3.6) => {
       part(cyl(0.12, 0.16, hgt, 6), ironMat, { x, y: y + hgt / 2, z }, 0x2a2826);
       part(cyl(0.34, 0.2, 0.2, 6), ironMat, { x, y: y + hgt + 0.05, z }, 0x2a2826);
@@ -1015,6 +1022,7 @@ export default {
         K.circle(ox, zf + 0.6, 1.5, 14);
       }
       K.box(cx, cz, (x1 - x0) / 2, d / 2, 0, 15);
+      card(cx, cz + 1.0, x1 - x0 + 4.2, d + 1.2); // the pop-up's glued base card
       AO(cx, cz + 0.5, (x1 - x0) / 2 + 1.5, d / 2 + 1.5, 0.5);
       // flag on the roof
       part(cyl(0.08, 0.1, 6, 6), ironMat, { x: 45, y: PY + h + 4.4 + 2, z: cz }, 0xd8d0c0);
@@ -1062,6 +1070,7 @@ export default {
         K.circle(x1 + 0.4, tz, 2.1, 24);
       }
       K.box((x0 + x1) / 2, zc, (x1 - x0) / 2, wN / 2, 0, 15); K.box(wx, zc, 2.8, 2.8, 0, 30); K.circle(x1, zc, 4.4, 10);
+      card(13.5, zc, 41.5, 12.4);
       AO((x0 + x1) / 2 - 1, zc + 0.6, (x1 - x0) / 2 + 5, wN / 2 + 2, 0.5);
     }
 
@@ -1138,12 +1147,12 @@ export default {
         K.box(wx, zm, 0.75, len / 2, 0, 3.2);
         AO(wx, zm, 1.6, len / 2 + 0.4, 0.45);
       }
-      const tx = 148.6, tz = -51.8;
-      partW(cyl(1.9, 2.1, 6.2, 14), stoneMat, { x: tx, y: PY + 3.1, z: tz }, 0xf2e8d2, 3);
-      partW(cyl(0, 2.5, 4.4, 14), slateMat, { x: tx, y: PY + 6.2 + 2.2, z: tz }, 0xffffff, 3);
-      part(box(0.5, 0.9, 0.12), paperMat, { x: tx - 1.3, y: PY + 3.6, z: tz + 1.45, ry: -0.6 }, 0x2e2824);
-      K.circle(tx, tz, 2.1, 10);
-      AO(tx, tz, 2.6, 2.6, 0.5);
+      const tx = 149.1, tz = -51.8;
+      partW(cyl(1.6, 1.8, 6.2, 14), stoneMat, { x: tx, y: PY + 3.1, z: tz }, 0xf2e8d2, 3);
+      partW(cyl(0, 2.2, 4.4, 14), slateMat, { x: tx, y: PY + 6.2 + 2.2, z: tz }, 0xffffff, 3);
+      part(box(0.5, 0.9, 0.12), paperMat, { x: tx - 1.1, y: PY + 3.6, z: tz + 1.25, ry: -0.6 }, 0x2e2824);
+      K.circle(tx, tz, 1.8, 10);
+      AO(tx, tz, 2.3, 2.3, 0.5);
       // a row of tall narrow houses between the Corniche and the Bock hairpin
       const hz = [-57, -52.2, -47.4, -42.6];
       hz.forEach((z, k) => {
@@ -1154,6 +1163,11 @@ export default {
         part(box(0.6, 1.4, 0.6), paperMat, { x: 126 + 1.4, y: PY + h2 - 0.4, z: z - 0.8 }, 0x8a5a44);
       });
       K.box(126, -49.8, 4.7, 9.7, 0, 12);
+      card(126, -49.6, 10.8, 20.6);
+      // a stretch of the old wall closes the gap between the houses and the Bock (nobody gets wedged in there)
+      partW(box(2.2, 2.6, 3.6), stoneMat, { x: 126, y: PY + 1.3, z: -61.2 }, 0xe2d6bc, 3);
+      for (let k = 0; k < 2; k++) partW(box(0.7, 0.6, 0.7), stoneMat, { x: 126 + (k - 0.5) * 1.2, y: PY + 2.9, z: -61.2 }, 0xe2d6bc, 3);
+      K.box(126, -61.2, 1.1, 1.8, 0, 4);
       AO(126, -49.8, 5.8, 10.5, 0.5);
     }
 
@@ -1228,15 +1242,16 @@ export default {
       part(fBox(JUMP.wid + 2, 9, 0.6, { pz: 'archPanel' }, 'stoneP'), popMat, { x, y: TOP - 4.5, z: TN.z1 + 0.35 });
       AO(x, (JUMP.z0 + JUMP.z1) / 2, hw + 2.5, (JUMP.z1 - JUMP.z0) / 2 + 1, 0.4);
       // landing half: rises from the far side of the valley
-      partW(wedge(LAND.z1, LAND.z0, 0, LAND.h, JUMP.wid + 2), stoneMat, { x }, 0xeadfc6, 4);
-      decks.push(deckQuad(x, hw, LAND.z1, LAND.z0, PY + 0.04, PY + LAND.h + 0.04));
-      K.ramp(x, (LAND.z0 + LAND.z1) / 2, -PI / 2, LAND.z1 - LAND.z0, JUMP.wid, LAND.h, 0);
+      const lw = LAND.wid / 2;
+      partW(wedge(LAND.z1, LAND.z0, 0, LAND.h, LAND.wid + 2), stoneMat, { x }, 0xeadfc6, 4);
+      decks.push(deckQuad(x, lw, LAND.z1, LAND.z0, PY + 0.04, PY + LAND.h + 0.04));
+      K.ramp(x, (LAND.z0 + LAND.z1) / 2, -PI / 2, LAND.z1 - LAND.z0, LAND.wid, LAND.h, 0);
       for (const s of [-1, 1]) {
-        balustrade(x + s * (hw + ph), LAND.z1 + 0.5, LAND.z0, 0, LAND.h);
-        K.capsule(x + s * (hw + ph), LAND.z0, x + s * (hw + ph), LAND.z1 + 0.5, 0.55, LAND.h + 1.7);
-        lamp(x + s * (hw + ph), PY + 1.3, LAND.z1 + 0.5, 3);
+        balustrade(x + s * (lw + ph), LAND.z1 + 0.5, LAND.z0, 0, LAND.h);
+        K.capsule(x + s * (lw + ph), LAND.z0, x + s * (lw + ph), LAND.z1 + 0.5, 0.55, LAND.h + 1.7);
+        lamp(x + s * (lw + ph), PY + 1.3, LAND.z1 + 0.5, 3);
       }
-      AO(x, (LAND.z0 + LAND.z1) / 2, hw + 2.5, (LAND.z1 - LAND.z0) / 2 + 1, 0.4, 0, TOP + 0.04);
+      AO(x, (LAND.z0 + LAND.z1) / 2, lw + 2.5, (LAND.z1 - LAND.z0) / 2 + 1, 0.4, 0, TOP + 0.04);
       A.jumpRespawnS = track.distTo(x, JUMP.z0 - 28).s;
     }
     {
@@ -1249,6 +1264,12 @@ export default {
         partW(box(1.15, 0.2, 16.9), stoneMat, { x: px, y: PY + 1.55, z: 28 }, 0xf6ecd8, 3);
         K.box(px, 28, 0.5, 8.25, 0, 1.7);
         lamp(px, PY + 1.65, 20.3, 2.4); lamp(px, PY + 1.65, 35.7, 2.4);
+        // splayed wing walls at the south end guide a car that comes out of the corner wide onto the deck
+        const wl = Math.hypot(2.8, 5.5), wa = Math.atan2(2.8, 5.5) * s;
+        partW(box(0.95, 1.5, wl + 0.5), stoneMat, { x: px + s * 1.4, y: PY + 0.75, z: 38.75, ry: wa }, 0xeee2c8, 3);
+        partW(box(1.15, 0.2, wl + 0.7), stoneMat, { x: px + s * 1.4, y: PY + 1.55, z: 38.75, ry: wa }, 0xf6ecd8, 3);
+        K.capsule(px, 36.0, px + s * 2.8, 41.5, 0.5, 1.7);
+        AO(px + s * 1.4, 38.75, 1.2, 3.6, 0.35, wa);
       }
       // arcade below the deck, seen down in the valley
       for (const pz of [TS.z0 - 0.5, TN.z1 + 0.5]) {
@@ -1260,6 +1281,121 @@ export default {
     {
       const g = BU.mergeGeometries(decks.map((d) => d.index ? d.toNonIndexed() : d), false);
       const m = new T.Mesh(g, deckMat); m.receiveShadow = true; K.group.add(m);
+    }
+
+    // ================================================================== chicane islands: raised flower beds filling the inside of both chicanes
+    // (the kerb is a chain of capsules, so nobody drives straight through; the Gare one is closed to the table edge by a pencil)
+    const pip = (x, z, poly) => { let inside = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, zi] = poly[i], [xj, zj] = poly[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) inside = !inside; } return inside; };
+    {
+      const leafC = cv(256, 256, (g, w, h) => {
+        g.fillStyle = '#4a7a34'; g.fillRect(0, 0, w, h);
+        const R = K.rng(61);
+        for (let n = 0; n < 1600; n++) { const t = R(); g.fillStyle = t < 0.4 ? 'rgba(34,70,26,0.55)' : t < 0.8 ? 'rgba(110,160,72,0.5)' : 'rgba(165,200,105,0.55)'; g.beginPath(); g.ellipse(R() * w, R() * h, 2 + R() * 4, 1.2 + R() * 2, R() * PI, 0, TAU); g.fill(); }
+      });
+      const lawnC = cv(256, 256, (g, w, h) => {
+        g.fillStyle = '#7fa654'; g.fillRect(0, 0, w, h);
+        const R = K.rng(62);
+        for (let n = 0; n < 3000; n++) { g.fillStyle = R() < 0.5 ? 'rgba(60,100,40,0.35)' : 'rgba(170,205,120,0.35)'; g.fillRect(R() * w, R() * h, 1.5, 3); }
+      });
+      const hedgeMat = K.std({ map: TX.toTexture(leafC, { repeat: [1, 1] }), roughness: 0.92 });
+      const lawnMat = K.std({ map: TX.toTexture(lawnC, { repeat: [1, 1] }), roughness: 0.95 });
+      const kerbMat = K.std({ map: stoneTex, roughness: 0.88, color: 0xfff8ec });
+      // clip a closed polygon to the half-plane p[ax] <= v
+      const clip = (poly, ax, v) => {
+        const out = [], inn = (p) => p[ax] <= v;
+        for (let i = 0; i < poly.length; i++) {
+          const a = poly[i], b = poly[(i + 1) % poly.length];
+          if (inn(a)) out.push(a);
+          if (inn(a) !== inn(b)) { const t = (v - a[ax]) / (b[ax] - a[ax]), q = [lerp(a[0], b[0], t), lerp(a[1], b[1], t)]; q[ax] = v; out.push(q); }
+        }
+        return out;
+      };
+      // a flat slab (optionally with a hole), world-space UVs
+      const slab = (outerP, holeP, y, depth, mat) => {
+        const sh = new T.Shape(outerP.map(([x, z]) => V2(x, -z)));
+        if (holeP) sh.holes.push(new T.Path(holeP.map(([x, z]) => V2(x, -z))));
+        const g = new T.ExtrudeGeometry(sh, { depth, bevelEnabled: false });
+        g.rotateX(-PI / 2);
+        const uv = g.attributes.uv, pos = g.attributes.position;
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, (pos.getX(i) + pos.getY(i)) / 8, (pos.getZ(i) + pos.getY(i)) / 8);
+        const m = new T.Mesh(g, mat); m.position.y = y; m.castShadow = true; m.receiveShadow = true; K.group.add(m);
+        return m;
+      };
+      const flowers = [], hedges = [];
+      for (const ch of ISL) {
+        const sA = track.distTo(ch.a[0], ch.a[1]).s - ch.ext, sB = track.distTo(ch.b[0], ch.b[1]).s + ch.ext;
+        const L = ((sB - sA) % track.length + track.length) % track.length;
+        const ring = (off) => { const out = []; const n = Math.ceil(L / 1.5); for (let k = 0; k <= n; k++) { const s = sA + L * k / n, p = track.at(s), q = track.place(s, ch.side * (p.w / 2 + off)); out.push([q.x, q.z]); } return out; };
+        const band = (off) => clip(ring(off), ch.ax, ch.v - (off - KERB)); // the closing line moves in with the ring
+        const outer = band(KERB), lawn = band(KERB + 0.6), rim = band(KERB + 1.25), bed = band(KERB + 2.4);
+        slab(outer, lawn, PY, 0.7, kerbMat);
+        slab(lawn, null, PY, 0.55, lawnMat);
+        // collider ring: capsules (r 0.75) whose surface follows the kerb line
+        const coll = band(KERB + 0.75);
+        for (let i = 0; i < coll.length; i += 2) { const a = coll[i], b = coll[(i + 2) % coll.length]; K.capsule(a[0], a[1], b[0], b[1], 0.75, 2.1); }
+        // clipped hedge all round the rim
+        for (let i = 0; i < rim.length; i++) {
+          const a = rim[i], b = rim[(i + 1) % rim.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          if (len < 0.2) continue;
+          hedges.push({ x: (a[0] + b[0]) / 2, y: PY + 1.25, z: (a[1] + b[1]) / 2, ry: -Math.atan2(b[1] - a[1], b[0] - a[0]), sx: len + 0.45, sy: 1.4, sz: 1.3 });
+        }
+        // flower beds inside
+        let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [x, z] of bed) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+        const R = K.rng(71 + ch.ax * 3 + ch.side), cols = [0xe23a3a, 0xf6d23c, 0xffffff, 0xd25aa0, 0xf08a2a, 0x7a5ad8];
+        for (let n = 0, tries = 0; n < (ch.kind === 'houses' ? 26 : 90) && tries < 900; tries++) {
+          const x = lerp(x0, x1, R()), z = lerp(z0, z1, R());
+          if (!pip(x, z, bed) || (ch.kind === 'houses' ? Math.abs(x - ch.mx) < 7.6 && Math.abs(z - ch.mz) < 3.6 : Math.hypot(x - ch.mx, z - ch.mz) < ch.mr)) continue;
+          const c = cols[Math.floor(R() * cols.length)];
+          for (let m = 0; m < 4; m++) flowers.push({ x: x + R.gauss() * 0.4, y: PY + 0.62, z: z + R.gauss() * 0.4, s: 0.2 + R() * 0.12, color: c });
+          n++;
+        }
+      }
+      K.instances(new T.DodecahedronGeometry(1, 0), K.std({ roughness: 0.6, flatShading: true }), flowers, { colors: true, cast: false });
+      K.instances(new K.RoundedBoxGeometry(1, 1, 1, 1, 0.3), hedgeMat, hedges);
+      // Gare island: a round fountain; the pencil lying from the flower bed over the table edge closes the way round it
+      {
+        const [fx, fz] = [ISL[0].mx, ISL[0].mz], y = PY + 0.55;
+        part(K.lathe([[0, 0], [3.3, 0], [3.4, 0.9], [3.05, 0.95], [2.95, 0.35], [0, 0.35]], 32), stoneMat, { x: fx, y, z: fz }, 0xf2ead8);
+        part(K.lathe([[0.55, 0], [0.4, 0.8], [0.3, 1.5], [0.95, 1.7], [1.0, 1.85], [0.2, 1.9], [0.15, 2.6], [0.4, 2.8], [0, 3.0]], 16), stoneMat, { x: fx, y: y + 0.35, z: fz }, 0xeee4d0);
+        K.mesh(new T.CircleGeometry(2.97, 32), K.liquid(0x6fa6c8, { roughness: 0.05, transparent: true, opacity: 0.85 }), fx, y + 0.75, fz, { rx: -PI / 2, cast: false });
+        A.fountain = K.mesh(new T.CylinderGeometry(0.06, 1.0, 1.9, 12, 1, true), K.std({ color: 0xe4f2ff, transparent: true, opacity: 0.4, roughness: 0.1, depthWrite: false, side: T.DoubleSide }), fx, y + 4.2, fz, { cast: false });
+        AO(fx, fz, 4, 4, 0.4, 0, y + 0.02);
+        const pen = { x: 12.6, y: PY + 0.42, z: 93.7, ry: -PI / 2 - 0.04 };
+        const pfr = (g, o) => xf(xf(g, o), pen);
+        part(pfr(cyl(0.42, 0.42, 14, 6), { rz: PI / 2 }), paperMat, {}, 0xf2b81c);
+        part(pfr(new T.ConeGeometry(0.42, 1.6, 6), { rz: -PI / 2, x: 7.8 }), paperMat, {}, 0xe0c08a);
+        part(pfr(new T.ConeGeometry(0.13, 0.4, 6), { rz: -PI / 2, x: 8.45 }), paperMat, {}, 0x3a3a3a);
+        part(pfr(cyl(0.44, 0.44, 1.2, 10), { rz: PI / 2, x: -7.6 }), paperMat, {}, 0xe88a8a);
+        part(pfr(cyl(0.45, 0.45, 0.6, 10), { rz: PI / 2, x: -6.8 }), ironMat, {}, 0xc8c8c0);
+        K.capsule(12.6, 84.6, 12.6, 96, 0.5, 1.1);
+        AO(12.6, 89.5, 1.1, 5, 0.35);
+      }
+      // Krautmaart island: a bronze grand duchess on a low plinth
+      {
+        const [sx, sz] = [ISL[1].mx, ISL[1].mz], y0 = PY + 0.55;
+        partW(box(3.4, 0.9, 3.4), stoneMat, { x: sx, y: y0 + 0.45, z: sz }, 0xf0e8da, 3);
+        partW(box(2.2, 1.7, 2.2), stoneMat, { x: sx, y: y0 + 0.9 + 0.85, z: sz }, 0xe6ded0, 3);
+        partW(box(2.5, 0.3, 2.5), stoneMat, { x: sx, y: y0 + 2.75, z: sz }, 0xf0e8da, 3);
+        const Bz = 0x50685a, y = y0 + 2.9;
+        part(cyl(0.38, 0.8, 2.0, 10), bronzeMat, { x: sx, y: y + 1.0, z: sz }, Bz);
+        part(cyl(0.28, 0.38, 0.85, 10), bronzeMat, { x: sx, y: y + 2.4, z: sz }, Bz);
+        part(new T.SphereGeometry(0.27, 10, 8), bronzeMat, { x: sx, y: y + 3.05, z: sz }, Bz);
+        part(cyl(0.08, 0.1, 1.0, 6), bronzeMat, { x: sx + 0.35, y: y + 2.5, z: sz + 0.2, rz: -0.5, rx: 0.4 }, Bz);
+        part(cyl(0.3, 0.32, 0.12, 10), bronzeMat, { x: sx, y: y + 3.3, z: sz }, Bz);
+        AO(sx, sz, 2.6, 2.6, 0.4, 0, y0 + 0.02);
+      }
+      // Rue Chimay island, inside the hairpin: a terrace of three narrow town houses behind the hedge (low, so they hide no road)
+      {
+        const I = ISL[2], y0 = PY + 0.55;
+        [-37.2, -32.6, -28.0].forEach((hx, k) => {
+          const h1 = 3.5 + hash(k * 5.7) * 0.8, h2 = h1 + 2.3, dz = 6.2;
+          part(capPrism([[-2.2, 0], [2.2, 0], [2.2, h1], [0, h2], [-2.2, h1]], dz, 'house' + ((k + 3) % 6)), popMat, { x: hx, y: y0, z: I.mz });
+          const sl = Math.hypot(2.2, h2 - h1), a = Math.atan2(h2 - h1, 2.2);
+          for (const sd of [-1, 1]) partW(box(sl + 0.4, 0.22, dz + 0.5), slateMat, { x: hx + sd * 1.1, y: y0 + (h1 + h2) / 2 + 0.1, z: I.mz, rz: -sd * a }, 0xffffff, 3);
+          part(box(0.5, 1.1, 0.5), paperMat, { x: hx + 0.9, y: y0 + h2 - 0.2, z: I.mz - 1.5 }, 0x8a5a44);
+        });
+        AO(-32.6, I.mz + 0.5, 8.5, 4.2, 0.45, 0, y0 + 0.02);
+      }
     }
 
     // ================================================================== pop-up paper trees
@@ -1313,7 +1449,11 @@ export default {
       const put = (a, x, y, z, o = {}) => staticParts.push(xf(pieceGeo(a, o.down), { x, y, z, ry: o.ry || 0, rx: o.rx || 0, rz: o.rz || 0 }));
       // nudged pieces sit a little askew in their places; popped ones are tented up
       for (const a of atlasCells.filter((q) => q.kind === 'nudge')) put(a, a.cx + (hash(a.slot) - 0.5) * 0.8, TOP + 0.04, a.cz + (hash(a.slot + 3) - 0.5) * 0.8, { ry: (hash(a.slot + 7) - 0.5) * 0.14 });
-      atlasCells.filter((q) => q.kind === 'pop').forEach((a, k) => put(a, a.cx + (k - 1) * 0.15, TOP + 0.3, a.cz, { rx: [0.09, -0.07, 0.11][k], rz: [-0.06, 0.08, 0.05][k], ry: [0.05, -0.04, 0.03][k] }));
+      // the popped ones were never pressed in: they lie loose on top of their gaps, a little turned and shifted
+      atlasCells.filter((q) => q.kind === 'pop').forEach((a, k) => {
+        put(a, a.cx + [0.5, -0.4, 0.35][k], PY + 0.06, a.cz + [-0.45, 0.4, 0.55][k], { rx: [0.012, -0.01, 0.014][k], rz: [-0.01, 0.012, 0.008][k], ry: [0.11, -0.09, 0.14][k] });
+        AO(a.cx, a.cz, 4.2, 4.2, 0.22, 0, PY + 0.04);
+      });
       const loose = atlasCells.filter((q) => q.kind === 'loose' || q.kind === 'hole');
       const R = K.rng(404);
       const scatter = (x0, z0, x1, z1, n, y = TOP, pile = false) => {
@@ -1348,7 +1488,7 @@ export default {
         const n = track.distTo(h.x, h.z), p = track.place(n.s + 9, Math.sign(n.lateral) * 4.6);
         spots.push([p.x, p.z, holes[k]]);
       }
-      for (const [s, off] of [[135, 3.8], [300, -4], [470, 4.2], [640, -3.5], [860, 4]]) { const p = track.place(s, off); spots.push([p.x, p.z, atlasCells.filter((q) => q.kind === 'loose')[Math.floor(hash(s) * 9)]]); }
+      for (const [x, z, off] of [[-106, -30, 3.8], [60, 5, -4], [40, -25, -4.2], [140.5, -52, -3.5], [-28, -53, 4]]) { const s = track.distTo(x, z).s, p = track.place(s, off); spots.push([p.x, p.z, atlasCells.filter((q) => q.kind === 'loose')[Math.floor(hash(s) * 9)]]); }
       for (const [x, z, a] of spots) {
         const m = new T.Mesh(pieceGeo(a, false), pieceMat); m.castShadow = true; m.receiveShadow = true;
         m.rotation.y = hash(x + z) * TAU; m.position.set(x, PY, z); K.group.add(m);
@@ -1426,16 +1566,8 @@ export default {
       fr.push(tidy(xf(new T.TorusGeometry(0.42, 0.13, 6, 12, PI), { y: 0.32, z: -0.3 }), 0xffffff));
       K.mesh(BU.mergeGeometries(fr, false), frame, lx - 6, TOP + LH, lz + 1.5, { ry: 0.35 });
       K.mesh(BU.mergeGeometries(ln, false), K.glass(0xeaf2ff, 0.2), lx - 6, TOP + LH, lz + 1.5, { ry: 0.35, cast: false });
-      // sticky note and a pencil on the south table's west end
+      // sticky note on the south table's west end (the pencil lies by the Gare chicane)
       K.mesh(remap(new T.PlaneGeometry(7.4, 7.4), 'note'), popMat, -130.5, TOP + 0.04, 70, { rx: -PI / 2, cast: false }).geometry.setAttribute('color', new T.BufferAttribute(new Float32Array(12).fill(1), 3));
-      const pen = { x: -129, y: TOP + 0.42, z: 80.5, ry: 0.3 };
-      const pfr = (g, o) => xf(xf(g, o), pen);
-      part(pfr(cyl(0.42, 0.42, 14, 6), { rz: PI / 2 }), paperMat, {}, 0xf2b81c);
-      part(pfr(new T.ConeGeometry(0.42, 1.6, 6), { rz: -PI / 2, x: 7.8 }), paperMat, {}, 0xe0c08a);
-      part(pfr(new T.ConeGeometry(0.13, 0.4, 6), { rz: -PI / 2, x: 8.45 }), paperMat, {}, 0x3a3a3a);
-      part(pfr(cyl(0.44, 0.44, 1.2, 10), { rz: PI / 2, x: -7.6 }), paperMat, {}, 0xe88a8a);
-      part(pfr(cyl(0.45, 0.45, 0.6, 10), { rz: PI / 2, x: -6.8 }), ironMat, {}, 0xc8c8c0);
-      AO(-129, 80.5, 8, 1.2, 0.35, -0.3, TOP + 0.03);
     }
 
     // ================================================================== life: paper people on the squares and pavements, café parasols, fine scatter
@@ -1446,22 +1578,21 @@ export default {
         return false;
       };
       const people = [], heads = [], pts = [];
-      const add = (x, z) => {
-        if (roadD(x, z) < 0.9 || !(onN(x, z) || onS(x, z)) || blocked(x, z, 0.9) || pts.some(([a, b]) => Math.hypot(a - x, b - z) < 1.2)) return false;
+      const add = (x, z, solid = true) => {
+        if (roadD(x, z) < 0.9 || !(onN(x, z) || onS(x, z)) || blocked(x, z, 0.9) || pts.some(([a, b]) => Math.hypot(a - x, b - z) < 1.2) || A.holes.some((h) => Math.hypot(h.x - x, h.z - z) < 5.5)) return false;
         const s = 0.85 + R() * 0.3;
         pts.push([x, z]);
         people.push({ x, y: PY, z, s, ry: R() * TAU, color: [0xc83c34, 0x2f5f9e, 0x3a8a4a, 0xe0b23a, 0x6a4a8a, 0x2a2a2a, 0xe8e2d4, 0xd87a3a][Math.floor(R() * 8)] });
         heads.push({ x, y: PY + 1.62 * s, z, s, color: [0xe8b894, 0xc89070, 0x8a5a3c, 0xf0c8a8][Math.floor(R() * 4)] });
-        K.circle(x, z, 0.4 * s, 2.1 * s);
+        if (solid) K.circle(x, z, 0.4 * s, 2.1 * s); // people on the pavements don't snag a car that runs wide
         return true;
       };
       const fill = (q, n) => { for (let k = 0, tries = 0; k < n && tries < n * 20; tries++) if (add(lerp(q[0] + 1.2, q[2] - 1.2, R()), lerp(q[1] + 1.2, q[3] - 1.2, R()))) k++; };
       fill(SQ.knuedler, lowQ ? 10 : 18); fill(SQ.constitution, 8); fill(SQ.armes, 8); fill(SQ.clairefontaine, 5); fill(SQ.esprit, 5);
       for (let k = 0, tries = 0; k < (lowQ ? 18 : 30) && tries < 400; tries++) {
-        const s = R() * track.length, p = track.at(s), side = R() < 0.5 ? -1 : 1, q = track.place(s, side * (p.w / 2 + 1.0 + R() * 0.5));
-        if (add(q.x, q.z)) k++;
+        const s = R() * track.length, p = track.at(s), side = R() < 0.5 ? -1 : 1, q = track.place(s, side * (p.w / 2 + 1.8 + R() * 0.7));
+        if (add(q.x, q.z, false)) k++;
       }
-      for (const z of [-44, -41.5, -34, -32.6]) add(146.6, z); // admiring the view from the Corniche
       const bodyGeo = new T.CapsuleGeometry(0.3, 0.75, 3, 8).translate(0, 0.68, 0);
       K.instances(bodyGeo, K.std({ roughness: 0.8 }), people, { colors: true });
       K.instances(new T.SphereGeometry(0.25, 8, 6), K.std({ roughness: 0.7 }), heads, { colors: true });
@@ -1483,7 +1614,9 @@ export default {
     }
 
     // ================================================================== hazards: missing pieces (holes), the valley gap
-    for (const h of A.holes) K.hole(h.x, h.z, 2.8);
+    // the drop zone sits a little towards the kerb and inside the painted pit: a car only falls in once its middle is over the hole
+    for (const h of A.holes) { const n = track.distTo(h.x, h.z), q = track.place(n.s, n.lateral + Math.sign(n.lateral) * 0.5); K.hole(q.x, q.z, 2.6); h.s = n.s; }
+    A.L = track.length;
     {
       // the gap between the tables: a row of open trapdoors, except under the Passerelle deck
       const z = (TN.z1 + TS.z0) / 2, hd = (TS.z0 - TN.z1) / 2;
@@ -1491,23 +1624,25 @@ export default {
       for (const [a, b] of spans) { const n = Math.ceil((b - a) / 12); for (let k = 0; k < n; k++) { const x0 = a + (b - a) * k / n, x1 = a + (b - a) * (k + 1) / n; K.trapdoor((x0 + x1) / 2, z, (x1 - x0) / 2, hd, 0, true); } }
     }
 
-    TL('props');
     flush();
     flushAO();
-    TL('done');
   },
 
   tick(dt, time, game) {
-    // a car that drops into the valley under the Adolphe Bridge restarts with a run-up, not on the ramp lip
+    // a car that drops into the valley under the Adolphe Bridge restarts with a run-up, not on the ramp lip;
+    // one that drops into a missing piece restarts well before it (never beside the hole, where it would drop again)
     if (!A || !A.jumpRespawnS) return;
     for (const e of game.cars) {
       const c = e.car;
-      if (c.state === 'falling' && c.fallKind === 'hole' && c.z > A.gapZ[0] - 1 && c.z < A.gapZ[1] + 1 && Math.abs(c.x - JUMP.x) < 16) e.lastGoodS = A.jumpRespawnS;
+      if (c.state !== 'falling' || c.fallKind !== 'hole') continue;
+      if (c.z > A.gapZ[0] - 1 && c.z < A.gapZ[1] + 1 && Math.abs(c.x - JUMP.x) < 16) { e.lastGoodS = A.jumpRespawnS; continue; }
+      for (const h of A.holes) if (Math.abs(c.x - h.x) < 6 && Math.abs(c.z - h.z) < 6) e.lastGoodS = (h.s - 13 + A.L) % A.L;
     }
   },
 
   animate(time) {
     if (!A) return;
+    if (A.fountain) { A.fountain.scale.set(1 + Math.sin(time * 7) * 0.04, 1 + Math.sin(time * 9.3) * 0.07, 1 + Math.cos(time * 7) * 0.04); A.fountain.rotation.y = time * 0.8; }
     for (const f of A.flags) {
       const p = f.m.geometry.attributes.position, b = f.base;
       for (let i = 0; i < p.count; i++) { const x = b[i * 3]; p.setZ(i, Math.sin(x * 1.7 - time * 6 + f.ph) * 0.16 * x); }
