@@ -3,7 +3,7 @@
 ## Next version (1.3)
 
 Collected while playing the 1.2 web version and the first Android preview (October 2026). Each item has a short
-note on the plan agreed so far.
+note on the plan agreed so far. Items 1–9 are fixes and polish; item 10 is new content.
 
 1. **Brake button for touch controls.** Today touch only brakes when both sides are held, so you can't steer and brake
    at once (hard with boats and hovercraft). A visible brake button by the right thumb that works together with
@@ -41,26 +41,28 @@ note on the plan agreed so far.
    segmented black skirt, long low cabin with dark windows and a band in the player's colour, ribbed roof with a
    mast and the race number, twin ducted fans with stripes in the player's colour and a rudder behind each fan.
    Same footprint, so handling and collisions stay as they are.
+10. **Grand Duchy Cup: four Luxembourg-inspired tracks** as a fifth cup (moved up from the idea bank on 15 October
+    2026; names, details and vehicles still open). Each one a different kind of tabletop scene of a real place;
+    generic and original designs, no real logos.
+    1. *Crémant Curves* (easy): a Moselle wine tasting. Vineyard terraces of stacked trays, a blue fabric runner as
+       the river with a riverboat, crémant glasses and corks, grapes to push, a spilled-wine slick. 4x4 truck.
+    2. *Fouer Frenzy* (medium): the Schueberfouer at night. Lit stalls (Gromperekichelcher, Fouerfësch), a Ferris
+       wheel, a roller-coaster section for jumps, a run through a bumper-car rink (also the first battle arena later).
+       Possibly a new vehicle: bumper cars.
+    3. *Grund Prix* (hard): a model-maker's diorama of Grund and Clausen. Cobbled road along the winding Alzette with
+       bridges and a ford, a tunnel through the Bock casemates rock, a loop round Neimënster's cloister, weaving
+       through the arches of the railway viaduct with a model train above, a hairpin climb past the Wenzel wall to the
+       Rham plateau. A little tourist train as a moving hazard. Rally car.
+    4. *Old Town Jigsaw* (expert): a half-finished jigsaw of the Ville Haute on a coffee table. Tight streets past the
+       Knuedler market, the palace sentry box, the cathedral and the Gëlle Fra; the Chemin de la Corniche along the
+       puzzle's edge (fall off); a jump between puzzle sections as the Adolphe Bridge; missing pieces are holes,
+       loose pieces can be pushed. Formula racer.
 
 ## Idea bank (not for the next version)
 
-- **Luxembourg-inspired tracks: a "Grand Duchy Cup" of four** (brainstorm, October 2026, nothing decided).
-  Each one a different kind of tabletop scene of a real place; generic and original designs, no real logos.
-  1. *Crémant Curves* (easy): a Moselle wine tasting. Vineyard terraces of stacked trays, a blue fabric runner as
-     the river with a riverboat, crémant glasses and corks, grapes to push, a spilled-wine slick. 4x4 truck.
-  2. *Fouer Frenzy* (medium): the Schueberfouer at night. Lit stalls (Gromperekichelcher, Fouerfësch), a Ferris
-     wheel, a roller-coaster section for jumps, a run through a bumper-car rink (also the first battle arena later).
-     Possibly a new vehicle: bumper cars.
-  3. *Grund Prix* (hard): a model-maker's diorama of Grund and Clausen. Cobbled road along the winding Alzette with
-     bridges and a ford, a tunnel through the Bock casemates rock, a loop round Neimënster's cloister, weaving
-     through the arches of the railway viaduct with a model train above, a hairpin climb past the Wenzel wall to the
-     Rham plateau. A little tourist train as a moving hazard. Rally car.
-  4. *Old Town Jigsaw* (expert): a half-finished jigsaw of the Ville Haute on a coffee table. Tight streets past the
-     Knuedler market, the palace sentry box, the cathedral and the Gëlle Fra; the Chemin de la Corniche along the
-     puzzle's edge (fall off); a jump between puzzle sections as the Adolphe Bridge; missing pieces are holes,
-     loose pieces can be pushed. Formula racer.
-  Spares: Kirchberg (red bridge, tram, Pfaffenthal lift), Vianden (castle, chairlift), Mullerthal (sandstone gorges),
-  Esch-Belval blast furnaces (could double as an industrial drift track).
+- **More Luxembourg tracks** (spares from the Grand Duchy Cup brainstorm): Kirchberg (red bridge, tram,
+  Pfaffenthal lift), Vianden (castle, chairlift), Mullerthal (sandstone gorges), Esch-Belval blast furnaces (could
+  double as an industrial drift track).
 - **Drift tracks.** Tracks built for sliding: slippery surfaces (polished floor, ice, a buttered tray), wide
   sweeping corners, maybe drift scoring for angle and duration as its own mode.
 - **Battle mode on arena tracks.** Enclosed arenas instead of laps (a dinner plate, a frying pan, a chessboard).
