@@ -19,7 +19,104 @@ function mats() {
   shared.alu = new THREE.MeshStandardMaterial({ color: 0xc2c5ca, roughness: 0.42, metalness: 0.9 });
   shared.gold = new THREE.MeshStandardMaterial({ color: 0xd9a441, roughness: 0.28, metalness: 1 });
   shared.helmetVisor = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.05, metalness: 0.6, clearcoat: 1 });
+  // soft rubber with a little sheen (hovercraft skirt, bumper-car ring), so the cushions catch the light
+  shared.rubber = new THREE.MeshStandardMaterial({ color: 0x1d1d20, roughness: 0.62, metalness: 0 });
+  // bumper-car pole spark: additive glow, shared by every car (toggled per car in syncCar)
+  shared.spark = new THREE.SpriteMaterial({ map: sparkTexture(), color: 0xd6ecff, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false });
   return shared;
+}
+
+function sparkTexture() {
+  const c = makeCanvas(64);
+  const g = c.getContext('2d');
+  const rg = g.createRadialGradient(32, 32, 0, 32, 32, 30);
+  rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(0.18, 'rgba(255,250,220,0.95)');
+  rg.addColorStop(0.45, 'rgba(140,200,255,0.35)'); rg.addColorStop(1, 'rgba(80,140,255,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+  // a few jagged rays
+  g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 2;
+  for (let i = 0; i < 7; i++) {
+    const a = i * 0.9 + 0.3, r1 = 8, r2 = 20 + (i % 3) * 5;
+    g.beginPath(); g.moveTo(32 + Math.cos(a) * r1, 32 + Math.sin(a) * r1);
+    g.lineTo(32 + Math.cos(a + 0.25) * (r1 + r2) / 2, 32 + Math.sin(a + 0.25) * (r1 + r2) / 2);
+    g.lineTo(32 + Math.cos(a) * r2, 32 + Math.sin(a) * r2); g.stroke();
+  }
+  return toTexture(c, { wrap: false });
+}
+
+const hexStr = (c) => '#' + c.toString(16).padStart(6, '0');
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+// Rounded rectangle in plan (x along the car, second coordinate across it): half-length a, half-width b,
+// corner radius rc, centred on x = cx. Pass THREE.Path to get a hole outline instead of a shape.
+function roundedRect(a, b, rc, cx = 0, Kind = THREE.Shape) {
+  const p = new Kind();
+  const sx = a - rc, sz = b - rc;
+  p.moveTo(cx, -b);
+  p.lineTo(cx + sx, -b); p.absarc(cx + sx, -sz, rc, -Math.PI / 2, 0, false);
+  p.lineTo(cx + a, sz); p.absarc(cx + sx, sz, rc, 0, Math.PI / 2, false);
+  p.lineTo(cx - sx, b); p.absarc(cx - sx, sz, rc, Math.PI / 2, Math.PI, false);
+  p.lineTo(cx - a, -sz); p.absarc(cx - sx, -sz, rc, Math.PI, Math.PI * 1.5, false);
+  p.lineTo(cx, -b);
+  return p;
+}
+
+// Extrude a plan shape upwards: y runs from -bevel to depth + bevel (the caps keep the shape's outline,
+// the sides bulge out by `bevel`).
+function planExtrude(shape, depth, bevel, segs = 2, curveSegments = 5) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: segs, curveSegments });
+  g.rotateX(-Math.PI / 2);
+  return g;
+}
+
+// A fat tube swept round a rounded-rectangle path (hovercraft skirt, bumper-car ring, trims).
+// rh/rv: the tube's horizontal/vertical radius, yc: height of its centre line. With segs > 0 the tube is
+// pinched every 1/segs of the way round, so it reads as a ring of separate rubber cushions (hard creases).
+function tubeRing(a, b, rc, { rh, rv, yc, radial = 10, n = 64, segs = 0, perSeg = 4, pinch = 0.86 }) {
+  const N = segs > 0 ? segs * perSeg : n;
+  const pts = roundedRect(a, b, rc).getSpacedPoints(N);
+  const frame = (i) => {
+    const p = pts[(i + N) % N], q = pts[(i + 1) % N], o = pts[(i - 1 + N) % N];
+    const tx = q.x - o.x, tz = q.y - o.y, l = Math.hypot(tx, tz) || 1;
+    return { x: p.x, z: p.y, nx: tz / l, nz: -tx / l };
+  };
+  const pos = [], idx = [];
+  const ring = (f, k) => {
+    const base = pos.length / 3;
+    for (let j = 0; j < radial; j++) {
+      const ph = (j / radial) * Math.PI * 2, h = Math.cos(ph) * rh * k, v = Math.sin(ph) * rv * k;
+      pos.push(f.x + f.nx * h, yc + v, f.z + f.nz * h);
+    }
+    return base;
+  };
+  const strip = (r0, r1) => {
+    for (let j = 0; j < radial; j++) {
+      const j1 = (j + 1) % radial;
+      const A = r0 + j, B = r1 + j, C = r1 + j1, Dd = r0 + j1;
+      idx.push(A, Dd, B, B, Dd, C);
+    }
+  };
+  if (segs > 0) {
+    for (let s = 0; s < segs; s++) {
+      let prev = -1;
+      for (let j = 0; j <= perSeg; j++) {
+        const u = j / perSeg;
+        const r = ring(frame(s * perSeg + j), pinch + (1 - pinch) * Math.pow(Math.sin(Math.PI * u), 0.4));
+        if (prev >= 0) strip(prev, r);
+        prev = r;
+      }
+    }
+  } else {
+    const first = ring(frame(0), 1);
+    let prev = first;
+    for (let i = 1; i < N; i++) { const r = ring(frame(i), 1); strip(prev, r); prev = r; }
+    strip(prev, first);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
 }
 
 // Merge all direct mesh children of a group that share a material into one mesh (fewer draw calls).
@@ -174,6 +271,237 @@ function makeMonsterWheel(r, w, rimMat, M) {
   return g;
 }
 
+// Hovercraft roof: longitudinal ribbing, a rim in the player's colour and the race number, as one decal.
+// The canvas is the roof seen from above with the bow at the top.
+function hoverRoofDecal(num, colorDef) {
+  const W = 128, H = 196;
+  const c = makeCanvas(W, H);
+  const g = c.getContext('2d');
+  for (let x = 17; x < W - 14; x += 8) {
+    g.fillStyle = 'rgba(40,45,55,0.16)'; g.fillRect(x, 10, 2, H - 20);
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(x + 2, 10, 1.5, H - 20);
+  }
+  g.strokeStyle = hexStr(colorDef.body); g.lineWidth = 15;
+  g.beginPath(); g.roundRect(7.5, 7.5, W - 15, H - 15, 10); g.stroke();
+  g.fillStyle = '#fbfaf3'; g.beginPath(); g.arc(W / 2, H / 2 + 6, 40, 0, Math.PI * 2); g.fill();
+  g.lineWidth = 5; g.strokeStyle = '#1a1a1a'; g.stroke();
+  g.fillStyle = '#1a1a1a';
+  g.font = '900 58px "Lilita One", "Rubik", system-ui, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(num), W / 2, H / 2 + 10);
+  const t = toTexture(c, { wrap: false });
+  return new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.4, polygonOffset: true, polygonOffsetFactor: -2 });
+}
+
+// Hovercraft after a classic RC model: white stadium-shaped hull on a fat, segmented rubber skirt, a long
+// low cabin with a band of windows in the player's colour, ribbed roof with mast, twin ducted fans with
+// striped shrouds, and a rudder behind each fan. Returns the two propellers (spun in syncCar).
+function buildHover(add, tilt, body, M, colorDef, num, wheels) {
+  const D = 0.68; // deck top
+  const box = (w, h, d, mat, x, y, z) => { const m = add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat)); m.position.set(x, y, z); return m; };
+  // skirt: a ring of fat rubber cushions; the deck slab sits on top of it
+  add(new THREE.Mesh(tubeRing(1.88, 0.95, 0.85, { rh: 0.27, rv: 0.3, yc: 0.3, segs: 24, radial: 10 }), M.rubber));
+  const deck = add(new THREE.Mesh(planExtrude(roundedRect(1.9, 0.97, 0.84), 0.1, 0.04), M.white));
+  deck.position.y = D - 0.14;
+
+  // cabin: a core in the player's colour (raked windscreen front), white lower walls and a white roof slab;
+  // the colour shows as a band round the windows and as the windscreen surround
+  add(new THREE.Mesh(profileExtrude([[-0.88, D - 0.02], [1.36, D - 0.02], [1.4, 0.96], [1.08, 1.4], [-0.88, 1.4]], 1.3, 0.05, 2), body));
+  const wall = add(new THREE.Mesh(new RoundedBoxGeometry(2.07, 0.3, 1.34, 1, 0.03), M.white));
+  wall.position.set(0.085, D + 0.15, 0);
+  const roof = add(new THREE.Mesh(new RoundedBoxGeometry(2.1, 0.07, 1.38, 1, 0.03), M.white));
+  roof.position.set(0.085, 1.47, 0);
+  const dec = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 2.0), hoverRoofDecal(num, colorDef));
+  dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
+  dec.position.set(0.085, 1.508, 0);
+  tilt.add(dec);
+  // a row of dark windows down each side
+  for (const s of [-1, 1]) for (let i = 0; i < 6; i++) box(0.25, 0.25, 0.016, M.glass, -0.7 + i * 0.31, 1.205, s * 0.657);
+  // three-pane raked windscreen
+  const nx = 0.809, ny = 0.588, rake = Math.atan2(0.32, 0.44);
+  for (const z of [-0.41, 0, 0.41]) {
+    const p = box(0.016, 0.4, 0.36, M.glass, 1.24 + nx * 0.058, 1.18 + ny * 0.058, z);
+    p.rotation.z = rake;
+  }
+  // small mast with a yard and a radar bar at the front of the roof
+  box(0.22, 0.1, 0.16, M.white, 0.78, 1.555, -0.32);
+  const mast = add(new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 0.55, 6), M.white));
+  mast.position.set(0.78, 1.85, -0.32);
+  box(0.03, 0.03, 0.34, M.white, 0.78, 1.98, -0.32);
+  box(0.06, 0.04, 0.26, M.darkRim, 0.78, 2.12, -0.32);
+
+  // deck details: side intake grilles (white frame, dark inset, slats), bollards and hatches
+  const grille = (x, z, len, wid) => {
+    box(len, 0.06, wid, M.white, x, D + 0.03, z);
+    box(len - 0.08, 0.012, wid - 0.07, M.darkRim, x, D + 0.066, z);
+    const n = Math.round(len / 0.08);
+    for (let i = 0; i < n; i++) box(0.025, 0.03, wid - 0.07, M.white, x - (len - 0.12) / 2 + (i * (len - 0.12)) / (n - 1), D + 0.072, z);
+  };
+  for (const s of [-1, 1]) {
+    grille(0.62, s * 0.83, 0.56, 0.24);
+    grille(-0.28, s * 0.83, 0.56, 0.24);
+    grille(1.62, s * 0.62, 0.3, 0.22);
+  }
+  for (const [x, z] of [[1.82, 0.3], [1.1, 0.9], [0.17, 0.92], [-0.78, 0.92], [-1.12, 0.74]]) {
+    for (const s of [-1, 1]) {
+      const b = add(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.1, 6), M.rubber));
+      b.position.set(x, D + 0.05, s * z);
+    }
+  }
+  const hatch = (x, z, w, d) => { box(w + 0.05, 0.03, d + 0.05, M.darkRim, x, D + 0.015, z); box(w, 0.05, d, M.white, x, D + 0.03, z); };
+  hatch(1.66, 0, 0.26, 0.4);
+  hatch(-1.12, -0.3, 0.2, 0.2); hatch(-1.12, 0.3, 0.2, 0.2);
+
+  // twin ducted fans at the stern on a white base
+  const Fx = -1.55, Fy = 1.36, Ro = 0.5, Ri = 0.41, h = 0.2;
+  const base = add(new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.12, 1.6, 1, 0.04), M.white));
+  base.position.set(Fx, D + 0.06, 0);
+  // duct cross-section, revolved: outer wall, front lip, inner wall, rear lip
+  const prof = [[Ro, -h], [Ro, h], [Ro - 0.025, h + 0.03], [Ri + 0.025, h + 0.03], [Ri, h], [Ri, -h], [Ri + 0.025, -h - 0.03], [Ro - 0.025, -h - 0.03], [Ro, -h]].map(([r, y]) => new THREE.Vector2(r, y));
+  const ductGeo = new THREE.LatheGeometry(prof, 24);
+  ductGeo.rotateZ(-Math.PI / 2);
+  const stripeGeo = (w) => { const g = new THREE.CylinderGeometry(Ro + 0.006, Ro + 0.006, w, 24, 1, true); g.rotateZ(-Math.PI / 2); return g; };
+  const fans = [];
+  for (const s of [-1, 1]) {
+    const z = s * 0.52;
+    const duct = add(new THREE.Mesh(ductGeo, M.white)); duct.position.set(Fx, Fy, z);
+    const st1 = add(new THREE.Mesh(stripeGeo(0.1), body)); st1.position.set(Fx + 0.09, Fy, z);
+    const st2 = add(new THREE.Mesh(stripeGeo(0.05), body)); st2.position.set(Fx - 0.03, Fy, z);
+    box(0.24, 0.14, 0.14, M.white, Fx, Fy - Ro - 0.04, z); // pylon
+    // motor and stator cross behind the propeller
+    const hub = add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.22, 10), M.darkRim));
+    hub.rotation.z = Math.PI / 2; hub.position.set(Fx - 0.07, Fy, z);
+    box(0.03, Ri * 2, 0.035, M.darkRim, Fx - 0.12, Fy, z);
+    box(0.03, 0.035, Ri * 2, M.darkRim, Fx - 0.12, Fy, z);
+    // propeller: three pitched blades and a spinner cap (one mesh, spun in syncCar)
+    const fan = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const g = new THREE.BoxGeometry(0.03, 0.33, 0.13);
+      g.translate(0, 0.215, 0); g.rotateY(0.55); g.rotateX((i / 3) * Math.PI * 2);
+      fan.add(new THREE.Mesh(g, M.darkRim));
+    }
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 6), M.darkRim); cap.position.x = 0.03; fan.add(cap);
+    mergeByMaterial(fan);
+    fan.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+    fan.position.set(Fx + 0.07, Fy, z);
+    tilt.add(fan); fans.push(fan);
+    // rudder behind the duct: trailing edge swings to the side the craft turns to
+    const pivot = new THREE.Group(); pivot.position.set(Fx - h - 0.045, Fy, z);
+    const rg = new THREE.BoxGeometry(0.24, 0.86, 0.03); rg.translate(-0.12, 0, 0);
+    const rud = new THREE.Mesh(rg, M.white); rud.castShadow = true; rud.receiveShadow = true;
+    pivot.add(rud); tilt.add(pivot);
+    wheels.push({ pivot, spinner: new THREE.Object3D(), front: true, r: 1, noSpin: true, gain: -0.6 });
+  }
+  return fans;
+}
+
+// Fairground dodgem: a wide glossy tub in the player's colour with an open cockpit, padded rim and chrome
+// trim on a thick rubber ring, dashboard dome with bulbs, a raised rounded back carrying the number, a
+// driver at a little steering wheel, and the tall current-collector pole with a contact shoe that sparks.
+// Returns {pole, poleLean, spark} for syncCar.
+function buildBumper(add, tilt, body, dark, M, colorDef, num, wheels) {
+  const paint = new THREE.MeshPhysicalMaterial({ color: colorDef.body, roughness: 0.16, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.03 });
+  // rubber ring round the base, following the tub's plan
+  add(new THREE.Mesh(tubeRing(1.76, 1.07, 0.8, { rh: 0.25, rv: 0.22, yc: 0.31, radial: 10, n: 56 }), M.rubber));
+  // tub with the cockpit opening
+  const tubShape = roundedRect(1.78, 1.08, 0.78);
+  tubShape.holes.push(roundedRect(0.88, 0.84, 0.36, 0.02, THREE.Path));
+  const tub = add(new THREE.Mesh(planExtrude(tubShape, 0.55, 0.14, 3, 6), paint));
+  tub.position.y = 0.36; // caps at 0.22 and 1.05, sides bulge out between 0.36 and 0.91
+  // chrome strip round the side, padded rubber rim round the cockpit, floor and bench seat
+  add(new THREE.Mesh(tubeRing(1.93, 1.23, 0.93, { rh: 0.04, rv: 0.045, yc: 0.72, radial: 6, n: 52 }), M.chrome));
+  add(new THREE.Mesh(tubeRing(0.9, 0.86, 0.37, { rh: 0.08, rv: 0.07, yc: 1.04, radial: 6, n: 40 }), M.rubber));
+  const floor = add(new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.05, 1.6), M.black));
+  floor.position.set(0.02, 0.6, 0);
+  const seat = add(new THREE.Mesh(new RoundedBoxGeometry(0.55, 0.22, 1.36, 2, 0.07), M.black));
+  seat.position.set(-0.36, 0.74, 0);
+  const back = add(new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.66, 1.36, 2, 0.06), M.black));
+  back.position.set(-0.56, 1.0, 0); back.rotation.z = 0.2;
+  // dashboard dome over the front of the cockpit, with three bulbs
+  const domeGeo = new THREE.SphereGeometry(1, 18, 7, 0, Math.PI * 2, 0, Math.PI / 2);
+  const dome = add(new THREE.Mesh(domeGeo, paint));
+  dome.scale.set(0.68, 0.36, 0.92); dome.position.set(1.18, 1.0, 0);
+  for (const az of [-0.55, 0, 0.55]) {
+    const el = 0.42;
+    const b = add(new THREE.Mesh(new THREE.SphereGeometry(0.075, 7, 4), M.head));
+    b.position.set(1.18 + 0.68 * Math.cos(el) * Math.cos(az), 1.0 + 0.36 * Math.sin(el), 0.92 * Math.cos(el) * Math.sin(az));
+  }
+  // raised back: rounded in plan like the tub, then shaped so it isn't a can: narrower towards the top, the
+  // front (seat-back) face raked back and the rear rolled over (shifts that keep the top flat for the number)
+  const cx = -1.36, ca = 0.55, cy = 1.02, cTop = 0.62 + 0.22;
+  const cg = planExtrude(roundedRect(ca, 0.95, 0.45, cx), 0.62, 0.22, 4, 8);
+  cg.deleteAttribute('normal'); cg.deleteAttribute('uv');
+  const cp = cg.attributes.position;
+  for (let i = 0; i < cp.count; i++) {
+    const x = cp.getX(i), y = cp.getY(i), z = cp.getZ(i);
+    const t = clamp01((y + 0.22) / (cTop + 0.22));
+    const front = clamp01((x - cx) / ca), rear = clamp01((cx - x) / ca);
+    cp.setXYZ(i, x - 0.16 * t * front + 0.22 * t * t * rear, y, z * (1 - 0.16 * t * t));
+  }
+  const cowlGeo = BufferGeometryUtils.mergeVertices(cg);
+  cowlGeo.computeVertexNormals();
+  const cowl = add(new THREE.Mesh(cowlGeo, paint));
+  cowl.position.y = cy; // flat top at 1.86
+  const dec = new THREE.Mesh(new THREE.CircleGeometry(0.3, 24), numberDecal(num, colorDef));
+  dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
+  dec.position.set(-1.29, cy + cTop + 0.005, 0);
+  tilt.add(dec);
+  // where the pole comes out of the rolled-over rear edge
+  let poleY = 0;
+  for (let i = 0; i < cp.count; i++) if (Math.abs(cp.getZ(i)) < 0.2 && Math.abs(cp.getX(i) + 1.72) < 0.08) poleY = Math.max(poleY, cp.getY(i));
+  poleY += cy;
+  for (const s of [-1, 1]) {
+    const tl = add(new THREE.Mesh(new THREE.SphereGeometry(0.085, 7, 4), M.tail));
+    tl.position.set(-2.1, 1.16, s * 0.42);
+  }
+  // driver: jacket in the darker shade, white helmet with the visor facing forward, arms to the wheel
+  const torso = add(new THREE.Mesh(new RoundedBoxGeometry(0.4, 0.6, 0.64, 2, 0.16), dark));
+  torso.position.set(-0.32, 1.12, 0); torso.rotation.z = 0.18;
+  const helmet = add(new THREE.Mesh(new THREE.SphereGeometry(0.27, 16, 12), M.white));
+  helmet.position.set(-0.26, 1.62, 0);
+  const visor = add(new THREE.Mesh(new THREE.SphereGeometry(0.275, 16, 8, Math.PI - 0.85, 1.7, 1.05, 0.65), M.helmetVisor));
+  visor.position.copy(helmet.position);
+  for (const s of [-1, 1]) {
+    const arm = add(new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.13, 0.13, 1, 0.05), dark));
+    arm.position.set(0.04, 1.27, s * 0.25); arm.rotation.z = -0.12; arm.rotation.y = s * 0.12;
+  }
+  // steering column and wheel (the wheel turns with the steering, round the column)
+  const col = add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.52, 6), M.chrome));
+  const tiltCol = Math.atan2(0.27, 0.32);
+  col.position.set(0.5, 1.1, 0); col.rotation.z = tiltCol;
+  const colGroup = new THREE.Group();
+  colGroup.position.set(0.34, 1.29, 0); colGroup.rotation.z = tiltCol;
+  const sw = new THREE.Group();
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.032, 6, 16), M.black); rim.rotation.x = Math.PI / 2; sw.add(rim);
+  sw.add(new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.03, 0.05), M.black));
+  sw.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.2).translate(0, 0, 0.1), M.black));
+  mergeByMaterial(sw);
+  sw.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+  colGroup.add(sw); tilt.add(colGroup);
+  wheels.push({ pivot: sw, spinner: new THREE.Object3D(), front: true, r: 1, noSpin: true, gain: 1.6 });
+
+  // current-collector pole: rubber boot on the back, chrome pole leaning back, contact shoe on top
+  const boot = add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 0.4, 10), M.rubber));
+  boot.position.set(-1.72, poleY + 0.1, 0);
+  const collar = add(new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.08, 12), body));
+  collar.position.set(-1.72, poleY - 0.04, 0);
+  const pole = new THREE.Group();
+  pole.position.set(-1.72, poleY + 0.05, 0);
+  const L = 5.2;
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.06, L, 6).translate(0, L / 2, 0), M.chrome); pole.add(rod);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.06).translate(-0.12, L, 0), M.chrome); pole.add(arm);
+  const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.07, 0.2).translate(-0.12, L + 0.06, 0), M.chrome); pole.add(shoe);
+  mergeByMaterial(pole);
+  pole.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+  const spark = new THREE.Sprite(M.spark);
+  spark.position.set(-0.12, L + 0.16, 0); spark.visible = false; spark.renderOrder = 5;
+  pole.add(spark);
+  const poleLean = 0.1;
+  pole.rotation.z = poleLean;
+  tilt.add(pole);
+  return { pole, poleLean, spark };
+}
+
 export function buildCar(type, colorDef, num) {
   const M = mats();
   const body = bodyMat(colorDef.body);
@@ -185,6 +513,8 @@ export function buildCar(type, colorDef, num) {
   const add = (mesh, parent = tilt) => { mesh.castShadow = true; mesh.receiveShadow = true; parent.add(mesh); return mesh; };
 
   let wheelR = 0.5, wheelW = 0.45, wx = 1.35, wz = 1.02, wy = 0.5;
+  let fans = null; // hovercraft propellers
+  const extra = {}; // bumper car: pole and spark
 
   if (type === 'sports' || type === 'rally') {
     const rally = type === 'rally';
@@ -401,27 +731,9 @@ export function buildCar(type, colorDef, num) {
     dec.position.set(1.15, 0.555, 0);
     tilt.add(dec);
   } else if (type === 'hover') {
-    // hovercraft: black rubber skirt, deck in the player's colour, glass cabin, ducted fan with rudders
-    const skirt = add(new THREE.Mesh(new RoundedBoxGeometry(4.3, 0.62, 2.5, 4, 0.3), M.black));
-    skirt.position.y = 0.31;
-    const deck = add(new THREE.Mesh(new RoundedBoxGeometry(3.95, 0.3, 2.15, 3, 0.14), body));
-    deck.position.y = 0.72;
-    const stripe = add(new THREE.Mesh(new RoundedBoxGeometry(4.0, 0.08, 2.2, 2, 0.04), M.white));
-    stripe.position.y = 0.6;
-    const cabin = add(new THREE.Mesh(new RoundedBoxGeometry(1.7, 0.62, 1.5, 3, 0.25), M.glass));
-    cabin.position.set(0.45, 1.12, 0);
-    const roof = add(new THREE.Mesh(new RoundedBoxGeometry(1.2, 0.1, 1.3, 2, 0.05), body));
-    roof.position.set(0.3, 1.46, 0);
-    const duct = add(new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.13, 10, 28), dark));
-    duct.rotation.y = Math.PI / 2; duct.position.set(-1.5, 1.42, 0);
-    for (const sz of [-0.55, 0.55]) {
-      const strut = add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.1), M.darkRim));
-      strut.position.set(-1.5, 0.95, sz);
-    }
-    const dec = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), numberDecal(num, colorDef));
-    dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
-    dec.position.set(1.55, 0.885, 0);
-    tilt.add(dec);
+    fans = buildHover(add, tilt, body, M, colorDef, num, wheels);
+  } else if (type === 'bumper') {
+    Object.assign(extra, buildBumper(add, tilt, body, dark, M, colorDef, num, wheels));
   } else if (type === 'snowmobile') {
     // snowmobile: coloured cowl, windscreen, rider, seat, rubber track and two steering skis
     const cowl = add(new THREE.Mesh(profileExtrude(smoothProfile([[2.15, 0.5], [1.6, 0.42], [-0.1, 0.48], [-0.25, 0.8], [0.15, 1.12], [0.95, 1.05], [1.85, 0.78]], 2), 1.35, 0.14), body));
@@ -542,7 +854,7 @@ export function buildCar(type, colorDef, num) {
 
   // wheels
   const rimMat = type === 'truck' ? M.darkRim : type === 'monster' ? dark : type === 'suv' ? M.chrome : M.rim;
-  const axles = type === 'rover' ? [[wx, true], [0.0, false], [-1.45, false]] : (type === 'boat' || type === 'hover' || type === 'snowmobile') ? [] : [[wx, true], [-wx, false]];
+  const axles = type === 'rover' ? [[wx, true], [0.0, false], [-1.45, false]] : (type === 'boat' || type === 'hover' || type === 'snowmobile' || type === 'bumper') ? [] : [[wx, true], [-wx, false]];
   for (const [sx, front] of axles) {
     for (const sz of [-wz, wz]) {
       const pivot = new THREE.Group();
@@ -564,30 +876,12 @@ export function buildCar(type, colorDef, num) {
   shadow.scale.set(6.2, 3.9, 1);
   shadow.renderOrder = 1;
 
-  let fan = null;
-  if (type === 'hover') {
-    fan = new THREE.Group();
-    for (let i = 0; i < 3; i++) {
-      const blade = new THREE.Mesh(new RoundedBoxGeometry(0.06, 1.15, 0.2, 1, 0.03), M.darkRim);
-      blade.rotation.x = (i / 3) * Math.PI; fan.add(blade);
-    }
-    const hubM = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 8), M.chrome); fan.add(hubM);
-    fan.position.set(-1.5, 1.42, 0);
-    fan.traverse((m) => { if (m.isMesh) m.castShadow = true; });
-    tilt.add(fan);
-    // rudders behind the fan turn with the steering
-    for (const sz of [-0.32, 0.32]) {
-      const pivot = new THREE.Group(); pivot.position.set(-2.0, 1.42, sz);
-      const rud = new THREE.Mesh(new RoundedBoxGeometry(0.42, 1.0, 0.06, 1, 0.02), dark);
-      rud.position.x = -0.18; rud.castShadow = true; pivot.add(rud); tilt.add(pivot);
-      wheels.push({ pivot, spinner: rud, front: true, r: 1, noSpin: true });
-    }
-    shadow.scale.set(5.4, 3.4, 1);
-  }
+  if (type === 'hover') shadow.scale.set(5.4, 3.4, 1);
+  if (type === 'bumper') shadow.scale.set(5.2, 3.6, 1);
   if (type === 'boat') shadow.scale.set(5.6, 3.0, 1);
   if (type === 'monster') shadow.scale.set(6.6, 4.8, 1);
   if (type === 'suv') shadow.scale.set(6.4, 4.0, 1);
-  return { root, tilt, wheels, shadow, body, boat: type === 'boat', hover: type === 'hover', monster: type === 'monster', fan };
+  return { root, tilt, wheels, shadow, body, boat: type === 'boat', hover: type === 'hover', monster: type === 'monster', fans, fan: fans ? fans[0] : null, ...extra };
 }
 
 // Apply physics state to a car model.
@@ -619,7 +913,18 @@ export function syncCar(model, car, t) {
     tilt.position.y = car.airborne ? 0.1 : 0.12 + Math.sin(ph) * 0.05; // floats on its air cushion
     tilt.rotation.x = Math.max(-0.14, Math.min(0.14, -car.w * Math.abs(car.fwdSpeed) * 0.0016)) + Math.sin(ph * 0.7) * 0.02; // leans out of turns
   }
-  if (model.fan) model.fan.rotation.x = t * (14 + Math.abs(car.throttle) * 30);
+  if (model.fans) { const a = t * (14 + Math.abs(car.throttle) * 30); for (const f of model.fans) f.rotation.x = a; }
+  if (model.pole) {
+    // bumper car: the springy pole sways with the car and wobbles after a bump; the contact shoe sparks while moving
+    const wob = car.state === 'drive' ? Math.sin(t * 21 + car.index * 1.7) * Math.min(0.5, car.stun) : 0;
+    tilt.rotation.x += wob * 0.12;
+    model.pole.rotation.x = -tilt.rotation.x * 0.6 + wob * 0.25;
+    model.pole.rotation.z = model.poleLean - Math.max(-0.06, Math.min(0.06, car.throttle * Math.min(1, car.speed / 30) * 0.05)) + wob * 0.1;
+    const k = car.state === 'drive' ? Math.min(1, car.speed / 18) + Math.min(1, car.stun * 3) : 0;
+    const sp = model.spark;
+    sp.visible = k > 0.15 && Math.random() < 0.3 + 0.45 * Math.min(1, k);
+    if (sp.visible) { const s = 0.9 + Math.random() * 0.8 * Math.min(1.5, k); sp.scale.set(s, s, 1); }
+  }
   if (model.monster && car.state === 'drive' && !car.airborne) {
     const sp = Math.min(1, car.speed / 40);
     tilt.position.y = Math.sin(t * 11 + car.index * 2.1) * 0.06 * sp;
@@ -627,7 +932,7 @@ export function syncCar(model, car, t) {
   }
   for (const wh of wheels) {
     if (!wh.noSpin) wh.spinner.rotation.z = -car.wheelSpin * (0.5 / wh.r);
-    if (wh.front) wh.pivot.rotation.y = -car.steerVis * 0.45;
+    if (wh.front) wh.pivot.rotation.y = -car.steerVis * (wh.gain ?? 0.45);
   }
   const groundY = car.groundY ?? 0;
   shadow.position.set(car.x, groundY + 0.04, car.z);

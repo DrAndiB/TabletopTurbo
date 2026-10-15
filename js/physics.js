@@ -11,8 +11,9 @@ export const VEHICLES = {
   rover: { maxSpeed: 44, accel: 60, brake: 120, reverseMax: 17, turnRate: 3.35, latGrip: 150, drag: 0.22, rolling: 6, len: 4.4, wid: 2.5, r: 1.22, axle: 1.1, mass: 1.2, offroadGrip: 1.0 },
   // toy speedboat: drifts through turns, coasts to a stop quickly, floats (see spec.boat in game/cars)
   boat: { maxSpeed: 45, accel: 58, brake: 95, reverseMax: 14, turnRate: 3.1, latGrip: 62, drag: 0.5, rolling: 14, len: 4.6, wid: 2.1, r: 1.12, axle: 1.15, mass: 1.0, boat: true, yawFollow: 0.45 },
-  // bumper car (fairground): placeholder spec, tuned in the vehicles pass
-  bumper: { maxSpeed: 42, accel: 66, brake: 120, reverseMax: 17, turnRate: 3.6, latGrip: 140, drag: 0.24, rolling: 7, len: 4.0, wid: 2.6, r: 1.2, axle: 0.95, mass: 1.1 },
+  // bumper car (fairground): nimble and quick off the line, a little slower on top; bounces off other cars
+  // (carBounce: car-car restitution, default CRASH.carE) and a bit off walls (wallBounce: added restitution)
+  bumper: { maxSpeed: 40.5, accel: 76, brake: 125, reverseMax: 18, turnRate: 3.55, latGrip: 150, drag: 0.24, rolling: 7, len: 4.0, wid: 2.6, r: 1.2, axle: 0.9, mass: 1.1, carBounce: 1.0, wallBounce: 0.15 },
   // hovercraft: glides over water, sand and land alike, slides through every turn
   hover: { maxSpeed: 45, accel: 56, brake: 70, reverseMax: 14, turnRate: 3.2, latGrip: 50, drag: 0.3, rolling: 4, len: 4.3, wid: 2.4, r: 1.2, axle: 1.05, mass: 0.9, yawFollow: 0.55, hover: true },
   // snowmobile: skis and a track; sure-footed in snow, a little loose
@@ -591,8 +592,8 @@ export class PhysicsWorld {
       this.events.push({ type: 'hit', car, strength: Math.max(14, add) });
       return add;
     }
-    // hard, square-on hits bounce back a little more
-    const eh = e + 0.15 * clamp((-vn - 15) / 20, 0, 1);
+    // hard, square-on hits bounce back a little more (rubber-ringed cars more still: spec.wallBounce)
+    const eh = e + (car.spec.wallBounce || 0) + 0.15 * clamp((-vn - 15) / 20, 0, 1);
     const j = -(1 + eh) * vn;
     const vx0 = car.vx, vz0 = car.vz;
     car.vx += hit.nx * j;
@@ -639,15 +640,18 @@ export class PhysicsWorld {
           const rvx = a.vx - b.vx, rvz = a.vz - b.vz;
           const vn = rvx * nx + rvz * nz;
           if (vn >= 0) continue;
-          const jimp = -(1 + CRASH.carE) * vn / (1 / ma + 1 / mb);
+          // bouncy vehicles (bumper cars) spring apart harder; spin and stun stay those of a normal hit
+          const e = Math.max(a.spec.carBounce ?? CRASH.carE, b.spec.carBounce ?? CRASH.carE);
+          const jimp = -(1 + e) * vn / (1 / ma + 1 / mb);
+          const jk = e === CRASH.carE ? jimp : jimp * (1 + CRASH.carE) / (1 + e);
           a.vx += nx * jimp / ma; a.vz += nz * jimp / ma;
           b.vx -= nx * jimp / mb; b.vz -= nz * jimp / mb;
           // spin from off-centre contact (heavier cars turn less), then knock both loose
           const rax = p[0] - a.x, raz = p[1] - a.z, rbx = q[0] - b.x, rbz = q[1] - b.z;
-          a.w += (rax * nz - raz * nx) * jimp * CRASH.carSpin / ma;
-          b.w -= (rbx * nz - rbz * nx) * jimp * CRASH.carSpin / mb;
-          stunCar(a, nx * jimp / ma, nz * jimp / ma);
-          stunCar(b, -nx * jimp / mb, -nz * jimp / mb);
+          a.w += (rax * nz - raz * nx) * jk * CRASH.carSpin / ma;
+          b.w -= (rbx * nz - rbz * nx) * jk * CRASH.carSpin / mb;
+          stunCar(a, nx * jk / ma, nz * jk / ma);
+          stunCar(b, -nx * jk / mb, -nz * jk / mb);
           if (jimp > 6) this.events.push({ type: 'bump', car: a, other: b, strength: jimp, x: (p[0] + q[0]) / 2, z: (p[1] + q[1]) / 2 });
         }
       }
