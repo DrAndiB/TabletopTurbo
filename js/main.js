@@ -11,6 +11,10 @@ import { formatTime, loadBest, loadTrophies, awardTrophy, MEDALS } from './recor
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
+// Running inside the Android app (Capacitor): no fullscreen button or website link, the system back
+// button drives the menus (see window.__ttBack below).
+const IN_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+document.documentElement.classList.toggle('in-app', IN_APP);
 const SETTINGS_KEY = 'tabletop-turbo.settings.v1';
 const MODES = ['h2h', 'race', 'tt', 'champ'];
 // championships are raced per cup; the "Grand Tour" visits every table, cup after cup
@@ -658,7 +662,24 @@ function pollPads() {
 window.addEventListener('gamepadconnected', () => { if (screen === 'lobby') renderLobby(); $('#pad-hint').hidden = false; });
 
 window.addEventListener('resize', () => { R.resize(); game.updateParticleScale(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden && screen === 'none') togglePause(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && screen === 'none') togglePause();
+  // silence the music and engines while the tab or app is in the background
+  if (document.hidden) { if (sound.ctx && sound.ctx.state === 'running') sound.ctx.suspend(); }
+  else if (sound.ctx) sound.ensure();
+});
+
+// Android back button (called by the app's MainActivity): one step back through the menus, pause while
+// racing. Returns 'exit' on the title screen, where the app then goes to the background.
+window.__ttBack = () => {
+  if (input.capture) return 'ok';
+  if (screen === 'title') return 'exit';
+  if (screen === 'none' || screen === 'pause') togglePause();
+  else if (screen === 'lobby') $('#btn-lobby-back').click();
+  else if (screen === 'controls') $('#btn-controls-back').click();
+  else if (screen === 'results' || screen === 'standings' || screen === 'podium') quitToMenu();
+  return 'ok';
+};
 
 // ---------- main loop ----------
 function frame(now) {

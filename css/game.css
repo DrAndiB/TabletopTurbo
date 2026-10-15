@@ -367,3 +367,10 @@ body[data-screen="none"] #btn-pause { display: grid; }
 #gpu-hint { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 60; width: min(560px, calc(100vw - 32px)); display: flex; gap: 14px; align-items: center; background: var(--paper); color: var(--ink); border: var(--line) solid var(--ink); border-radius: 14px; padding: 12px 14px; box-shadow: 0 6px 0 rgba(0, 0, 0, .35); font-size: 14px; }
 #gpu-hint[hidden] { display: none; }
 #gpu-hint p { margin: 0; flex: 1; }
+
+/* ---------- Android app: the system handles fullscreen and navigation ---------- */
+.in-app #btn-fs, .in-app #screen-title .back { display: none; }
+/* keep the corner buttons and menus clear of a camera cutout (Capacitor sets --safe-area-inset-* in the app) */
+.in-app #corner { right: calc(10px + max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px))); }
+.in-app .screen { padding-left: calc(16px + max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px)));
+  padding-right: calc(16px + max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px))); }
