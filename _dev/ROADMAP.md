@@ -1,6 +1,8 @@
 # Tabletop Turbo: roadmap and idea bank
 
-## Next version (1.3)
+## Version 1.3 (built October 2026)
+
+All ten items below are in 1.3.
 
 Collected while playing the 1.2 web version and the first Android preview (October 2026). Each item has a short
 note on the plan agreed so far. Items 1–9 are fixes and polish; item 10 is new content.

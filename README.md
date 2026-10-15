@@ -5,17 +5,20 @@ up to four players on one keyboard, plus gamepads and computer drivers.
 
 **Play it:** https://andreasbraun.lu/demos/tabletop-turbo/
 
-- **16 miniature worlds in four cups**, from easy to expert:
+- **20 miniature worlds in five cups**, from easy to expert:
   - Crumb Cup: Breakfast Rush, Garden Grand Prix, Gingerbread Village, Toy Box Mayhem
   - Doodle Cup: Homework Hustle, Bath Time Overflow, Corner Pocket, Splash Lagoon Regatta
   - Turbo Cup: Workbench Rally, Quarterly Review, Mars Rover Run, Branch Line Bash
   - Chaos Cup: Pinball Wizard, Reaction Rally, Haunted Dollhouse, Watchmaker's Bench
-- **Ten vehicle types:** sports cars, formula racers, rally cars, 4x4 trucks, Mars rovers, speedboats,
-  hovercraft, snowmobiles, monster trucks and luxury SUVs.
+  - Grand Duchy Cup (Luxembourg, easy to expert): Crémant Curves, Fouer Frenzy, Grund Prix, Old Town Jigsaw
+- **Eleven vehicle types:** sports cars, formula racers, rally cars, 4x4 trucks, Mars rovers, speedboats,
+  hovercraft, snowmobiles, monster trucks, luxury SUVs and fairground bumper cars, each with its own
+  engine sound.
+- **Music:** an original, generated piece and background sounds for every world.
 - **Modes:** head-to-head (the screen follows the leader; drop off its edge and you're out), lap races,
   cup championships with gold/silver/bronze trophies, and time trial against your own ghost car.
 - **Arcade touches:** adjustable catch-up, slipstream, crashes that shove and spin, turbo starts,
-  moving hazards in every world, and no extreme shortcuts.
+  moving hazards in every world, a mini map, and no shortcuts across the infield.
 
 ## Controls
 
