@@ -1,7 +1,7 @@
 # Tabletop Turbo: developer notes
 
 The project overview, controls and file layout are in the main `README.md`. This folder holds the
-world-building guide (`WORLD_GUIDE.md`) and the test tools (`tools/`).
+world-building guide (`WORLD_GUIDE.md`), the test tools (`tools/`) and the roadmap with the idea bank (`ROADMAP.md`).
 
 ## Where things live
 
