@@ -46,6 +46,7 @@ function loadSettings() {
       if (!['off', 'mild', 'strong'].includes(out.catchup)) out.catchup = defaults.catchup;
       if (!CUP_IDS.includes(out.cup)) out.cup = defaults.cup;
       if (out.fps !== 60 && out.fps !== 'max') out.fps = defaults.fps;
+      if (!['auto', 'low', 'medium', 'high'].includes(out.quality)) out.quality = defaults.quality;
       if (!['auto', 'on', 'off'].includes(out.minimap)) out.minimap = defaults.minimap;
       if (out.music !== 'off') out.music = 'on';
       if (out.sfx !== 'off') out.sfx = 'on';
@@ -121,6 +122,8 @@ async function ensureWorld(id) {
 
 // ---------- lobby ----------
 const TYPE_ORDER = ['keys', 'simple', 'cpu', 'off'];
+// on touch screens (and in the app) Touch is part of the cycle too, first, for one seat at a time
+const CAN_TOUCH = IN_APP || matchMedia('(any-pointer: coarse)').matches;
 const TYPE_LABEL = { keys: 'Keyboard', simple: 'Easy keys', cpu: 'CPU', off: 'Off', pad: 'Gamepad', touch: 'Touch' };
 const HUMAN_TYPES = ['keys', 'simple', 'pad', 'touch'];
 const CHAMP_POINTS = { 1: [10], 2: [10, 4], 3: [10, 5, 2], 4: [10, 6, 3, 1] };
@@ -284,8 +287,9 @@ function renderLobby() {
       <div class="slot-hint">${hint}</div>`;
     card.querySelector('.slot-type').onclick = () => {
       sound.click();
-      let idx = TYPE_ORDER.indexOf(s.type);
-      s.type = TYPE_ORDER[(idx + 1) % TYPE_ORDER.length];
+      const order = CAN_TOUCH && !settings.slots.some((o) => o !== s && o.type === 'touch') ? ['touch', ...TYPE_ORDER] : TYPE_ORDER;
+      const idx = order.indexOf(s.type);
+      s.type = order[(idx + 1) % order.length];
       delete s.pad;
       if (activeCount() < 2) s.type = 'keys';
       saveSettings(); renderLobby();
@@ -603,7 +607,7 @@ function togglePause() {
 // ---------- buttons ----------
 $('#btn-play').onclick = () => { sound.ensure(); sound.click(); showScreen('lobby'); renderLobby(); };
 $('#btn-controls').onclick = () => { sound.click(); showScreen('controls'); renderControls(); };
-$('#btn-controls-back').onclick = () => { sound.click(); showScreen(prevForControls || 'title'); if (prevForControls === 'lobby') renderLobby(); };
+$('#btn-controls-back').onclick = () => { sound.click(); input.capture = null; showScreen(prevForControls || 'title'); if (prevForControls === 'lobby') renderLobby(); };
 $('#btn-controls-reset').onclick = () => { input.resetBindings(); renderControls(); };
 let prevForControls = 'title';
 $('#btn-lobby-controls').onclick = () => { sound.click(); prevForControls = 'lobby'; showScreen('controls'); renderControls(); };
@@ -642,7 +646,7 @@ input.on((type, e) => {
   }
   if (e.code === 'KeyF' && (screen === 'none' || screen === 'pause')) toggleFullscreen();
   if (e.code === 'F3') { e.preventDefault?.(); perf.toggleOverlay(); }
-  if (e.code === 'KeyM' && screen === 'none' && !input.isGameKey('KeyM') && game.state !== 'attract') hud.minimap?.toggle();
+  if ((e.code === 'KeyM' || e.key === 'm' || e.key === 'M') && screen === 'none' && !input.isGameKey('KeyM') && game.state !== 'attract') hud.minimap?.toggle();
   if (e.code === 'Enter') {
     if (screen === 'none') { if (game.canSkipWait()) game.skipWait(); }
     else if (screen === 'title') $('#btn-play').click();
@@ -726,13 +730,14 @@ document.addEventListener('visibilitychange', () => {
 
 // Android back button (called by the app's MainActivity): one step back through the menus, pause while
 // racing. Returns 'exit' on the title screen, where the app then goes to the background.
+// Between championship races back does nothing (one stray press mustn't lose a cup; Quit is on screen).
 window.__ttBack = () => {
-  if (input.capture) return 'ok';
+  if (input.capture) { input.capture = null; if (screen === 'controls') renderControls(); return 'ok'; }
   if (screen === 'title') return 'exit';
   if (screen === 'none' || screen === 'pause') togglePause();
   else if (screen === 'lobby') $('#btn-lobby-back').click();
   else if (screen === 'controls') $('#btn-controls-back').click();
-  else if (screen === 'results' || screen === 'standings' || screen === 'podium') quitToMenu();
+  else if (screen === 'results' || screen === 'podium') quitToMenu();
   return 'ok';
 };
 

@@ -408,3 +408,6 @@ body[data-screen="none"] #btn-pause { display: grid; }
   .btn kbd, .panel.lobby .panel-foot .small { display: none; }
   .panel.lobby .panel-foot { justify-content: flex-end; }
 }
+
+/* phones held sideways: the "Waiting for the others…" note goes below the finish flash lines */
+@media (orientation: landscape) and (max-height: 500px) { .msg.note { top: 52%; } }

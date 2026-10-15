@@ -334,6 +334,8 @@ export class Sound {
     const R = this.race;
     if (on) this.silenceEngines(); else this.held = false;
     if (!R) return;
+    // frame() didn't run while paused: refresh the game-clock offset now, or a synced piece skips ahead
+    if (!on && R.game && this.ctx) this.gameOff = this.ctx.currentTime - R.game.time;
     for (const p of [R.player, R.amb]) if (p) { if (on) p.pause(); else p.resume(); }
   }
   pump() {

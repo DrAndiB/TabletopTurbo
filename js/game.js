@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.bundle.js';
 import { Track } from './track.js';
 import { PhysicsWorld, Car, VEHICLES } from './physics.js';
-import { buildCar, syncCar } from './cars.js';
+import { buildCar, syncCar, disposeCar } from './cars.js';
 import { AIDriver } from './ai.js';
 import { makeKit } from './kit.js';
 import { SkidMarks, Particles } from './fx.js';
@@ -93,7 +93,7 @@ export class Game {
   }
 
   unloadWorld() {
-    for (const c of this.cars) { this.R.scene.remove(c.model.root); this.R.scene.remove(c.model.shadow); }
+    for (const c of this.cars) { this.R.scene.remove(c.model.root); this.R.scene.remove(c.model.shadow); disposeCar(c.model); }
     this.cars = [];
     this.removeGhostModel();
     this.tt = null;
@@ -115,7 +115,8 @@ export class Game {
   // drivers: [{type:'keys'|'simple'|'pad'|'touch'|'cpu', slot, pad, color}]
   // mode: 'h2h' | 'race' | 'tt' (time trial, one driver)
   startMatch({ drivers, mode = 'h2h', pointsToWin = 5, laps = 3, skill = 'normal', catchup = 'mild' }) {
-    for (const c of this.cars) { this.R.scene.remove(c.model.root); this.R.scene.remove(c.model.shadow); }
+    for (const c of this.cars) { this.R.scene.remove(c.model.root); this.R.scene.remove(c.model.shadow); disposeCar(c.model); }
+    this.launchHintShown = false;
     this.mode = mode;
     this.pointsToWin = pointsToWin;
     this.laps = laps;
@@ -250,7 +251,8 @@ export class Game {
     if (this.state === 'countdown') {
       const before = this.countT;
       this.countT -= dt;
-      if (this.launchHint) { this.launchHint = false; this.hud.flash('Tap at GO for a turbo start!', '#fff4dc'); }
+      if (this.launchHint && !this.launchHintShown) { this.launchHintShown = true; this.hud.flash('Tap at GO for a turbo start!', '#fff4dc'); }
+      this.launchHint = false;
       const n = Math.ceil(this.countT);
       if (this.countFull) {
         if (n !== this.lastBeep && n >= 1 && n <= 3) { this.lastBeep = n; this.sound.beep(false); this.hud.message(String(n), 'count'); }
@@ -597,6 +599,8 @@ export class Game {
       if (e.holdT > 0) e.holdT = Math.max(0, e.holdT - dt);
       if (this.state !== 'race' || e.out || e.finished || e.car.state !== 'drive' || e.progress > e.stuckP + STUCK.dist) { this.clearStuck(e); continue; }
       if (e.holdT > 0) continue;
+      // a human who isn't pressing anything is waiting, not stuck (no reset loop for an idle player)
+      if (e.human && !(Math.abs(e.car.throttle) > 0.1 || e.car.brake > 0.1)) { this.clearStuck(e); continue; }
       e.stuckT += dt;
       if (e.stuckT >= STUCK.time) {
         this.stuckResets++; e.stuckResets = (e.stuckResets || 0) + 1;
@@ -752,7 +756,8 @@ export class Game {
     const how = h.includes('touch') ? 'Tap' : h.length && h.every((t) => t === 'pad') ? 'Press A' : 'Enter';
     return `Waiting for the others… ${how} to skip`;
   }
-  canSkipWait() { return this.state === 'race' && this.mode === 'race' && this.waitT > 0; }
+  // (not in the first second: a steering correction or brake tap right after the line mustn't end it by accident)
+  canSkipWait() { return this.state === 'race' && this.mode === 'race' && this.waitT > 0 && this.waitT < FINISH.wait - 1; }
   // end the wait now: whoever hasn't finished is ranked by distance
   skipWait() {
     if (!(this.waitT > 0)) return;
@@ -849,9 +854,9 @@ export class Game {
     const m = this.ghostModel;
     if (!m) return;
     this.R.scene.remove(m.root);
-    m.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
-    m.shadow.geometry.dispose();
-    for (const mat of this.ghostMats) mat.dispose();
+    // the translucent clones are its materials now (the originals were swapped out): disposeCar frees them
+    // together with the geometries and the number decal
+    disposeCar(m);
     this.ghostModel = null; this.ghostMats = [];
   }
 
@@ -1039,7 +1044,12 @@ export class Game {
       const c = e.car;
       const vis = !e.out && c.state === 'drive';
       const vol = vis ? (e.human ? 1 : 0.55) * (this.onScreen(c.x, c.y, c.z, 0.3) ? 1 : 0.3) : 0;
-      const rev = this.state === 'countdown' ? (e.human ? this.input.read(e.driver).throttle : 0.3) : c.throttle;
+      // countdown revs: keyboard gas, or for auto-gas drivers (touch, Easy keys) the turbo-start press
+      let rev = c.throttle;
+      if (this.state === 'countdown') {
+        if (!e.human) rev = 0.3;
+        else { const ctl = this.input.read(e.driver); rev = autoGas(e.driver) ? (ctl.launch ? 1 : 0.2) : ctl.throttle; }
+      }
       // a bogged launch screams at high revs with little speed
       const spd = c.bog > 0 ? Math.max(0.75, Math.abs(c.fwdSpeed) / c.spec.maxSpeed) : Math.abs(c.fwdSpeed) / c.spec.maxSpeed;
       S.updateEngine(i, Math.min(1.1, spd), rev, c.airborne ? 0 : c.slip, this.panOf(c.x, c.z), vol);

@@ -885,6 +885,31 @@ export function buildCar(type, colorDef, num) {
 }
 
 // Apply physics state to a car model.
+// Free a car model's own GPU resources (geometries, per-car materials, the number decal) when it leaves the
+// scene. Shared materials (mats()) and the textures they use stay alive for the next race.
+export function disposeCar(model) {
+  if (!model) return;
+  const keepMat = new Set(Object.values(shared));
+  const keepTex = new Set();
+  for (const m of keepMat) for (const k of ['map', 'alphaMap']) if (m && m[k]) keepTex.add(m[k]);
+  const seen = new Set();
+  const drop = (o) => {
+    if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+    const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of ms) {
+      if (keepMat.has(m) || seen.has(m)) continue;
+      seen.add(m);
+      for (const k of ['map', 'alphaMap', 'emissiveMap', 'normalMap', 'roughnessMap']) {
+        const t = m[k];
+        if (t && t.isTexture && !keepTex.has(t) && !seen.has(t)) { seen.add(t); t.dispose(); }
+      }
+      m.dispose();
+    }
+  };
+  model.root.traverse(drop);
+  if (model.shadow) drop(model.shadow);
+}
+
 export function syncCar(model, car, t) {
   const { root, tilt, wheels, shadow } = model;
   root.position.set(car.x, car.y, car.z);
