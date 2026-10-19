@@ -158,6 +158,9 @@ export const INST = {
   popLead: { kind: 'mono', wave: 'square', wave2: 'sawtooth', mix2: 0.6, det2: 7, filter: ['lowpass', 1800, 0.9], vib: [5.5, 6, 0.25], env: [0.008, 0.25, 0.65, 0.08], glide: 0.012, gain: 0.3 },
   chipLead: { kind: 'mono', wave: { pulse: 0.25 }, filter: ['lowpass', 2600, 0.6], env: [0.004, 0.1, 0.8, 0.04], vib: [6, 6, 0.3], gain: 0.22 },
   chipArp: { kind: 'mono', wave: { pulse: 0.125 }, env: [0.003, 0.06, 0.6, 0.02], gain: 0.13 },
+  // rounder chip voices for the menu theme: square instead of thin pulses, filtered, hardly any vibrato
+  chipLeadSoft: { kind: 'mono', wave: { pulse: 0.5 }, filter: ['lowpass', 2000, 0.5], env: [0.006, 0.12, 0.7, 0.06], vib: [5.5, 4, 0.35], gain: 0.2 },
+  chipArpSoft: { kind: 'mono', wave: { pulse: 0.5 }, filter: ['lowpass', 1500, 0.5], env: [0.003, 0.08, 0.45, 0.03], gain: 0.1 },
   chipBass: { kind: 'mono', wave: 'triangle', env: [0.003, 0.05, 0.9, 0.03], gain: 0.75 },
   fiddle: { kind: 'mono', wave: 'sawtooth', filter: ['lowpass', 2100, 0.7], peak: [900, 1.5, 2.5], vib: [5.4, 7, 0.3], env: [0.045, 0.2, 0.85, 0.1], glide: 0.03, gain: 0.22 },
   theremin: { kind: 'mono', wave: [1, 0.12, 0.04], vib: [4.8, 12, 0.25], env: [0.12, 0.3, 0.9, 0.3], glide: 0.11, gain: 0.4 },
@@ -385,19 +388,15 @@ const DR = {
 };
 
 export const PIECES = {
-  // menu theme: calm and unobtrusive (slow, soft chords, music box over electric piano, no drums)
+  // menu theme: the original arcade chiptune, a little slower and three semitones lower, with rounder voices
   menu: {
-    level: 1.26, bpm: 76, key: 'F', form: 'A B',
-    sections: {
-      A: ['Fmaj7', 'Am7', 'Bbmaj7', 'C7sus4', 'Fmaj7', 'Dm7', 'Gm7', 'C7sus4'],
-      B: ['Bbmaj7', 'Am7', 'Gm7', 'Fmaj7', 'Dm7', 'Bbmaj7', 'Gm7', 'C7sus4'],
-    },
+    level: 1.82, bpm: 120, key: 'A', form: 'A B',
+    sections: { A: ['A', 'E', 'F#m', 'D', 'A', 'E', 'D E', 'A'], B: ['F#m', 'D', 'A', 'E', 'F#m', 'D', 'Bm E', 'A'] },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'musicbox', rh: 'slow', range: [69, 84], seed: 29, send: 0.4, gain: 0.8 },
-      { id: 'keys', play: 'comp', inst: 'epiano', r: 'x.......x.......', voice: 'full', center: 60, strum: 0.04, gain: 0.2, send: 0.35 },
-      { id: 'harp', play: 'comp', inst: 'harp', r: 'x...x...x...x...', arp: 'up', span: 2, center: 57, gain: 0.55, pan: -0.25, send: 0.35 },
-      { id: 'pad', play: 'comp', inst: 'pad', r: 'x...............', voice: 'full', center: 57, send: 0.4, gain: 0.9 },
-      { id: 'bass', play: 'bass', inst: 'subBass', ...B.pedal, center: 41, gain: 0.35 },
+      { id: 'lead', play: 'melody', inst: 'chipLeadSoft', rh: 'chip', range: [66, 83], seed: 3, send: 0.15, gain: 1.0 },
+      { id: 'arp', play: 'comp', inst: 'chipArpSoft', r: 'x.x.x.x.x.x.x.x.', arp: 'up', center: 59, gain: 1.2, pan: -0.2 },
+      { id: 'bass', play: 'bass', inst: 'chipBass', ...B.chip8, center: 40, gain: 0.186 },
+      { id: 'drums', play: 'drums', ...DR.chip, gain: 0.22 },
     ],
   },
   breakfast: {

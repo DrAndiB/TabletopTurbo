@@ -107,7 +107,7 @@ about −27.5 dBFS (the SUV is quieter on purpose). Check `engines.png` against 
 
 **Mix targets** (one car at full throttle, offline render): engines −26 to −28 dBFS RMS. Race music is about
 about −35.5 dBFS ±2 dB, roughly 8 dB below one engine before the duck (lowered in October 2026: the music was
-too present). The menu theme is a calm piece at about −35 dBFS. Keep sustained leads (fiddle, theremin, oboe,
+too present). The menu theme (a softened version of the original chiptune) is at about −34.5 dBFS. Keep sustained leads (fiddle, theremin, oboe,
 accordion, organ) dark and with little vibrato, and melodies mostly below A5, or they turn whiny. Ambience is
 −39 to −55 dBFS. Peaks are at −6 dBFS or below.
 
