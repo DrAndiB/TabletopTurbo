@@ -385,14 +385,19 @@ const DR = {
 };
 
 export const PIECES = {
+  // menu theme: calm and unobtrusive (slow, soft chords, music box over electric piano, no drums)
   menu: {
-    level: 5.7, bpm: 128, key: 'C', form: 'A B',
-    sections: { A: ['C', 'G', 'Am', 'F', 'C', 'G', 'F G', 'C'], B: ['Am', 'F', 'C', 'G', 'Am', 'F', 'Dm G', 'C'] },
+    level: 1.0, bpm: 76, key: 'F', form: 'A B',
+    sections: {
+      A: ['Fmaj7', 'Am7', 'Bbmaj7', 'C7sus4', 'Fmaj7', 'Dm7', 'Gm7', 'C7sus4'],
+      B: ['Bbmaj7', 'Am7', 'Gm7', 'Fmaj7', 'Dm7', 'Bbmaj7', 'Gm7', 'C7sus4'],
+    },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'chipLead', rh: 'chip', range: [69, 86], seed: 3, gain: 1.0 },
-      { id: 'arp', play: 'comp', inst: 'chipArp', r: 'x.x.x.x.x.x.x.x.', arp: 'up', center: 64, gain: 1.49 },
-      { id: 'bass', play: 'bass', inst: 'chipBass', ...B.chip8, center: 40, gain: 0.186 },
-      { id: 'drums', play: 'drums', ...DR.chip, gain: 0.295 },
+      { id: 'lead', play: 'melody', inst: 'musicbox', rh: 'slow', range: [69, 84], seed: 29, send: 0.4, gain: 0.8 },
+      { id: 'keys', play: 'comp', inst: 'epiano', r: 'x.......x.......', voice: 'full', center: 60, strum: 0.04, gain: 0.2, send: 0.35 },
+      { id: 'harp', play: 'comp', inst: 'harp', r: 'x...x...x...x...', arp: 'up', span: 2, center: 57, gain: 0.55, pan: -0.25, send: 0.35 },
+      { id: 'pad', play: 'comp', inst: 'pad', r: 'x...............', voice: 'full', center: 57, send: 0.4, gain: 0.9 },
+      { id: 'bass', play: 'bass', inst: 'subBass', ...B.pedal, center: 41, gain: 0.35 },
     ],
   },
   breakfast: {
