@@ -10,7 +10,7 @@ import { MusicKit, Player, compileSong, pieceFor, mulberry } from './music.js';
 import { Ambience, CUES, EV, makeNoises } from './ambience.js';
 
 const LOOKAHEAD = 0.3;
-const MUSIC_LEVEL = 0.133; // race music sits ~4 dB under one engine at full throttle (see _dev/README.md, Audio)
+const MUSIC_LEVEL = 0.084; // race music sits ~8 dB under one engine at full throttle (see _dev/README.md, Audio)
 
 // ---------------------------------------------------------------- vehicle voices
 // base Hz (+ step per car), gears (fake gear steps: each adds `spread`, within a gear the revs rise by `range`),

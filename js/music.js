@@ -136,10 +136,10 @@ export const INST = {
   nylon: { kind: 'buf', syn: 'ks', t60: 2.0, bright: 0.28, pick: 0.22, len: 1.6, damp: 0.14 },
   uke: { kind: 'buf', syn: 'ks', t60: 1.1, bright: 0.62, pick: 0.27, len: 1.1, damp: 0.08 },
   harp: { kind: 'buf', syn: 'ks', t60: 3.0, bright: 0.26, pick: 0.45, len: 2.0 },
-  harpsi: { kind: 'buf', syn: 'ks', t60: 1.6, bright: 0.95, pick: 0.07, stretch: 0.3, oct: 0.35, len: 1.3, damp: 0.06 },
+  harpsi: { kind: 'buf', syn: 'ks', t60: 1.6, bright: 0.8, pick: 0.08, stretch: 0.3, oct: 0.3, len: 1.3, damp: 0.09 },
   clav: { kind: 'buf', syn: 'ks', t60: 0.6, bright: 0.95, pick: 0.06, stretch: 0.25, len: 0.7, damp: 0.03, drive: 1.6 },
-  twang: { kind: 'buf', syn: 'ks', t60: 2.0, bright: 0.85, pick: 0.11, stretch: 0.35, len: 1.5, damp: 0.08, drive: 2.4 },
-  chug: { kind: 'buf', syn: 'ks', t60: 0.35, bright: 0.7, pick: 0.15, len: 0.5, damp: 0.04, drive: 3 },
+  twang: { kind: 'buf', syn: 'ks', t60: 2.0, bright: 0.62, pick: 0.13, stretch: 0.35, len: 1.5, damp: 0.12, drive: 1.8 },
+  chug: { kind: 'buf', syn: 'ks', t60: 0.35, bright: 0.55, pick: 0.15, len: 0.5, damp: 0.07, drive: 2.2 },
   upright: { kind: 'buf', syn: 'ks', t60: 1.3, bright: 0.16, pick: 0.2, len: 1.2, damp: 0.08 },
   pizz: { kind: 'buf', syn: 'ks', t60: 0.5, bright: 0.35, pick: 0.3, len: 0.6 },
   celesta: { kind: 'buf', syn: 'fm', ratio: 4, index: 1.3, idecay: 9, t60: 1.8, len: 1.6 },
@@ -155,18 +155,18 @@ export const INST = {
   synpluck: { kind: 'buf', syn: 'saw', t60: 0.8, damp: 0.5, len: 0.9 },
   bubble: { kind: 'buf', syn: 'bubble', len: 0.22 },
 
-  popLead: { kind: 'mono', wave: 'square', wave2: 'sawtooth', mix2: 0.6, det2: 7, filter: ['lowpass', 2300, 1.2], vib: [5.5, 10, 0.2], env: [0.008, 0.25, 0.65, 0.08], glide: 0.012, gain: 0.3 },
-  chipLead: { kind: 'mono', wave: { pulse: 0.25 }, env: [0.004, 0.1, 0.8, 0.04], vib: [6, 14, 0.25], gain: 0.22 },
+  popLead: { kind: 'mono', wave: 'square', wave2: 'sawtooth', mix2: 0.6, det2: 7, filter: ['lowpass', 1800, 0.9], vib: [5.5, 6, 0.25], env: [0.008, 0.25, 0.65, 0.08], glide: 0.012, gain: 0.3 },
+  chipLead: { kind: 'mono', wave: { pulse: 0.25 }, filter: ['lowpass', 2600, 0.6], env: [0.004, 0.1, 0.8, 0.04], vib: [6, 6, 0.3], gain: 0.22 },
   chipArp: { kind: 'mono', wave: { pulse: 0.125 }, env: [0.003, 0.06, 0.6, 0.02], gain: 0.13 },
   chipBass: { kind: 'mono', wave: 'triangle', env: [0.003, 0.05, 0.9, 0.03], gain: 0.75 },
-  fiddle: { kind: 'mono', wave: 'sawtooth', filter: ['lowpass', 3600, 0.9], peak: [1250, 2.5, 6], vib: [5.8, 16, 0.16], env: [0.045, 0.2, 0.85, 0.1], glide: 0.03, gain: 0.22 },
-  theremin: { kind: 'mono', wave: [1, 0.12, 0.04], vib: [5.2, 30, 0.1], env: [0.12, 0.3, 0.9, 0.3], glide: 0.11, gain: 0.4 },
-  accordion: { kind: 'mono', wave: REED, wave2: REED, det2: 14, mix2: 0.85, filter: ['lowpass', 3200, 0.6], env: [0.03, 0.1, 0.9, 0.07], gain: 0.2 },
-  flute: { kind: 'mono', wave: [1, 0.28, 0.08, 0.04], vib: [5, 12, 0.22], env: [0.06, 0.2, 0.85, 0.1], glide: 0.02, gain: 0.38 },
-  oboe: { kind: 'mono', wave: [1, 0.9, 0.75, 0.6, 0.4, 0.3, 0.2, 0.12], filter: ['lowpass', 3000, 0.8], vib: [5.5, 12, 0.2], env: [0.04, 0.2, 0.8, 0.08], glide: 0.02, gain: 0.27 },
+  fiddle: { kind: 'mono', wave: 'sawtooth', filter: ['lowpass', 2100, 0.7], peak: [900, 1.5, 2.5], vib: [5.4, 7, 0.3], env: [0.045, 0.2, 0.85, 0.1], glide: 0.03, gain: 0.22 },
+  theremin: { kind: 'mono', wave: [1, 0.12, 0.04], vib: [4.8, 12, 0.25], env: [0.12, 0.3, 0.9, 0.3], glide: 0.11, gain: 0.4 },
+  accordion: { kind: 'mono', wave: REED, wave2: REED, det2: 10, mix2: 0.85, filter: ['lowpass', 2000, 0.5], env: [0.03, 0.1, 0.9, 0.07], gain: 0.2 },
+  flute: { kind: 'mono', wave: [1, 0.28, 0.08, 0.04], vib: [5, 7, 0.28], env: [0.06, 0.2, 0.85, 0.1], glide: 0.02, gain: 0.38 },
+  oboe: { kind: 'mono', wave: [1, 0.8, 0.55, 0.38, 0.24, 0.15, 0.09, 0.05], filter: ['lowpass', 1900, 0.6], vib: [5.2, 6, 0.28], env: [0.04, 0.2, 0.8, 0.08], glide: 0.02, gain: 0.27 },
   softLead: { kind: 'mono', wave: 'triangle', wave2: 'sine', mix2: 0.7, det2: -1200, filter: ['lowpass', 1500, 0.5], vib: [0.7, 14, 0], env: [0.02, 0.5, 0.55, 0.25], gain: 0.42 },
   bloop: { kind: 'mono', wave: 'sine', wave2: 'triangle', det2: 1200, mix2: 0.25, env: [0.005, 0.15, 0.6, 0.06], glide: 0.03, scoop: 0.84, gain: 0.45 },
-  organLead: { kind: 'mono', wave: [1, 0.7, 0.85, 0.45, 0.55, 0.25, 0.3, 0.15, 0.12], filter: ['lowpass', 4200, 0.5], vib: [6.6, 8, 0], env: [0.01, 0.1, 0.9, 0.05], gain: 0.2 },
+  organLead: { kind: 'mono', wave: [1, 0.7, 0.85, 0.45, 0.55, 0.25, 0.3, 0.15, 0.12], filter: ['lowpass', 2600, 0.5], vib: [6.6, 3, 0.2], env: [0.01, 0.1, 0.9, 0.05], gain: 0.2 },
   synLead: { kind: 'mono', wave: 'sawtooth', filter: ['lowpass', 900, 5], fenv: [3200, 0.1], env: [0.005, 0.15, 0.6, 0.05], glide: 0.03, gain: 0.28 },
   popBass: { kind: 'mono', wave: 'sawtooth', wave2: 'sine', mix2: 1.2, filter: ['lowpass', 650, 1], env: [0.005, 0.15, 0.7, 0.05], gain: 0.42 },
   subBass: { kind: 'mono', wave: 'sine', wave2: 'sawtooth', mix2: 0.3, filter: ['lowpass', 900, 0.7], env: [0.01, 0.3, 0.8, 0.1], gain: 0.62 },
@@ -179,7 +179,7 @@ export const INST = {
   bandOrgan: { kind: 'poly', wave: [1, 0.7, 0.8, 0.5, 0.55, 0.3, 0.3, 0.2, 0.15, 0.1], env: [0.008, 0.08, 0.85, 0.05], vib: [6.8, 6], gain: 0.12 },
   squeeze: { kind: 'poly', wave: REED, det: [-12, 12], env: [0.03, 0.1, 0.85, 0.06], gain: 0.08 },
   pad: { kind: 'poly', wave: 'sawtooth', det: [-9, 9], busFilter: ['lowpass', 1100, 0.6], env: [0.5, 0.5, 0.8, 0.8], gain: 0.07 },
-  strings: { kind: 'poly', wave: 'sawtooth', det: [-7, 6], busFilter: ['lowpass', 2000, 0.5], env: [0.12, 0.3, 0.85, 0.35], vib: [5.5, 8], gain: 0.07 },
+  strings: { kind: 'poly', wave: 'sawtooth', det: [-7, 6], busFilter: ['lowpass', 1500, 0.5], env: [0.15, 0.3, 0.85, 0.4], vib: [5, 4], gain: 0.07 },
   brass: { kind: 'poly', wave: 'sawtooth', det: [-5, 5], busFilter: ['lowpass', 1800, 1.5], env: [0.02, 0.15, 0.6, 0.08], gain: 0.09 },
   kit: { kind: 'drums' },
 };
@@ -387,7 +387,7 @@ const DR = {
 export const PIECES = {
   // menu theme: calm and unobtrusive (slow, soft chords, music box over electric piano, no drums)
   menu: {
-    level: 1.0, bpm: 76, key: 'F', form: 'A B',
+    level: 1.26, bpm: 76, key: 'F', form: 'A B',
     sections: {
       A: ['Fmaj7', 'Am7', 'Bbmaj7', 'C7sus4', 'Fmaj7', 'Dm7', 'Gm7', 'C7sus4'],
       B: ['Bbmaj7', 'Am7', 'Gm7', 'Fmaj7', 'Dm7', 'Bbmaj7', 'Gm7', 'C7sus4'],
@@ -408,7 +408,7 @@ export const PIECES = {
       C: ['Bm', 'G', 'D', 'A', 'Em', 'F#m', 'G', 'A7'],
     },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'popLead', rh: 'pop', range: [66, 83], seed: 11, send: 0.2, gain: 1.0 },
+      { id: 'lead', play: 'melody', inst: 'popLead', rh: 'pop', range: [64, 80], seed: 11, send: 0.2, gain: 1.0 },
       { id: 'keys', play: 'comp', inst: 'epiano', r: '..x...x...x...x.', voice: 'triad', center: 62, gain: 0.25, pan: -0.25 },
       { id: 'bass', play: 'bass', inst: 'popBass', ...B.pop8, center: 40, gain: 0.422 },
       { id: 'drums', play: 'drums', ...DR.pop, gain: 0.569 },
@@ -439,7 +439,7 @@ export const PIECES = {
       { id: 'harp', play: 'comp', inst: 'harp', r: 'x...x...x...', arp: 'up', span: 2, center: 57, gain: 1.32, pan: -0.3, send: 0.3 },
       { id: 'pad', play: 'comp', inst: 'strings', r: 'x...........', voice: 'full', center: 62, gain: 1.14, send: 0.35 },
       { id: 'bass', play: 'bass', inst: 'pizz', ...B.waltz, center: 43, gain: 2 },
-      { id: 'bells', play: 'drums', ...DR.sleigh, gain: 1.22, pan: 0.25 },
+      { id: 'bells', play: 'drums', ...DR.sleigh, gain: 0.8, pan: 0.25 },
       { id: 'glock', play: 'double', of: 'lead', inst: 'glock', oct: 12, gain: 0.96, layer: 'final', pan: 0.3 },
     ],
   },
@@ -524,7 +524,7 @@ export const PIECES = {
       B: ['Bbmaj7', 'Bbm6', 'Am7', 'Dm7', 'Gm7', 'C9', 'Fmaj7', 'Gm7 C7'],
     },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'flute', rh: 'bossa', range: [67, 84], seed: 41, send: 0.3, gain: 1.0 },
+      { id: 'lead', play: 'melody', inst: 'flute', rh: 'bossa', range: [64, 81], seed: 41, send: 0.3, gain: 1.0 },
       { id: 'guitar', play: 'comp', inst: 'nylon', r: 'x..x..x...x..x..', voice: 'full', center: 58, strum: 0.008, gain: 0.546, pan: -0.3 },
       { id: 'bass', play: 'bass', inst: 'subBass', ...B.bossa, center: 38, gain: 0.398 },
       { id: 'drums', play: 'drums', ...DR.bossa, gain: 0.515 },
@@ -535,7 +535,7 @@ export const PIECES = {
     level: 0.661, bpm: 96, key: 'D', scale: 'minor', form: 'A B A',
     sections: { A: ['Dm', 'Bb', 'C', 'Am', 'Dm', 'Bb', 'Gm', 'A'], B: ['F', 'C', 'Gm', 'Dm', 'Bb', 'F', 'Gm', 'A7sus4'] },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'theremin', rh: 'space', range: [62, 81], seed: 43, send: 0.45, gain: 1.0 },
+      { id: 'lead', play: 'melody', inst: 'theremin', rh: 'space', range: [58, 77], seed: 43, send: 0.45, gain: 1.0 },
       { id: 'arp', play: 'comp', inst: 'synpluck', r: 'x.x.x.x.x.x.x.x.', arp: 'updown', span: 2, center: 57, gain: 0.982, pan: -0.3, send: 0.35 },
       { id: 'pad', play: 'comp', inst: 'pad', r: 'x...............', voice: 'full', center: 57, send: 0.4, gain: 1.17 },
       { id: 'bass', play: 'bass', inst: 'subBass', ...B.pedal, center: 38, gain: 0.513 },
@@ -562,7 +562,7 @@ export const PIECES = {
       C: ['Dm', 'E', 'Am', 'F', 'Dm', 'E', 'Am', 'E7'],
     },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'chipLead', rh: 'chip', range: [69, 88], seed: 53, gain: 1.0 },
+      { id: 'lead', play: 'melody', inst: 'chipLead', rh: 'chip', range: [64, 83], seed: 53, gain: 1.0 },
       { id: 'arp', play: 'comp', inst: 'chipArp', r: 'xxxxxxxxxxxxxxxx', arp: 'up', span: 1, center: 64, gain: 1.36 },
       { id: 'bass', play: 'bass', inst: 'chipBass', ...B.chip8, center: 40, gain: 0.188 },
       { id: 'drums', play: 'drums', ...DR.chip, gain: 0.259 },
@@ -592,7 +592,7 @@ export const PIECES = {
       C: ['Gm', 'Dm', 'E7', 'A', 'Dm', 'Bb', 'A7', 'Dm'],
     },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'theremin', rh: 'theremin', range: [62, 81], seed: 61, send: 0.4, gain: 1.0 },
+      { id: 'lead', play: 'melody', inst: 'theremin', rh: 'theremin', range: [58, 77], seed: 61, send: 0.4, gain: 1.0 },
       { id: 'organ', play: 'comp', inst: 'organ', r: '----x...x...', voice: 'triad', center: 60, pan: -0.15, send: 0.3, gain: 1.84 },
       { id: 'bass', play: 'bass', inst: 'organBass', ...B.waltz, center: 38, gain: 0.804 },
       { id: 'box', play: 'counter', inst: 'celesta', r: '........x...', center: 79, gain: 0.896, pan: 0.35, send: 0.4 },
@@ -618,7 +618,7 @@ export const PIECES = {
     level: 2.57, bpm: 144, meter: 3, key: 'G', form: 'A B A B',
     sections: { A: ['G', 'Em', 'Am', 'D7', 'G', 'B7', 'C . D7', 'G'], B: ['C', 'G', 'D', 'G', 'Em', 'A7', 'D', 'D7'] },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'accordion', rh: 'waltz', range: [64, 83], seed: 71, send: 0.25, pan: 0.15, gain: 1.0 },
+      { id: 'lead', play: 'melody', inst: 'accordion', rh: 'waltz', range: [60, 79], seed: 71, send: 0.25, pan: 0.15, gain: 1.0 },
       { id: 'guitar', play: 'comp', inst: 'guitar', r: '----x...x...', voice: 'triad', center: 60, strum: 0.012, gain: 0.261, pan: -0.3 },
       { id: 'bass', play: 'bass', inst: 'guitar', ...B.waltz, center: 45, gain: 0.669 },
       { id: 'drums', play: 'drums', ...DR.waltz, gain: 0.182 },
@@ -633,7 +633,7 @@ export const PIECES = {
       C: ['Bb', 'F7', 'Bb', 'Eb', 'Bb', 'F7', 'Bb', 'C7'],
     },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'organLead', rh: 'march', range: [65, 84], seed: 73, send: 0.25, gain: 1.0 },
+      { id: 'lead', play: 'melody', inst: 'organLead', rh: 'march', range: [62, 80], seed: 73, send: 0.25, gain: 1.0 },
       { id: 'glock', play: 'double', of: 'lead', inst: 'glock', oct: 12, gain: 0.187, pan: 0.3 },
       { id: 'pah', play: 'comp', inst: 'bandOrgan', r: '....x.......x...', voice: 'triad', center: 60, pan: -0.2, gain: 0.785 },
       { id: 'bass', play: 'bass', inst: 'tuba', ...B.march, center: 41, gain: 0.351 },
@@ -645,7 +645,7 @@ export const PIECES = {
     level: 2.09, bpm: 132, key: 'D', scale: 'mixolydian', form: 'A B A B',
     sections: { A: ['D', 'D', 'C', 'G', 'D', 'D', 'G A', 'D'], B: ['Bm', 'G', 'D', 'A', 'Bm', 'G', 'Em A', 'D'] },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'fiddle', rh: 'reel', range: [62, 83], seed: 79, send: 0.25, pan: 0.15, gain: 1.0 },
+      { id: 'lead', play: 'melody', inst: 'fiddle', rh: 'reel', range: [57, 77], seed: 79, send: 0.25, pan: 0.15, gain: 1.0 },
       { id: 'guitar', play: 'comp', inst: 'guitar', r: 'x...x.o.x.o.x.o.', voice: 'triad', center: 59, strum: 0.012, gain: 0.264, pan: -0.3 },
       { id: 'bass', play: 'bass', inst: 'rockBass', ...B.reel, center: 40, gain: 0.3 },
       { id: 'drums', play: 'drums', ...DR.folkrock, gain: 0.218 },
@@ -660,7 +660,7 @@ export const PIECES = {
       C: ['F#m', 'D', 'A', 'E', 'D', 'C#m', 'Bm7', 'E7'],
     },
     parts: [
-      { id: 'lead', play: 'melody', inst: 'oboe', rh: 'chamber', range: [64, 83], seed: 83, send: 0.25, pan: 0.1, gain: 1.0 },
+      { id: 'lead', play: 'melody', inst: 'oboe', rh: 'chamber', range: [60, 79], seed: 83, send: 0.25, pan: 0.1, gain: 1.0 },
       { id: 'harpsi', play: 'comp', inst: 'harpsi', r: 'x.x.x.x.x.x.x.x.', arp: 'updown', span: 2, center: 57, gain: 0.54, pan: -0.3 },
       { id: 'pad', play: 'comp', inst: 'strings', r: 'x...............', voice: 'full', center: 62, gain: 0.304, send: 0.3 },
       { id: 'bass', play: 'bass', inst: 'pizz', ...B.root4, center: 43, gain: 0.697 },
