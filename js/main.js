@@ -34,6 +34,7 @@ const defaults = {
   minimap: 'auto', // auto: races, championships and time trials with one human driver
   music: 'on', // race and menu music
   sfx: 'on', // engines, crashes, cues and background sounds (the corner button mutes everything)
+  orient: 'landscape', // Android app only: landscape, portrait, or auto (follows the phone)
   slots: [{ type: 'keys' }, { type: 'cpu' }, { type: 'cpu' }, { type: 'cpu' }],
 };
 let settings = loadSettings();
@@ -50,6 +51,7 @@ function loadSettings() {
       if (!['auto', 'on', 'off'].includes(out.minimap)) out.minimap = defaults.minimap;
       if (out.music !== 'off') out.music = 'on';
       if (out.sfx !== 'off') out.sfx = 'on';
+      if (!['landscape', 'portrait', 'auto'].includes(out.orient)) out.orient = defaults.orient;
       return out;
     }
   } catch (e) { /* ignore */ }
@@ -319,11 +321,21 @@ for (const el of document.querySelectorAll('[data-opt]')) {
     settings[k] = isNaN(+v) ? v : +v;
     if (k === 'quality') applyQuality(v);
     if (k === 'fps') perf.cap = v !== 'max';
+    if (k === 'orient') applyOrientation(v);
     if (k === 'music') sound.setMusic(v !== 'off');
     if (k === 'sfx') sound.setEffects(v !== 'off');
     saveSettings(); renderLobby();
   });
 }
+
+// Android app: lock the screen the way the player chose (the app remembers it natively for the next start)
+function applyOrientation(mode) {
+  if (!IN_APP) return;
+  // the app's own native plugin (OrientationPlugin.java), called through Capacitor's bridge directly since the
+  // game loads no Capacitor JavaScript; an older app build without the plugin just rejects
+  try { window.Capacitor.nativePromise('Orientation', 'set', { mode }).catch(() => {}); } catch (e) { /* ignore */ }
+}
+applyOrientation(settings.orient);
 
 function applyQuality(q) {
   quality = q;

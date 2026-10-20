@@ -411,3 +411,13 @@ body[data-screen="none"] #btn-pause { display: grid; }
 
 /* phones held sideways: the "Waiting for the others…" note goes below the finish flash lines */
 @media (orientation: landscape) and (max-height: 500px) { .msg.note { top: 52%; } }
+
+/* settings that only make sense in the Android app (screen orientation) */
+html:not(.in-app) .app-only { display: none !important; }
+
+/* phones held upright: the four HUD chips go into two rows under the pause and sound buttons */
+@media (orientation: portrait) and (max-width: 600px) {
+  #chips { top: 62px; left: 8px; right: 8px; transform: none; flex-wrap: wrap; justify-content: center; gap: 5px 6px; }
+  #flash { top: 142px; }
+  .flash-item { font-size: 22px; padding: 0 10px; text-align: center; }
+}

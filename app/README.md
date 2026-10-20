@@ -10,8 +10,12 @@ The Android app is the web game from the repository root, packed into a native a
 
 ## What the app adds
 
-- Full screen: system bars hidden (a swipe from the edge shows them briefly), landscape, screen kept on,
-  drawing extends into the camera cutout (`MainActivity.java`).
+- Full screen: system bars hidden (a swipe from the edge shows them briefly), screen kept on, drawing extends into
+  the camera cutout (`MainActivity.java`).
+- Screen orientation: the lobby setting "Screen: Landscape / Portrait / Auto" (shown only in the app). The game calls
+  the app's own plugin (`OrientationPlugin.java`, through `Capacitor.nativePromise`), which saves the choice so the
+  next start opens in it. Landscape by default; Auto follows the phone and its rotation lock. On Android 16, tablets
+  and unfolded foldables ignore the lock and always rotate freely (a system rule for large screens).
 - Back button: pauses while racing and goes one step back in the menus; on the title screen the app goes to the
   background (`window.__ttBack` in `js/main.js`).
 - In the app the game hides its fullscreen button and the link back to the website (`.in-app` in `css/game.css`).

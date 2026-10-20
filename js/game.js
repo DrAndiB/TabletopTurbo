@@ -895,7 +895,10 @@ export class Game {
   cameraFocus() {
     if (this.camOverride) return this.camOverride;
     const tr = this.track;
-    const baseW = this.R.camera.aspect < 1 ? 70 : 88;
+    // held upright (portrait), fit a narrower stretch across the screen so the cars stay about as big as in
+    // landscape; the taller view shows more of the track ahead instead
+    const asp = this.R.camera.aspect, fit = asp < 1 ? Math.pow(asp, 0.75) : 1;
+    const baseW = (asp < 1 ? 70 : 88) * fit;
     if (this.mode === 'h2h' || this.state === 'attract') {
       const L = this.leader() || this.cars[0];
       if (!L) return { x: tr.x[0], z: tr.z[0], w: baseW };
@@ -905,7 +908,7 @@ export class Game {
       let x = c.x * 0.55 + ahead.x * 0.45, z = c.z * 0.55 + ahead.z * 0.45;
       let w = baseW;
       // after a long round the view slowly closes in to force a result
-      if (this.state === 'race' && this.roundTime > 40) w = baseW - Math.min(32, (this.roundTime - 40) * 1.1);
+      if (this.state === 'race' && this.roundTime > 40) w = baseW - Math.min(32, (this.roundTime - 40) * 1.1) * fit;
       return { x, z, w };
     }
     // race / time trial: frame the human drivers (once they are all home: the cars still coming up to the line)

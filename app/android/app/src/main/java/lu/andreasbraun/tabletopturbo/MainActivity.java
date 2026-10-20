@@ -14,11 +14,15 @@ import com.getcapacitor.BridgeActivity;
 
 // The game runs full screen: system bars hidden (a swipe from the edge shows them briefly), the screen
 // stays on, drawing extends into the camera cutout, and the back button steps through the game's menus.
+// Landscape unless the player picks Portrait or Auto in the lobby (OrientationPlugin).
 public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(OrientationPlugin.class);
         super.onCreate(savedInstanceState);
+        // the orientation picked in the lobby (landscape by default, see the manifest)
+        setRequestedOrientation(OrientationPlugin.toRequested(OrientationPlugin.saved(this)));
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             WindowManager.LayoutParams lp = getWindow().getAttributes();
