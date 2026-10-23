@@ -12,6 +12,8 @@ import { loadBest, saveBest, clearBest, encodeGhost, decodeGhost, GHOST_HZ, form
 
 const STEP = 1 / 120;
 const GHOST_OPACITY = 0.45;
+// seconds of the followed car's sideways speed the camera looks ahead on a phone held upright (updateCamera)
+const CAM_LEAD = 0.22;
 
 // Catch-up (rubber-banding). Humans behind the leader get more top speed (and a bit more pull),
 // growing with the gap; CPU cars ahead of the best-placed human ease off (straights and corners);
@@ -59,7 +61,7 @@ export class Game {
     this.time = 0;
     this.acc = 0;
     this.tmpV = new THREE.Vector3();
-    this.camX = 0; this.camZ = 0; this.camW = 90;
+    this.camX = 0; this.camZ = 0; this.camW = 90; this.camLead = 0;
     this.onMatchEnd = null;
     this.debug = { freeze: false };
     this.catchup = 'mild';
@@ -207,7 +209,7 @@ export class Game {
 
   snapCamera() {
     const f = this.cameraFocus();
-    this.camX = f.x; this.camZ = f.z; this.camW = f.w;
+    this.camX = f.x; this.camZ = f.z; this.camW = f.w; this.camLead = 0;
     this.R.placeCamera(this.camX, this.camZ, this.camW);
   }
 
@@ -928,7 +930,9 @@ export class Game {
       minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
     }
     const spread = Math.max(maxX - minX, (maxZ - minZ) * this.R.camera.aspect);
-    return { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2, w: clamp(spread * 1.25 + 20, baseW * 0.9, 150) };
+    // one car followed: its sideways speed, for the camera's lead on a phone held upright (updateCamera)
+    const vx = focus.length === 1 && focus[0] ? focus[0].car.vx : 0;
+    return { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2, w: clamp(spread * 1.25 + 20, baseW * 0.9, 150), vx };
   }
 
   // the unfinished cars nearest the line (the next to arrive and any close behind it), or the last finisher
@@ -941,7 +945,12 @@ export class Game {
   updateCamera(dt) {
     const f = this.cameraFocus();
     const rate = this.camOverride ? 1000 : this.state === 'countdown' ? 6 : 3.2;
-    this.camX = damp(this.camX, f.x, rate, dt);
+    // Held upright the view is narrow from side to side, and the trailing camera (about 11 units behind at full
+    // speed) let the car run up to the screen edge. There it leads along the direction of travel instead (sideways
+    // only, races and time trials; head-to-head keeps its framing, which decides who drops out).
+    const upright = clamp((1 - this.R.camera.aspect) / 0.45, 0, 1);
+    this.camLead = damp(this.camLead, (f.vx || 0) * CAM_LEAD * upright, 4, dt);
+    this.camX = damp(this.camX, f.x + this.camLead, rate, dt);
     this.camZ = damp(this.camZ, f.z, rate, dt);
     this.camW = damp(this.camW, f.w, 2, dt);
     this.R.placeCamera(this.camX, this.camZ, this.camW);
