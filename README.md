@@ -13,8 +13,9 @@ up to four players on one keyboard, plus gamepads and computer drivers.
   - Grand Duchy Cup (Luxembourg, easy to expert): Crémant Curves, Fouer Frenzy, Grund Prix, Old Town Jigsaw
 - **Eleven vehicle types:** sports cars, formula racers, rally cars, 4x4 trucks, Mars rovers, speedboats,
   hovercraft, snowmobiles, monster trucks, luxury SUVs and fairground bumper cars, each with its own
-  engine sound.
-- **Music:** an original, generated piece and background sounds for every world.
+  recorded engine sound.
+- **Music and sound:** an original piece for every world and the menu, with a layer added on the final lap, and
+  recorded background sounds for every world.
 - **Modes:** head-to-head (the screen follows the leader; drop off its edge and you're out), lap races,
   cup championships with gold/silver/bronze trophies, and time trial against your own ghost car.
 - **Arcade touches:** adjustable catch-up, slipstream, crashes that shove and spin, turbo starts,
@@ -71,9 +72,11 @@ js/kit.js           helpers for world builders
 js/textures.js      procedural textures
 js/track.js         spline track and road ribbons
 js/input.js         keyboard (4 players), gamepads, touch
-js/audio.js         synthesised sound (no audio files): engines per vehicle, crashes, cues, mixing
-js/music.js         procedural music: one original piece per world, menu theme
-js/ambience.js      background sounds per world, cue sounds (train whistles, sluice gate, escapement)
+js/audio.js         sound: engines per vehicle, crashes, cues, mixing
+js/samples.js       the recordings in audio/ (engines, music, backgrounds), how they loop and play
+js/music.js         synthesised music, used where a recording is missing or still loading
+js/ambience.js      synthesised backgrounds (same fallback) and cue sounds (train whistles, sluice gate, escapement)
+audio/              engine loops, music and background recordings (sources in audio/CREDITS.md)
 js/hud.js, js/fx.js, js/records.js (best laps, ghosts, trophies), js/util.js
 js/worlds/*.js      one file per world; js/worlds/index.js holds the cups and the menu order
 img/                menu thumbnails and social preview images
@@ -94,5 +97,8 @@ app/                Android app (Capacitor wrapper, built by GitHub Actions; see
 - [three.js](https://threejs.org/) r186, MIT licence (`vendor/LICENSE-three.txt`).
 - Fonts [Lilita One](https://fonts.google.com/specimen/Lilita+One) and [Rubik](https://fonts.google.com/specimen/Rubik),
   SIL Open Font License (`fonts/LICENSE-*.txt`).
-- Everything else (code, worlds, textures, sounds) is procedural and original to this project.
+- Recorded sounds: Freesound recordings released under CC0 1.0, edited for the game; each source is credited in
+  `audio/CREDITS.md`. Music: original compositions rendered with FluidSynth and the GeneralUser GS SoundFont by
+  S. Christian Collins.
+- Everything else (code, worlds, textures, cue sounds) is procedural and original to this project.
   No licence has been chosen for the project itself yet.

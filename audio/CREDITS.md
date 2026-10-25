@@ -1,0 +1,132 @@
+# Sound credits
+
+Recordings: Freesound previews released under CC0 1.0 (public domain dedication). Credit is not required by the
+licence; it is given here with thanks. Edited (cut, looped, filtered, levelled) for Tabletop Turbo.
+
+- `eng/boat.mp3`
+  - outboard motor boat onboard high speed.flac by kyles — https://freesound.org/s/637744/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/bumper.mp3`
+  - Electric Motor 2 by onursamli — https://freesound.org/s/846905/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/formula.mp3`
+  - R20-37-Constant Fast Car Engine.wav by craigsmith — https://freesound.org/s/481726/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/hover.mp3`
+  - LCAC Air Cusion Hovercraft by qubodup — https://freesound.org/s/162251/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/monster.mp3`
+  - V-8HotRodApproachRevUpsDrivePast-cut-DR087.wav by Ears68 — https://freesound.org/s/213977/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/rally.mp3`
+  - auto5.wav by escortmarius — https://freesound.org/s/141459/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/rover.mp3`
+  - ElectricMotor.wav by derjuli — https://freesound.org/s/824119/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/snowmobile.mp3`
+  - Snowmobiles 4.wav by craig5595 — https://freesound.org/s/560870/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/sports.mp3`
+  - Car Engine Contact Recording-Mini Cooper S 2019_Gear Shift.wav by TheLittleCrow — https://freesound.org/s/669623/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/suv.mp3`
+  - Sedan engine loop by Dmitry_mansurev64 — https://freesound.org/s/748027/ (creativecommons.org/publicdomain/zero/1.0)
+- `eng/truck.mp3`
+  - R03-32-Old Truck Engine Working Hard.wav by craigsmith — https://freesound.org/s/487152/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/bathroom-bed1.mp3`
+  - dripping water.wav by soundofsong — https://freesound.org/s/641338/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/bathroom-fx.mp3`
+  - 200088_RossJuterbock_Bath Draining Plug Gurgle.wav by RossJuterbock — https://freesound.org/s/543465/ (creativecommons.org/publicdomain/zero/1.0)
+  - Bubbles 001.wav by ristooooo1 — https://freesound.org/s/539823/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/boardroom-bed1.mp3`
+  - Office ambience.wav by Chelly01 — https://freesound.org/s/541117/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/boardroom-fx.mp3`
+  - Keyboard typing by paulocorona — https://freesound.org/s/334990/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/breakfast-fx.mp3`
+  - Glass Knock Ding Cutlery Fork Dinner Pack.wav by ralph.whitehead — https://freesound.org/s/565723/ (creativecommons.org/publicdomain/zero/1.0)
+  - Cup Glasses And Cutlery Clinks by IENBA — https://freesound.org/s/848942/ (creativecommons.org/publicdomain/zero/1.0)
+  - Spoon Stirring Glass.WAV by Solar01 — https://freesound.org/s/665189/ (creativecommons.org/publicdomain/zero/1.0)
+  - whistling teapot.wav by keweldog — https://freesound.org/s/181718/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/breakfast-room.mp3`
+  - room tone medium quiet morning hotel in quiet rural area windows closed muffled birds Peru, South America.wav by kyles — https://freesound.org/s/413852/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/breakfast-window.mp3`
+  - Open window and birds singing in the morning.wav by Geri92 — https://freesound.org/s/608154/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/chemlab-bed1.mp3`
+  - lab_ambience.wav by saangosu — https://freesound.org/s/688249/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/chemlab-bed2.mp3`
+  - ambient bubbling liquid.aif by plamdi1 — https://freesound.org/s/95052/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/chemlab-fx.mp3`
+  - Boiling Liquid.wav by KidsCastTechy — https://freesound.org/s/42811/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/desk-bed1.mp3`
+  - small clock in room by Yuval — https://freesound.org/s/211192/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/desk-fx.mp3`
+  - Writing with pencil 2 by fthgurdy — https://freesound.org/s/376705/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/dollhouse-bed1.mp3`
+  - Low Wind Howling Indoor by Kinoton — https://freesound.org/s/815100/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/dollhouse-fx.mp3`
+  - Clean Creaks.wav by Apenguin73 — https://freesound.org/s/428133/ (creativecommons.org/publicdomain/zero/1.0)
+  - Distant Thunder Clap_Gentle.wav by mikala_oidua — https://freesound.org/s/347562/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/fouer-bed1.mp3`
+  - Bumper cars at Linnanmäki amusement park // Linnanmäen sähköautot by YleArkisto — https://freesound.org/s/524697/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/fouer-bed2.mp3`
+  - Funfair [Binaural] atmosphere by GammaSintesi — https://freesound.org/s/702222/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/fouer-fx.mp3`
+  - small crowd cheering by HowardV — https://freesound.org/s/264377/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/garden-bed1.mp3`
+  - AMB_garden_summer_afternoon_birds and wind by matucha — https://freesound.org/s/157778/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/garden-fx.mp3`
+  - Bees buzzing 1 by fthgurdy — https://freesound.org/s/528935/ (creativecommons.org/publicdomain/zero/1.0)
+  - 230701 Bumble Bee, buzzing collecting pollen, M10 ParaEM272s, Toronto 8am by TRP — https://freesound.org/s/717861/ (creativecommons.org/publicdomain/zero/1.0)
+  - 09-1 Mower, distant by 16GPanskaKomarkova_Marina — https://freesound.org/s/496734/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/gingerbread-bed1.mp3`
+  - Fireplace crackling wood little flame.wav by BonnyOrbit — https://freesound.org/s/484338/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/gingerbread-fx.mp3`
+  - fire-crackling.wav by jmehlferber — https://freesound.org/s/370938/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/grund-bed1.mp3`
+  - River - Light stream, daytime by Vrymaa — https://freesound.org/s/734931/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/grund-fx.mp3`
+  - Bells_distant_in_town.wav by ivolipa — https://freesound.org/s/266525/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/mars-bed1.mp3`
+  - Looping Gentle Wind Ambience on an Open Desert Plain.wav by dhallcomposer — https://freesound.org/s/697217/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/mars-fx.mp3`
+  - Space SFX #6 - Radio Signal (Static).mp3 by Yin_Yang_Jake007 — https://freesound.org/s/418963/ (creativecommons.org/publicdomain/zero/1.0)
+  - Lots of Morse Code by Buss1000 — https://freesound.org/s/204968/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/moselle-bed1.mp3`
+  - Calmont – Wide Valley Ambience from the Moselhöhenweg - 250810_001 by TSP-Talk — https://freesound.org/s/844067/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/moselle-fx.mp3`
+  - Wine glass hits.wav by speedygonzo — https://freesound.org/s/235726/ (creativecommons.org/publicdomain/zero/1.0)
+  - Glass Ding / Toast with champagne glasses by Breviceps — https://freesound.org/s/458408/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/oldtown-bed1.mp3`
+  - Town Square Ambience.aif by ftpalad — https://freesound.org/s/119934/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/oldtown-fx.mp3`
+  - pidgeons cooing city park.wav by pawsound — https://freesound.org/s/154865/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/pinball-bed1.mp3`
+  - Arcade Ambience 2 by maxstcroix — https://freesound.org/s/343150/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/pinball-fx.mp3`
+  - G20-26-Pinball Bell.wav by craigsmith — https://freesound.org/s/438241/ (creativecommons.org/publicdomain/zero/1.0)
+  - pinball-flipper hits.wav by schafferdavid — https://freesound.org/s/450270/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/pool-bed1.mp3`
+  - Pub in Cambridge by domasmo — https://freesound.org/s/376456/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/pool-fx.mp3`
+  - BILLIARD pool shots- CsG.wav by csaszi — https://freesound.org/s/350918/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/railway-bed1.mp3`
+  - Countryside by brunoboselli — https://freesound.org/s/458113/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/railway-fx.mp3`
+  - Train_distant_1.wav by o_ciz — https://freesound.org/s/475501/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/toybox-bed1.mp3`
+  - roomtone sunday open  by Yuval — https://freesound.org/s/196267/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/toybox-fx.mp3`
+  - Wind Up Toy.wav by lmbubec — https://freesound.org/s/118816/ (creativecommons.org/publicdomain/zero/1.0)
+  - toy ratchet.wav by monotraum — https://freesound.org/s/376195/ (creativecommons.org/publicdomain/zero/1.0)
+  - Squeaky Toy #2 by Breviceps — https://freesound.org/s/468444/ (creativecommons.org/publicdomain/zero/1.0)
+  - Squeaky Toy #3 by Breviceps — https://freesound.org/s/483921/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/watchmaker-bed1.mp3`
+  - BGSaSc Room Tone Workshop Birds Hum Clock Ticking by Profispiesser — https://freesound.org/s/520467/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/watchmaker-fx.mp3`
+  - clock / music-box spring mechanism wind-up by OrbitalChiller — https://freesound.org/s/171233/ (creativecommons.org/publicdomain/zero/1.0)
+  - Clock Wind.wav by adeluc4 — https://freesound.org/s/125320/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/watertable-bed1.mp3`
+  - Water_Lapping_River.wav by ceich93 — https://freesound.org/s/318064/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/watertable-fx.mp3`
+  - Seagulls_short.wav by Lydmakeren — https://freesound.org/s/510917/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/workshop-bed1.mp3`
+  - room tone large wood shed workshop full of stuff with heavy distance highway skyline.flac by kyles — https://freesound.org/s/451176/ (creativecommons.org/publicdomain/zero/1.0)
+- `amb/workshop-fx.mp3`
+  - FM Radio Tuning Sweep by davidbain — https://freesound.org/s/259706/ (creativecommons.org/publicdomain/zero/1.0)
+  - Electric Drill.wav by Tim_Verberne — https://freesound.org/s/505054/ (creativecommons.org/publicdomain/zero/1.0)
+
+Music: original compositions for Tabletop Turbo (the menu theme and one piece per table), rendered with
+FluidSynth and the GeneralUser GS SoundFont v2.0.3 by S. Christian Collins (https://www.schristiancollins.com),
+whose licence allows its use in music production, including commercial use.

@@ -1,5 +1,6 @@
 // Synthesised sound: engines and skids per vehicle type, crashes and landings, jingles, cues from the worlds,
-// race music and each world's background, the menu theme. No audio files.
+// race music and each world's background, the menu theme. Where samples.js lists recordings for a vehicle or a
+// world (audio/), those replace the engine voice, the race music and the background once loaded.
 //
 // Buses: master (the corner mute button) <- effects (engines, one-shots, cues, ambience; setting "Effects")
 //                                        <- music (setting "Music") <- duck (dips under loud engines) <- music in + reverb
@@ -8,6 +9,7 @@
 // Muted or in the background, the AudioContext is suspended: nothing runs.
 import { MusicKit, Player, compileSong, pieceFor, mulberry } from './music.js';
 import { Ambience, CUES, EV, makeNoises } from './ambience.js';
+import { SampleLib, SampledPlayer, SampledAmbience, MENU, prefetch } from './samples.js';
 
 const LOOKAHEAD = 0.3;
 const MUSIC_LEVEL = 0.084; // race music sits ~8 dB under one engine at full throttle (see _dev/README.md, Audio)
@@ -58,6 +60,7 @@ function makeIR(ctx, sec = 0.8) {
 
 export class Sound {
   constructor() {
+    prefetch(MENU.src); // the menu theme downloads while the title waits for the first click
     this.ctx = null;
     this.muted = false;
     try { this.muted = localStorage.getItem('tabletop-turbo.muted') === '1'; } catch (e) { /* ignore */ }
@@ -119,6 +122,9 @@ export class Sound {
     this.noise = this.N.white;
     this.kit = new MusicKit(ctx, this.revIn);
     this.fxA = { ctx, N: this.N, bus: this.sfx };
+    this.lib = new SampleLib(ctx);
+    this.menuLoad = this.lib.load(MENU.src);
+    if (this.want) this.lib.preload(...this.want);
     this.shapers = new Map();
   }
 
@@ -156,6 +162,10 @@ export class Sound {
     }
     return s;
   }
+  // the world's recordings (game.loadWorld awaits this behind the loading card; capped, see SampleLib.preload)
+  // (before the first click there is no context yet: attach() picks the request up)
+  preload(world, vtype) { this.want = [world, vtype]; return this.ctx ? this.lib.preload(world, vtype) : Promise.resolve(); }
+
   // one voice per car, built for the world's vehicle type when the race starts
   createEngines(n, vtype = 'sports') {
     this.stopEngines();
@@ -163,7 +173,7 @@ export class Sound {
     this.held = false;
     if (!this.ctx || !this.fxOn) return; // audio starts only after a click or key press
     this.ensure();
-    const ctx = this.ctx, V = VEH[this.vtype], K = SKID[V.skid];
+    const ctx = this.ctx, V = VEH[this.vtype], K = SKID[V.skid], S = this.lib.engine(this.vtype);
     const osc = (type, f) => { const o = ctx.createOscillator(); o.type = type; o.frequency.value = f; return o; };
     const gain = (v) => { const g = ctx.createGain(); g.gain.value = v; return g; };
     const filt = (type, f, q) => { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; };
@@ -173,34 +183,41 @@ export class Sound {
       const out = gain(0); e.g = out;
       const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null; e.pan = pan;
       if (pan) { out.connect(pan); pan.connect(this.engBus); } else out.connect(this.engBus);
-      const lp = filt('lowpass', V.lp[0], V.q); e.f = lp;
-      // firing pulses: the whole engine passes through a gain wobbled at a fraction of the revs
-      let body = lp;
-      if (V.am) {
-        const amNode = gain(1 - V.am[1] * 0.5), am = osc('sine', e.base * V.am[0]), amG = gain(V.am[1] * 0.5);
-        am.connect(amG); amG.connect(amNode.gain); lp.connect(amNode); body = amNode; e.am = am; e.srcs.push(am);
+      const lp = filt('lowpass', S ? S.lp[0] : V.lp[0], S ? 0.7 : V.q); e.f = lp;
+      if (S) {
+        // recorded engine: one looping source, pitched by the revs (updateEngine), through the lowpass
+        const b = this.lib.get(S.src), L = S.loop, s = ctx.createBufferSource();
+        s.buffer = b; s.loop = true; s.loopStart = L * 0.5; s.loopEnd = L * 1.5;
+        s.connect(lp); lp.connect(out); e.smp = s; e.S = S; e.srcs.push(s);
+      } else {
+        // firing pulses: the whole engine passes through a gain wobbled at a fraction of the revs
+        let body = lp;
+        if (V.am) {
+          const amNode = gain(1 - V.am[1] * 0.5), am = osc('sine', e.base * V.am[0]), amG = gain(V.am[1] * 0.5);
+          am.connect(amG); amG.connect(amNode.gain); lp.connect(amNode); body = amNode; e.am = am; e.srcs.push(am);
+        }
+        body.connect(out);
+        let mix = lp;
+        if (V.drive) { const ws = ctx.createWaveShaper(); ws.curve = this.shaper(V.drive); ws.connect(lp); mix = ws; }
+        e.o1 = osc(V.a, V.hum || e.base); e.o2 = osc(V.b, e.base * V.bRatio);
+        if (V.det) e.o2.detune.value = V.det;
+        const g2 = gain(V.bMix);
+        e.o1.connect(mix); e.o2.connect(g2); g2.connect(mix);
+        e.srcs.push(e.o1, e.o2);
+        if (V.vib) {
+          const lfo = osc('sine', V.vib[0] + i * 3), lg = gain(V.vib[1]);
+          lfo.connect(lg); lg.connect(e.o1.frequency); lg.connect(e.o2.frequency); e.srcs.push(lfo);
+        }
+        if (V.whine) { e.o3 = osc('sine', e.base * V.whine); const wg = gain(0.12); e.o3.connect(wg); wg.connect(lp); e.srcs.push(e.o3); }
+        if (V.clatter) { const s = loop('white'), bp = filt('bandpass', 2200, 1.2), cg = gain(V.clatter); s.connect(bp); bp.connect(cg); cg.connect(body === lp ? out : body); e.srcs.push(s); }
+        if (V.gurgle) { const s = loop('brown'), f = filt('lowpass', 420, 1); e.gurg = gain(0); s.connect(f); f.connect(e.gurg); e.gurg.connect(out); e.srcs.push(s); }
+        if (V.fan) {
+          const s = loop('white'); e.fanF = filt('bandpass', 600, 1.1); const fanAm = gain(0.75), bl = osc('sine', 20), bg = gain(0.25);
+          bl.connect(bg); bg.connect(fanAm.gain); s.connect(e.fanF); e.fanF.connect(fanAm); e.fanG = gain(0); fanAm.connect(e.fanG); e.fanG.connect(out);
+          e.blade = bl; e.srcs.push(s, bl);
+        }
+        if (V.servo) { e.sv = osc('square', 170); const bp = filt('bandpass', 1100, 3); e.svG = gain(0); e.sv.connect(bp); bp.connect(e.svG); e.svG.connect(out); e.srcs.push(e.sv); }
       }
-      body.connect(out);
-      let mix = lp;
-      if (V.drive) { const ws = ctx.createWaveShaper(); ws.curve = this.shaper(V.drive); ws.connect(lp); mix = ws; }
-      e.o1 = osc(V.a, V.hum || e.base); e.o2 = osc(V.b, e.base * V.bRatio);
-      if (V.det) e.o2.detune.value = V.det;
-      const g2 = gain(V.bMix);
-      e.o1.connect(mix); e.o2.connect(g2); g2.connect(mix);
-      e.srcs.push(e.o1, e.o2);
-      if (V.vib) {
-        const lfo = osc('sine', V.vib[0] + i * 3), lg = gain(V.vib[1]);
-        lfo.connect(lg); lg.connect(e.o1.frequency); lg.connect(e.o2.frequency); e.srcs.push(lfo);
-      }
-      if (V.whine) { e.o3 = osc('sine', e.base * V.whine); const wg = gain(0.12); e.o3.connect(wg); wg.connect(lp); e.srcs.push(e.o3); }
-      if (V.clatter) { const s = loop('white'), bp = filt('bandpass', 2200, 1.2), cg = gain(V.clatter); s.connect(bp); bp.connect(cg); cg.connect(body === lp ? out : body); e.srcs.push(s); }
-      if (V.gurgle) { const s = loop('brown'), f = filt('lowpass', 420, 1); e.gurg = gain(0); s.connect(f); f.connect(e.gurg); e.gurg.connect(out); e.srcs.push(s); }
-      if (V.fan) {
-        const s = loop('white'); e.fanF = filt('bandpass', 600, 1.1); const fanAm = gain(0.75), bl = osc('sine', 20), bg = gain(0.25);
-        bl.connect(bg); bg.connect(fanAm.gain); s.connect(e.fanF); e.fanF.connect(fanAm); e.fanG = gain(0); fanAm.connect(e.fanG); e.fanG.connect(out);
-        e.blade = bl; e.srcs.push(s, bl);
-      }
-      if (V.servo) { e.sv = osc('square', 170); const bp = filt('bandpass', 1100, 3); e.svG = gain(0); e.sv.connect(bp); bp.connect(e.svG); e.svG.connect(out); e.srcs.push(e.sv); }
       if (V.crackle || V.sparks) {
         const s = loop('crackle'), f = filt(V.sparks ? 'highpass' : 'bandpass', V.sparks ? 3000 : 1600, V.sparks ? 0.7 : 1);
         e.crk = gain(0); s.connect(f); f.connect(e.crk); e.crk.connect(pan || this.engBus); e.srcs.push(s);
@@ -209,7 +226,7 @@ export class Sound {
       const sk = loop(K.n, K.rate || 1), skf = filt(K.f[0], K.f[1] + i * (K.step || 0), K.f[2]);
       e.skg = gain(0); sk.connect(skf); skf.connect(e.skg); e.skg.connect(pan || this.engBus); e.srcs.push(sk);
       const t = ctx.currentTime;
-      for (const s of e.srcs) s.start(t, s.buffer ? Math.random() * 1.5 : undefined);
+      for (const s of e.srcs) s.start(t, s === e.smp ? S.loop * (0.5 + Math.random()) : s.buffer ? Math.random() * 1.5 : undefined);
       this.engines.push(e);
     }
   }
@@ -227,6 +244,9 @@ export class Sound {
     const t = this.ctx.currentTime, V = e.V, dt = Math.min(0.1, Math.max(0.004, t - (e.lastT ?? t - 0.016)));
     e.lastT = t;
     const sp = Math.min(1.1, speedFrac);
+    // the AI holds its speed by flicking the throttle (0 / 0.2 / 1 several times a second): a recording follows
+    // that literally and warbles, so it hears a smoothed throttle (~0.2 s)
+    if (e.smp) throttle = e.thr = (e.thr ?? throttle) + (throttle - (e.thr ?? throttle)) * (1 - Math.exp(-dt / 0.2));
     // revs: fake gear steps, an electric motor straight up with speed, or a snowmobile's clutch
     let f, shiftK = 1;
     if (V.electric) f = e.base + (V.top - V.base) * sp + throttle * 25;
@@ -239,13 +259,20 @@ export class Sound {
       if (t < e.shift) shiftK = 0.55;
     }
     const tc = V.tc ?? 0.04;
-    if (V.hum) e.o2.frequency.setTargetAtTime(f, t, tc);
-    else { e.o1.frequency.setTargetAtTime(f, t, tc); e.o2.frequency.setTargetAtTime(f * V.bRatio, t, tc); }
-    if (e.o3) e.o3.frequency.setTargetAtTime(f * V.whine, t, tc);
-    if (e.am) e.am.frequency.setTargetAtTime(f * V.am[0], t, tc);
-    e.f.frequency.setTargetAtTime(V.lp[0] + V.lp[1] * sp + V.lp[2] * throttle, t, 0.05);
-    const lvl = vol * V.vol * (0.05 + 0.05 * throttle + 0.04 * sp) * shiftK;
-    e.g.gain.setTargetAtTime(lvl, t, 0.06);
+    if (e.smp) {
+      const S = e.S;
+      e.smp.playbackRate.setTargetAtTime(Math.pow(f / S.f0, S.bend), t, tc);
+      e.f.frequency.setTargetAtTime(S.lp[0] + S.lp[1] * sp + S.lp[2] * throttle, t, 0.05);
+      e.g.gain.setTargetAtTime(vol * S.gain * (0.45 + 0.55 * throttle) * (0.55 + 0.45 * Math.min(1, sp)) * shiftK, t, 0.06);
+    } else {
+      if (V.hum) e.o2.frequency.setTargetAtTime(f, t, tc);
+      else { e.o1.frequency.setTargetAtTime(f, t, tc); e.o2.frequency.setTargetAtTime(f * V.bRatio, t, tc); }
+      if (e.o3) e.o3.frequency.setTargetAtTime(f * V.whine, t, tc);
+      if (e.am) e.am.frequency.setTargetAtTime(f * V.am[0], t, tc);
+      e.f.frequency.setTargetAtTime(V.lp[0] + V.lp[1] * sp + V.lp[2] * throttle, t, 0.05);
+      const lvl = vol * V.vol * (0.05 + 0.05 * throttle + 0.04 * sp) * shiftK;
+      e.g.gain.setTargetAtTime(lvl, t, 0.06);
+    }
     if (e.gurg) e.gurg.gain.setTargetAtTime(vol * 0.12 * (1 - 0.6 * Math.min(1, sp)) * (0.4 + throttle), t, 0.1);
     if (e.fanF) {
       e.fanF.frequency.setTargetAtTime(450 + 1300 * sp + 300 * throttle, t, 0.08);
@@ -298,7 +325,10 @@ export class Sound {
   prepareRace(id) {
     this.raceStop(0.3);
     this.raceId = id; this.finalLap = false; this.song = null;
-    if (!this.ctx || !this.musicOn) return;
+    if (!this.ctx) return;
+    this.lib.preload(id, this.vtype); // no-op once loaded; a table first seen behind the title loads now
+    if (!this.musicOn) return;
+    if (this.lib.music(id)) return; // recorded music: nothing to render
     this.song = this.compiled(id);
     this.kit.prepare(this.song);
   }
@@ -307,16 +337,18 @@ export class Sound {
     if (!this.ctx || this.race || !this.raceId) return;
     const t = this.ctx.currentTime + 0.06, R = (this.race = { id: this.raceId, game });
     // (muted: built anyway; the suspended context runs nothing until it is unmuted)
-    if (this.musicOn) {
+    const M = this.musicOn && this.lib.music(this.raceId), W = this.fxOn && this.lib.ambience(this.raceId);
+    // bars locked to the game clock: the loop's start falls on a multiple of sync.bar in game time
+    const lock = (bar) => bar ? { g0: Math.floor(game.time / bar) * bar, off: () => this.gameOff ?? (this.ctx.currentTime - game.time) } : null;
+    if (M) { R.player = new SampledPlayer(this.lib, M, this.musicIn); R.player.start(t, lock(M.sync)); if (this.finalLap) R.player.setFinal(true); }
+    else if (this.musicOn) {
       const song = this.song || this.compiled(this.raceId);
       R.player = new Player(this.kit, song, this.musicIn);
-      let sync = null;
-      // bars locked to the game clock: step 0 of the loop falls on a multiple of sync.bar in game time
-      if (song.sync) sync = { g0: Math.floor(game.time / song.sync.bar) * song.sync.bar, off: () => this.gameOff ?? (this.ctx.currentTime - game.time) };
-      R.player.start(t, sync);
+      R.player.start(t, lock(song.sync && song.sync.bar));
       if (this.finalLap) R.player.setFinal(true);
     }
-    if (this.fxOn) { R.amb =new Ambience(this.fxA, this.raceId, this.ambBus); R.amb.start(t); }
+    if (W) { R.amb = new SampledAmbience(this.lib, W, this.ambBus, mulberry((Math.random() * 1e9) >>> 0)); R.amb.start(t); }
+    else if (this.fxOn) { R.amb = new Ambience(this.fxA, this.raceId, this.ambBus); R.amb.start(t); }
     this.pump();
     this.tick();
   }
@@ -353,12 +385,23 @@ export class Sound {
   }
 
   // menu theme (title and lobby)
+  // (the recorded theme is fetched from the start and decoded with the context: on the first click it is usually
+  // a moment away, so wait for it, up to a second; a slower load starts the synthesised theme instead)
   startMusic() {
     this.wantMenu = true;
-    if (this.menu || !this.musicOn || !this.ensure()) return;
+    if (this.menu || this.menuWait || !this.musicOn || !this.ensure()) return;
     this.raceStop(0.4);
-    this.menu = new Player(this.kit, this.compiled('menu'), this.musicIn);
+    if (!this.lib.menu() && this.menuLoad) {
+      this.menuWait = Promise.race([this.menuLoad, new Promise((r) => setTimeout(r, 1000))]).then(() => {
+        this.menuWait = null;
+        if (this.wantMenu && !this.race) this.startMusic();
+      });
+      return;
+    }
+    const M = this.lib.menu();
+    this.menu = M ? new SampledPlayer(this.lib, M, this.musicIn) : new Player(this.kit, this.compiled('menu'), this.musicIn);
     this.menu.start(this.ctx.currentTime + 0.1);
+    this.menuLoad = null;
     this.pump();
     this.tick();
   }

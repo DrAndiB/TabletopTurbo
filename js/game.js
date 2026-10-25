@@ -75,6 +75,7 @@ export class Game {
   async loadWorld(def, settings = {}) {
     this.unloadWorld();
     this.def = def;
+    const sounds = this.sound.preload(def.id, def.vehicle || 'sports'); // recordings load while the world builds
     const track = new Track(def.track.points, { width: def.track.width ?? 14 });
     this.track = track;
     const physics = new PhysicsWorld(track, {
@@ -92,6 +93,7 @@ export class Game {
     this.world = def;
     this.startS = def.track.startS ?? 0;
     this.camX = track.x[0]; this.camZ = track.z[0];
+    await sounds;
   }
 
   unloadWorld() {
