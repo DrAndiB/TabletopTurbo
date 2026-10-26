@@ -8,23 +8,9 @@
 // Music is rendered once with its reverb tail: copy k starts at k * loop and rings over copy k + 1 (no fades),
 // and an optional `final` layer runs alongside in sync and fades in on the final lap.
 
-export const ENGINES = {
-  // Mini Cooper S contact recording (on load, steady ~3600 rpm), pitched by the revs the synth computes:
-  // rate = (f / f0) ^ bend, so the top gears don't turn into a chipmunk
-  sports: { src: 'eng/sports.mp3', loop: 2.984036, f0: 117.96, bend: 0.75, gain: 0.47, lp: [1800, 5000, 4000] },
-  // the others: f0 = the revs (audio.js VEH) at which the recording plays at its own pitch, set so half speed
-  // sounds ~1.2x up, like the sports car; electric motors span more revs, so they bend less
-  formula: { src: 'eng/formula.mp3', loop: 2.966599, f0: 198, bend: 0.75, gain: 0.565, lp: [2200, 6000, 4000] }, // constant fast car engine
-  rally: { src: 'eng/rally.mp3', loop: 3.029161, f0: 154, bend: 0.75, gain: 0.565, lp: [1600, 5000, 4000] }, // race car onboard
-  truck: { src: 'eng/truck.mp3', loop: 2.971338, f0: 55, bend: 0.7, gain: 0.527, lp: [900, 2600, 2400] }, // old truck working hard
-  monster: { src: 'eng/monster.mp3', loop: 2.995918, f0: 49, bend: 0.7, gain: 0.424, lp: [800, 2400, 2400] }, // V8 hot rod
-  suv: { src: 'eng/suv.mp3', loop: 2.987415, f0: 97, bend: 0.7, gain: 0.352, lp: [1200, 3500, 3000] }, // sedan engine
-  boat: { src: 'eng/boat.mp3', loop: 2.978639, f0: 104, bend: 0.7, gain: 0.487, lp: [1600, 5000, 4000] }, // outboard at speed
-  hover: { src: 'eng/hover.mp3', loop: 2.986667, f0: 62, bend: 0.7, gain: 0.414, lp: [1000, 3000, 3000] }, // air-cushion hovercraft
-  snowmobile: { src: 'eng/snowmobile.mp3', loop: 3.016485, f0: 124, bend: 0.75, gain: 0.487, lp: [1600, 5000, 4000] },
-  rover: { src: 'eng/rover.mp3', loop: 3.010499, f0: 688, bend: 0.5, gain: 0.578, lp: [3000, 5000, 3000] }, // electric motor whine
-  bumper: { src: 'eng/bumper.mp3', loop: 3.012336, f0: 285, bend: 0.6, gain: 0.533, lp: [1500, 3000, 2000] }, // electric motor hum
-};
+// Engine recordings (audio/eng/, October 2026) were dropped again: the synthesised engines in audio.js sounded
+// better in play. The loader still handles an entry here ({ src, loop, f0, bend, gain, lp }: see the git history).
+export const ENGINES = {};
 
 // the title and lobby theme (no final layer)
 export const MENU = { src: 'music/menu.mp3', loop: 58.181814, gain: 2.1 };
