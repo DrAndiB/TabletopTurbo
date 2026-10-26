@@ -1,0 +1,42 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sound harness</title>
+<script type="module">
+// Renders the game's own Sound class into an OfflineAudioContext, so its levels can be measured and A/B clips made.
+// window.render({ game: '/tabletop-turbo', world, parts: ['engine'|'music'|'amb'], dur, vtype, drive }) -> base64 int16 stereo
+window.render = async (o) => {
+  const { Sound } = await import(o.game + '/js/audio.js');
+  const sr = 44100, dur = o.dur || 10;
+  const ctx = new OfflineAudioContext(2, sr * dur, sr);
+  const s = new Sound();
+  const parts = new Set(o.parts);
+  s.musicOn = parts.has('music'); s.fxOn = parts.has('engine') || parts.has('amb');
+  s.attach(ctx);
+  if (s.preload) await s.preload(o.world, o.vtype || 'sports'); // builds with recordings load them first
+  const game = { time: 0, state: 'race', camX: 0, camZ: 0, camW: 90, panOf: () => 0 };
+  s.prepareRace(o.world);
+  if (parts.has('engine')) s.createEngines(1, o.vtype || 'sports');
+  s.raceGo(game);
+  if (!parts.has('amb') && s.race && s.race.amb) { s.race.amb.stop(0); s.race.amb = null; }
+  clearInterval(s.timer);
+  // drive profile: [t, speedFrac, throttle, slip]: steady by default, or a lap-like run
+  const prof = o.drive || [[0, 0.6, 1, 0], [dur, 0.6, 1, 0]];
+  const at = (t) => { let a = prof[0], b = prof[prof.length - 1]; for (let i = 0; i < prof.length - 1; i++) if (t >= prof[i][0] && t <= prof[i + 1][0]) { a = prof[i]; b = prof[i + 1]; break; } const k = b[0] > a[0] ? (t - a[0]) / (b[0] - a[0]) : 0; return [1, 2, 3].map((j) => a[j] + (b[j] - a[j]) * k); };
+  const step = 1 / 60;
+  for (let t = step; t < dur - step; t += step) {
+    ctx.suspend(t).then(() => {
+      game.time = t;
+      if (parts.has('engine')) { const [sp, th, sl] = at(t); s.updateEngine(0, sp, th, sl, 0, 1); }
+      if (o.finalAt && t >= o.finalAt && !s.finalLap) s.finalLapReached();
+      s.frame(game); s.pump(); ctx.resume();
+    });
+  }
+  const buf = await ctx.startRendering();
+  const L = buf.getChannelData(0), R = buf.getChannelData(1), n = L.length, i16 = new Int16Array(n * 2);
+  for (let i = 0; i < n; i++) { i16[i * 2] = Math.max(-1, Math.min(1, L[i])) * 32767; i16[i * 2 + 1] = Math.max(-1, Math.min(1, R[i])) * 32767; }
+  const bytes = new Uint8Array(i16.buffer); let bin = '';
+  for (let i = 0; i < bytes.length; i += 32768) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
+  return btoa(bin);
+};
+window.harnessReady = true;
+</script>
