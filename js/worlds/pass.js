@@ -1363,7 +1363,7 @@ export default {
           const t = k / 6, rad = 0.17 * (1 - t * 0.82) + 0.02, y0 = 0.2 + t * 0.7, hgt = 0.17 - t * 0.04;
           const g = new T.ConeGeometry(rad, hgt, 7, 1, true);
           const p = g.attributes.position;
-          for (let i = 0; i < p.count; i++) if (p.getY(i) < 0) { const a = Math.atan2(p.getZ(i), p.getX(i)), j = 1 + 0.3 * Math.sin(a * 3 + k * 2.3); p.setXYZ(i, p.getX(i) * j, p.getY(i) + 0.03 * Math.sin(a * 2 + k), p.getZ(i) * j); }
+          for (let i = 0; i < p.count; i++) if (p.getY(i) < 0) { const a = Math.atan2(p.getZ(i), p.getX(i)), j = 1 + 0.2 * Math.sin(a * 3 + k * 2.3); p.setXYZ(i, p.getX(i) * j, p.getY(i) + 0.03 * Math.sin(a * 2 + k), p.getZ(i) * j); }
           g.rotateY(k * 1.1); g.translate(0, y0 + hgt / 2, 0); g.computeVertexNormals(); coneUV(g);
           P.push(colorize(g, new T.Color(1, 1, 1).multiplyScalar(0.7 + t * 0.4 + (k % 2) * 0.08)));
         }
@@ -1440,7 +1440,7 @@ export default {
       }
       chunked(spruceGeo, treeMat, spruces, { colors: true }, 130);
       chunked(larchGeo, treeMat, larches, { colors: true }, 140);
-      chunked(pineGeo, treeMat, pines, { colors: true }, 140);
+      chunked(pineGeo, treeMat, pines, { colors: true, cast: false }, 140);
       // boulders: verges, meadows, the foot of the cliffs, the gorge bed
       const bGeo = (() => { // an angular, faceted block of limestone
         let g = new T.IcosahedronGeometry(1, 1); g.deleteAttribute('uv'); g = BU.mergeVertices(g);
@@ -1494,7 +1494,7 @@ export default {
       const Q = (K.quality && K.quality.grass) || 0.7;
       const pos = [], nrm = [], col = [], idx = [];
       const tr = K.rng(77);
-      for (let b = 0; b < 4; b++) {
+      for (let b = 0; b < 3; b++) {
         const a = tr() * TAU, rad = tr() * 0.25, ox = Math.cos(a) * rad, oz = Math.sin(a) * rad;
         const h = 0.5 + tr() * 0.35, w = 0.1 + tr() * 0.05, rot = tr() * TAU, lean = 0.08 + tr() * 0.18, la = a + tr.range(-0.6, 0.6);
         const cr = Math.cos(rot), sr = Math.sin(rot), base = pos.length / 3;
@@ -1509,7 +1509,7 @@ export default {
       tuft.setIndex(idx);
       const tufts = [], flowers = [];
       const cols = [0xa8b858, 0xb8c068, 0x94ac4c, 0xc8c478, 0xb0b660, 0x88a444, 0xc4b46c];
-      const n = Math.round(7000 * Q);
+      const n = Math.round(5600 * Q);
       for (let i = 0, tries = 0; i < n && tries < n * 5; tries++) {
         const x = tr.range(TX0 + 1, TX1 - 1), z = tr.range(TZ0 + 1, TZ1 - 1);
         const rd = roadD(x, z);
