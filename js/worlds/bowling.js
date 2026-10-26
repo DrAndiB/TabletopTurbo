@@ -269,7 +269,7 @@ export default {
     const laneMat = K.phys({
       map: laneTex, vertexColors: true, roughness: 0.4, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.16,
       clearcoatNormalMap: laneN, clearcoatNormalScale: V2(0.35), envMap: envTex, envMapIntensity: 1.1,
-      transparent: true, opacity: 0.7, depthWrite: true,
+      transparent: true, opacity: 0.82, depthWrite: true, // (reflections faint enough not to read as obstacles)
     });
     // lanes: from the pin decks to the foul line, darker towards the bowlers (south)
     const laneShade = (x, z) => { const k = 1.08 - 0.55 * ss(-30, 140, z); _c.setRGB(k, k * 0.985, k * 0.96); return _c.getHex(); };
@@ -305,7 +305,7 @@ export default {
     });
     const deckMat = K.phys({
       map: tex(deckC, [1, 1], false), vertexColors: true, roughness: 0.34, clearcoat: 1, clearcoatRoughness: 0.12,
-      envMap: envTex, envMapIntensity: 0.7, transparent: true, opacity: 0.74,
+      envMap: envTex, envMapIntensity: 0.7, transparent: true, opacity: 0.84,
     });
     const deckGeos = [];
     for (const xc of LANES) deckGeos.push(flatQuad(xc - LHW, xc + LHW, PIT, DECK0, 0, 4, (x, z) => [(x - (xc - LHW)) / (2 * LHW), (z - PIT) / (DECK0 - PIT)], () => 0xffffff));
