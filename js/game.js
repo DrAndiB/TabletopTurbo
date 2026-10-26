@@ -51,6 +51,8 @@ export const CUT = { margin: 2.5, slack: 0, gain: 12, decay: 6 };
 
 // touch and Easy-keys drivers accelerate by themselves; they time a turbo start with a separate launch press
 const autoGas = (d) => d.type === 'simple' || d.type === 'touch';
+// drift sparks: blue at the first charge level, orange at the second
+const DRIFT_SPARK = [0xffffff, 0x58c8ff, 0xffa020];
 
 export class Game {
   constructor(renderer, input, sound, hud) {
@@ -271,6 +273,8 @@ export class Game {
         this.hud.message('GO!', 'go');
         setTimeout(() => { if (this.state === 'race') this.hud.message('', null); }, 700);
         this.launch();
+        // drift cars: how to drift, once (after the launch flashes)
+        if (!this.driftHintShown && this.cars.some((e) => e.human) && this.cars[0]?.car.spec.drift) this.driftHintAt = this.time + 1.6;
       }
     }
     if (racing) { this.raceTime += dt; this.roundTime += dt; }
@@ -298,6 +302,11 @@ export class Game {
         // held on the grid: don't let the CPU decide it is stuck and reverse at GO
         if (e.ai) { e.ai.stuckT = 0; e.ai.reverseT = 0; }
       }
+    }
+    if (this.driftHintAt && this.time >= this.driftHintAt && this.state === 'race') {
+      this.driftHintAt = 0; this.driftHintShown = true;
+      const touch = this.cars.some((e) => e.human && e.driver.type === 'touch');
+      this.hud.flash(touch ? 'Tap BRAKE while steering to drift!' : 'Tap the brake while steering to drift!', '#fff4dc');
     }
     for (const e of this.cars) {
       if (e.out) continue;
@@ -641,6 +650,20 @@ export class Game {
       case 'jump': S.jump(); break;
       case 'fall': if (ev.kind === 'hole') S.plop(); else S.fall(); break;
       case 'pocket': S.plop(); break;
+      case 'driftLevel': {
+        S.driftLevel(ev.level, pan);
+        const c = ev.car, cs = Math.cos(c.angle), sn = Math.sin(c.angle);
+        this.particles.emit(c.x - cs * 2, c.y + 0.5, c.z - sn * 2, { color: DRIFT_SPARK[ev.level], n: 10, size: 0.55, life: 0.3, spread: 14, up: 6, grav: 30, alpha: 1 });
+        const e = this.cars.find((x) => x.car === c);
+        if (e && e.human && !this.driftOutHint) { this.driftOutHint = true; this.hud.flash('Steer out of the slide to boost!', '#fff4dc'); }
+        break;
+      }
+      case 'driftBoost': {
+        S.turbo(pan);
+        const e = this.cars.find((x) => x.car === ev.car);
+        if (e && e.human) this.rumble(e, 0.35 + 0.25 * ev.level, 120 + 80 * ev.level);
+        break;
+      }
     }
   }
 
@@ -991,6 +1014,12 @@ export class Game {
       if (c.state !== 'drive' || c.airborne) { this.skids.break(c.index + 'l'); this.skids.break(c.index + 'r'); continue; }
       const sp = c.speed;
       const cs = Math.cos(c.angle), sn = Math.sin(c.angle);
+      // drift sparks from the rear wheels once the slide has charged (blue, then orange)
+      if (c.drift && c.drift.level > 0 && Math.random() < dt * 70) {
+        const side = Math.random() < 0.5 ? -1 : 1, wz = c.spec.wid * 0.45;
+        const bx = c.x - cs * c.spec.axle * 1.15 - sn * wz * side, bz = c.z - sn * c.spec.axle * 1.15 + cs * wz * side;
+        this.particles.emit(bx, 0.3, bz, { color: DRIFT_SPARK[c.drift.level], n: 2, size: 0.42, life: 0.22, spread: 9, up: 4, grav: 35, alpha: 1, vx: -c.vx * 0.25, vz: -c.vz * 0.25 });
+      }
       // turbo start: flames and puffs from the exhaust
       if (c.turbo > 0) this.exhaust(c, 0.6 + 0.4 * Math.min(1, c.turbo / 0.5), Math.max(1, Math.round(dt * 45)));
       // slipstream: faint wind streaks streaming past the car

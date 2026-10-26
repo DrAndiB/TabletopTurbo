@@ -57,6 +57,30 @@ export const CRASH = {
   objSpin: 0.07,
 };
 
+// Drift cars (spec.drift, the Drift Cup): at speed, a brake tap while steering kicks the tail out into a slide.
+// While sliding, the path turns at a share of the grip turn rate (wide with the steering centred, tight with it
+// held into the slide) and the body runs at a slip angle to it. Steering the other way (or a crash, or running
+// out of speed) ends the slide; a slide held long enough charges sparks (blue, then orange) that fire a boost
+// when it ends by steering out. The brake is ignored for a moment after the tap (that was the kick).
+export const DRIFT = {
+  minSpeed: 18,          // units/s to start a slide
+  minSteer: 0.35,        // steering needed with the tap
+  tap: 0.35,             // seconds after the tap in which the brake doesn't slow the car
+  turn: [0.62, 0.8],     // path turn rate (share of the grip turn rate): steering centred, + held fully into the slide
+  angle: [0.3, 0.16],    // slip angle (rad): steering centred, + held fully into the slide
+  chase: 9,              // how fast the body swings to its slip angle (1/s)
+  scrub: 0.1,            // share of speed lost per second while sliding
+  accel: 0.8,            // engine pull while sliding (share)
+  top: 0.95,             // top speed while sliding (share)
+  out: -0.3,             // steering (into the slide = +1) below this counts as steering out
+  release: 0.12,         // seconds of steering out that end the slide (with the boost)
+  fizzle: 1.4,           // seconds with the steering centred after which the slide ends by itself (boost too)
+  stunEnd: 0.08,         // a crash stun above this ends the slide without a boost
+  minEnd: 13,            // below this speed the slide ends without a boost
+  levels: [0.6, 1.5],    // seconds of real sliding for the blue, then the orange sparks
+  boost: [0.55, 1.05],   // turbo seconds at each level when the slide ends
+};
+
 // Knock a car loose after a velocity change (dvx, dvz). Returns the stun applied (seconds).
 export function stunCar(car, dvx, dvz, scale = 1) {
   const c = Math.cos(car.angle), s = Math.sin(car.angle);
@@ -94,6 +118,8 @@ export class Car {
     this.draft = 0; // 0..1 slipstream strength (set by the game)
     this.turbo = 0; // seconds of turbo-start boost left
     this.bog = 0; // seconds of bogged-down launch left (gas held too early)
+    this.drift = null; // drift cars: the slide in progress {dir, t, charge, level, outT, idleT}
+    this.brakePrev = 0;
   }
   get speed() { return Math.hypot(this.vx, this.vz); }
   get fwdSpeed() { return this.vx * Math.cos(this.angle) + this.vz * Math.sin(this.angle); }
@@ -107,6 +133,7 @@ export class Car {
     this.state = 'drive'; this.tumble = 0; this.fallT = 0; this.slip = 0;
     this.stun = 0; this.draft = 0;
     this.spinner = null; this.oily = 0; this.wasSlick = false;
+    this.drift = null; this.brakePrev = 0;
   }
 }
 
@@ -370,6 +397,69 @@ export class PhysicsWorld {
     return { type: 'box', x: p.x, z: p.z, hw: p.hw, hd: p.hd, cos: p.cos, sin: p.sin, h: p.h };
   }
 
+  // drift cars: start a slide on a brake tap while steering, end it when the driver steers out (boost if charged)
+  driftControl(car, vLong, dt, stunK) {
+    const D = DRIFT, brk = car.brake, tapped = brk > 0.3 && car.brakePrev <= 0.3;
+    car.brakePrev = brk;
+    const d = car.drift;
+    if (!d) {
+      // (CPU drivers brake into corners while steering too: they set noDriftTap except when they mean it)
+      if (tapped && !car.noDriftTap && Math.abs(car.steer) >= D.minSteer && vLong > D.minSpeed && stunK < 0.3) {
+        car.drift = { dir: Math.sign(car.steer), t: 0, charge: 0, level: 0, outT: 0, idleT: 0 };
+        this.events.push({ type: 'driftStart', car });
+      }
+      return;
+    }
+    d.t += dt;
+    const k = car.steer * d.dir, speed = Math.hypot(car.vx, car.vz);
+    if (car.stun > D.stunEnd || speed < D.minEnd) { this.endDrift(car, false); return; }
+    d.outT = k < D.out ? d.outT + dt : 0;
+    d.idleT = Math.abs(car.steer) < 0.15 ? d.idleT + dt : 0;
+    if (d.outT >= D.release || d.idleT >= D.fizzle) { this.endDrift(car, true); return; }
+    // charge while really sliding at speed
+    const vLat = -car.vx * Math.sin(car.angle) + car.vz * Math.cos(car.angle);
+    if (speed > 20 && Math.abs(vLat) > speed * 0.2) {
+      d.charge += dt;
+      const lvl = d.charge >= D.levels[1] ? 2 : d.charge >= D.levels[0] ? 1 : 0;
+      if (lvl > d.level) { d.level = lvl; this.events.push({ type: 'driftLevel', car, level: lvl }); }
+    }
+  }
+
+  endDrift(car, boost) {
+    const d = car.drift;
+    car.drift = null;
+    if (boost && d && d.level > 0) {
+      car.turbo = Math.max(car.turbo, DRIFT.boost[d.level - 1]);
+      this.events.push({ type: 'driftBoost', car, level: d.level });
+    }
+  }
+
+  // one step of a slide: the path turns as the steering asks, the body swings to its slip angle,
+  // the engine pulls along the path. Returns [vLong, vLat] in the car's frame before it turns.
+  driftMove(car, top, accMul, S, dt) {
+    const D = DRIFT, d = car.drift, sp = car.spec;
+    const c = Math.cos(car.angle), s = Math.sin(car.angle);
+    let v = Math.hypot(car.vx, car.vz), th = Math.atan2(car.vz, car.vx);
+    // steering into the slide tightens it; a little the other way (short of steering out) widens it
+    const into = Math.max(-0.3, Math.min(1, car.steer * d.dir));
+    const topD = top * D.top, thr = car.throttle, brk = d.t > D.tap ? car.brake : 0;
+    if (thr > 0 && v < topD) v += sp.accel * S.accel * accMul * thr * D.accel * (0.35 + 0.65 * Math.max(0, 1 - v / topD)) * dt;
+    if (brk > 0) v = Math.max(0, v - sp.brake * 0.6 * brk * dt);
+    v -= v * (D.scrub + S.drag * 0.02) * dt;
+    if (v > topD) v -= (v - topD) * 2.5 * dt;
+    // the path: slippery ground (slick, water) widens it
+    const g = Math.min(1, v / 9) * (1 - 0.32 * Math.min(1, v / sp.maxSpeed));
+    const omega = d.dir * sp.turnRate * g * (D.turn[0] + D.turn[1] * into) * Math.min(1, 0.3 + S.grip);
+    th += omega * dt;
+    // the body swings out to the slip angle (building up over the first moments of the slide)
+    const beta = d.dir * (D.angle[0] + D.angle[1] * Math.max(0, into)) * Math.min(1, 0.3 + d.t / 0.2);
+    car.w = omega + wrapAngle(th + beta - car.angle) * D.chase;
+    const vx = Math.cos(th) * v, vz = Math.sin(th) * v;
+    const vLat = -vx * s + vz * c;
+    car.slip = Math.abs(vLat);
+    return [vx * c + vz * s, vLat];
+  }
+
   stepCar(car, dt, ctx) {
     const sp = car.spec;
     if (car.state === 'falling') {
@@ -417,7 +507,10 @@ export class PhysicsWorld {
     const top = sp.maxSpeed * S.top * (ctx?.speedMul ?? 1);
     const accMul = ctx?.accelMul ?? 1;
 
-    if (!car.airborne) {
+    if (!car.airborne && sp.drift) this.driftControl(car, vLong, dt, stunK);
+    if (!car.airborne && car.drift) {
+      [vLong, vLat] = this.driftMove(car, top, accMul, S, dt);
+    } else if (!car.airborne) {
       // engine & brakes
       const thr = car.throttle, brk = car.brake;
       if (thr > 0) {

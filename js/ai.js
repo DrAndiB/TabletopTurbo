@@ -1,10 +1,12 @@
 // CPU drivers: follow a racing line, slow for corners, steer round obstacles and recover when stuck.
 import { clamp, wrapAngle, rng } from './util.js';
+import { DRIFT } from './physics.js';
 
 export const SKILLS = {
-  easy: { speed: 0.8, corner: 0.8, wobble: 0.35, mistakes: 0.06 },
-  normal: { speed: 0.9, corner: 0.9, wobble: 0.15, mistakes: 0.03 },
-  hard: { speed: 0.985, corner: 1.0, wobble: 0.04, mistakes: 0.008 },
+  // drift: chance of sliding through a corner where a drift car can (Drift Cup)
+  easy: { speed: 0.8, corner: 0.8, wobble: 0.35, mistakes: 0.06, drift: 0.35 },
+  normal: { speed: 0.9, corner: 0.9, wobble: 0.15, mistakes: 0.03, drift: 0.75 },
+  hard: { speed: 0.985, corner: 1.0, wobble: 0.04, mistakes: 0.008, drift: 0.95 },
 };
 
 export class AIDriver {
@@ -107,6 +109,8 @@ export class AIDriver {
       return;
     }
 
+    if (car.spec.drift && this.driftDrive(dt, speed, s, tgt)) return;
+
     // occasional small mistakes
     this.mistakeT -= dt;
     if (this.mistakeT <= 0 && this.r() < sk.mistakes * dt * 10) { this.mistakeT = 0.25 + this.r() * 0.35; this.mistakeSteer = this.r() < 0.5 ? -1 : 1; }
@@ -131,10 +135,52 @@ export class AIDriver {
     else { car.throttle = 1; car.brake = 0; }
 
     // stuck detection
+    this.stuckCheck(dt, speed, diff);
+  }
+
+  stuckCheck(dt, speed, diff) {
+    const car = this.car;
     if (car.throttle > 0.5 && speed < 2.5) this.stuckT += dt; else this.stuckT = Math.max(0, this.stuckT - dt * 2);
     if (this.stuckT > 0.9) {
       this.stuckT = 0; this.reverseT = 0.75 + this.r() * 0.3;
       this.reverseSteer = diff > 0 ? -1 : 1;
     }
+  }
+
+  // Drift cars: slide through the bigger corners (a brake tap while steering), steer the slide so its path
+  // reaches the racing line, steer out when the corner is over (that fires the boost). Returns true when it
+  // drove the car this step.
+  driftDrive(dt, speed, s, tgt) {
+    const car = this.car, tr = this.track, sp = car.spec, d = car.drift;
+    this.driftCool = Math.max(0, (this.driftCool || 0) - dt);
+    car.noDriftTap = true; // braking for a corner is not a drift unless decided below
+    if (d) {
+      const th = Math.atan2(car.vz, car.vx), v = Math.hypot(car.vx, car.vz);
+      const dx = tgt.x - car.x, dz = tgt.z - car.z, L = Math.max(4, Math.hypot(dx, dz));
+      // pure pursuit on the path (not the body, which points into the corner): the turn rate that reaches tgt
+      const want = (2 * v * Math.sin(wrapAngle(Math.atan2(dz, dx) - th))) / L;
+      const g = Math.min(1, v / 9) * (1 - 0.32 * Math.min(1, v / sp.maxSpeed));
+      const q = (want * d.dir) / Math.max(0.1, sp.turnRate * g); // share of the grip turn rate, into the slide
+      // the corner is over when the road ahead has stopped turning our way and the slide points down it
+      let ahead = 0;
+      for (let x = 2; x <= 14; x += 2) ahead += tr.curv[tr.idx(s + x)] * 2 * d.dir;
+      const align = Math.abs(wrapAngle(tr.at(s + 8).angle - th));
+      if (d.t > 0.35 && ahead < 0.1 && (align < 0.2 || q < 0.1)) car.steer = -d.dir; // steer out (boost)
+      else car.steer = d.dir * clamp((q - DRIFT.turn[0]) / DRIFT.turn[1], -0.28, 1);
+      car.throttle = 1;
+      car.brake = q > DRIFT.turn[0] + DRIFT.turn[1] + 0.2 && v > 24 ? 0.5 : 0; // too fast for the corner: scrub speed
+      this.stuckT = 0;
+      return true;
+    }
+    // start a slide at the entry of a corner that turns far enough
+    if (this.driftCool > 0 || speed < 26 || car.stun > 0 || car.airborne) return false;
+    let turn = 0, near = 0;
+    for (let x = 4; x <= 34; x += 2) { const k = tr.curv[tr.idx(s + x)] * 2; turn += k; if (x <= 12) near += k; }
+    if (Math.abs(turn) < 0.75 || Math.abs(near) < 0.12 || Math.sign(near) !== Math.sign(turn)) return false;
+    if (car.brakePrev > 0.3) { car.brake = 0; car.throttle = 0.6; car.steer = Math.sign(turn); return true; } // let go first
+    this.driftCool = 1.2;
+    if (this.r() > this.skill.drift) return false;
+    car.steer = Math.sign(turn); car.throttle = 1; car.brake = 1; car.noDriftTap = false; // the tap (the next step lets go)
+    return true;
   }
 }

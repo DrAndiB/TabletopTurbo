@@ -516,7 +516,62 @@ export function buildCar(type, colorDef, num) {
   let fans = null; // hovercraft propellers
   const extra = {}; // bumper car: pole and spark
 
-  if (type === 'sports' || type === 'rally' || type === 'drifter') { // drifter: placeholder model
+  if (type === 'drifter') {
+    // drift coupé: low and wide, flared arches, a big wing on tall stands, splitter, livery stripe, gold wheels
+    const lower = [[-2.2, 0.26], [2.12, 0.26], [2.3, 0.36], [2.28, 0.58], [1.9, 0.7], [0.75, 0.8], [-1.6, 0.86], [-2.22, 0.84], [-2.28, 0.4]];
+    add(new THREE.Mesh(profileExtrude(smoothProfile(lower, 2), 2.2, 0.16), body));
+    // flared arches over each wheel (wider than the body)
+    for (const ax of [1.36, -1.36]) {
+      for (const sz of [-1, 1]) {
+        const f = add(new THREE.Mesh(new RoundedBoxGeometry(1.35, 0.42, 0.28, 3, 0.12), body));
+        f.position.set(ax, 0.6, sz * 1.08);
+      }
+    }
+    // fastback cabin
+    const cabin = [[0.75, 0.76], [0.05, 1.18], [-0.85, 1.2], [-1.75, 0.86]];
+    add(new THREE.Mesh(profileExtrude(smoothProfile(cabin, 1), 1.56, 0.1, 2), M.glass));
+    const roof = add(new THREE.Mesh(new RoundedBoxGeometry(0.95, 0.09, 1.42, 2, 0.04), body));
+    roof.position.set(-0.4, 1.27, 0);
+    const dec = new THREE.Mesh(new THREE.CircleGeometry(0.4, 24), numberDecal(num, colorDef));
+    dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;
+    dec.position.set(-0.4, 1.32, 0);
+    tilt.add(dec);
+    // livery: a stripe in the dark shade along each side and over the bonnet
+    for (const sz of [-1, 1]) {
+      const st = add(new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.12, 0.04), dark));
+      st.position.set(0.05, 0.56, sz * 1.115); st.rotation.z = -0.03;
+    }
+    const bon = add(new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.03, 0.42), M.white));
+    bon.position.set(1.42, 0.765, 0); bon.rotation.z = -0.09;
+    // bonnet vents
+    for (const sz of [-0.48, 0.48]) {
+      const v = add(new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.04, 0.3, 2, 0.015), M.black));
+      v.position.set(1.15, 0.79, sz); v.rotation.z = -0.08;
+    }
+    // GT wing on tall stands
+    const wing = add(new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.07, 2.3, 2, 0.03), dark));
+    wing.position.set(-2.0, 1.36, 0); wing.rotation.z = 0.08;
+    for (const sz of [-1.15, 1.15]) { const ep = add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.05), M.black)); ep.position.set(-2.0, 1.36, sz); }
+    for (const sz of [-0.55, 0.55]) { const p = add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 0.07), M.black)); p.position.set(-1.98, 1.08, sz); }
+    // front splitter and canards
+    const split = add(new THREE.Mesh(new RoundedBoxGeometry(0.4, 0.05, 2.25, 2, 0.02), M.black));
+    split.position.set(2.2, 0.27, 0);
+    for (const sz of [-1, 1]) { const cn = add(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.03, 0.18), M.black)); cn.position.set(2.12, 0.5, sz * 1.0); cn.rotation.z = -0.25; }
+    // lights: slim headlights, a full-width tail-light bar, a big exhaust tip and a tow hook
+    for (const sz of [-0.72, 0.72]) {
+      const h = add(new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.1, 0.46, 2, 0.04), M.head));
+      h.position.set(2.24, 0.56, sz);
+    }
+    const tl = add(new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.08, 1.9, 2, 0.03), M.tail));
+    tl.position.set(-2.27, 0.72, 0);
+    const ex = add(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.3, 16), M.chrome));
+    ex.rotation.z = Math.PI / 2; ex.position.set(-2.3, 0.36, 0.55);
+    const hook = add(new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.03, 6, 12), M.tail));
+    hook.position.set(2.3, 0.36, -0.55); hook.rotation.y = Math.PI / 2;
+    const grille = add(new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.18, 1.1, 2, 0.04), M.black));
+    grille.position.set(2.27, 0.42, 0);
+    wheelR = 0.5; wheelW = 0.52; wx = 1.36; wz = 1.08; wy = wheelR;
+  } else if (type === 'sports' || type === 'rally') {
     const rally = type === 'rally';
     const lower = rally
       ? [[-2.05, 0.32], [1.95, 0.32], [2.15, 0.5], [2.12, 0.74], [0.95, 0.9], [-1.95, 0.94], [-2.15, 0.86], [-2.15, 0.42]]
@@ -853,7 +908,7 @@ export function buildCar(type, colorDef, num) {
   }
 
   // wheels
-  const rimMat = type === 'truck' ? M.darkRim : type === 'monster' ? dark : type === 'suv' ? M.chrome : M.rim;
+  const rimMat = type === 'truck' ? M.darkRim : type === 'monster' ? dark : type === 'suv' ? M.chrome : type === 'drifter' ? M.gold : M.rim;
   const axles = type === 'rover' ? [[wx, true], [0.0, false], [-1.45, false]] : (type === 'boat' || type === 'hover' || type === 'snowmobile' || type === 'bumper') ? [] : [[wx, true], [-wx, false]];
   for (const [sx, front] of axles) {
     for (const sz of [-wz, wz]) {
@@ -881,6 +936,7 @@ export function buildCar(type, colorDef, num) {
   if (type === 'boat') shadow.scale.set(5.6, 3.0, 1);
   if (type === 'monster') shadow.scale.set(6.6, 4.8, 1);
   if (type === 'suv') shadow.scale.set(6.4, 4.0, 1);
+  if (type === 'drifter') shadow.scale.set(6.4, 4.2, 1);
   return { root, tilt, wheels, shadow, body, boat: type === 'boat', hover: type === 'hover', monster: type === 'monster', fans, fan: fans ? fans[0] : null, ...extra };
 }
 

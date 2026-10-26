@@ -555,6 +555,11 @@ export class Sound {
     this.sweep(0.9, { from: 260, to: 3200, q: 0.7, vol: 0.16, pan, attack: 0.06 });
     this.tone(140, 0.55, { type: 'sawtooth', vol: 0.07, slideTo: 420, attack: 0.02 });
   }
+  // drift charge: a bright crackle and a ping (higher for the orange sparks)
+  driftLevel(level, pan = 0) {
+    this.noiseBurst(0.12, { freq: 5200, type: 'highpass', vol: 0.07, pan, buf: 'crackle' });
+    this.tone(level > 1 ? 1568 : 1175, 0.16, { type: 'triangle', vol: 0.05, slideTo: level > 1 ? 1760 : 1319, pan });
+  }
   // bogged-down launch: a sputter and a short tyre squeal
   bog(pan = 0) {
     for (let i = 0; i < 4; i++) this.tone(62 + i * 3, 0.07, { type: 'square', vol: 0.07, when: i * 0.09 });
