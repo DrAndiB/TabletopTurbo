@@ -165,7 +165,11 @@ export class AIDriver {
       let ahead = 0;
       for (let x = 2; x <= 14; x += 2) ahead += tr.curv[tr.idx(s + x)] * 2 * d.dir;
       const align = Math.abs(wrapAngle(tr.at(s + 8).angle - th));
+      // ...or when the slide turns far tighter than the line wants, or has run off the inside of the road
+      const p = tr.at(s), lat = (car.x - p.x) * p.nx + (car.z - p.z) * p.nz;
+      const inside = lat * d.dir > tr.w[tr.idx(s)] / 2 - 0.5;
       if (d.t > 0.35 && ahead < 0.1 && (align < 0.2 || q < 0.1)) car.steer = -d.dir; // steer out (boost)
+      else if (d.t > 0.2 && (q < -0.1 || inside)) car.steer = -d.dir;
       else car.steer = d.dir * clamp((q - DRIFT.turn[0]) / DRIFT.turn[1], -0.28, 1);
       car.throttle = 1;
       car.brake = q > DRIFT.turn[0] + DRIFT.turn[1] + 0.2 && v > 24 ? 0.5 : 0; // too fast for the corner: scrub speed

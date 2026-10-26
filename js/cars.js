@@ -564,7 +564,7 @@ export function buildCar(type, colorDef, num) {
     }
     const tl = add(new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.08, 1.9, 2, 0.03), M.tail));
     tl.position.set(-2.27, 0.72, 0);
-    const ex = add(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.3, 16), M.chrome));
+    const ex = add(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.3, 16), M.black)); // (black, not chrome: one material less to draw)
     ex.rotation.z = Math.PI / 2; ex.position.set(-2.3, 0.36, 0.55);
     const hook = add(new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.03, 6, 12), M.tail));
     hook.position.set(2.3, 0.36, -0.55); hook.rotation.y = Math.PI / 2;
