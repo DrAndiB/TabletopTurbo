@@ -1015,10 +1015,12 @@ export class Game {
       const sp = c.speed;
       const cs = Math.cos(c.angle), sn = Math.sin(c.angle);
       // drift sparks from the rear wheels once the slide has charged (blue, then orange)
-      if (c.drift && c.drift.level > 0 && Math.random() < dt * 70) {
-        const side = Math.random() < 0.5 ? -1 : 1, wz = c.spec.wid * 0.45;
-        const bx = c.x - cs * c.spec.axle * 1.15 - sn * wz * side, bz = c.z - sn * c.spec.axle * 1.15 + cs * wz * side;
-        this.particles.emit(bx, 0.3, bz, { color: DRIFT_SPARK[c.drift.level], n: 2, size: 0.42, life: 0.22, spread: 9, up: 4, grav: 35, alpha: 1, vx: -c.vx * 0.25, vz: -c.vz * 0.25 });
+      if (c.drift && c.drift.level > 0) {
+        for (let n = Math.floor(dt * 110 + Math.random()); n > 0; n--) {
+          const side = Math.random() < 0.5 ? -1 : 1, wz = c.spec.wid * 0.47;
+          const bx = c.x - cs * c.spec.axle * 1.2 - sn * wz * side, bz = c.z - sn * c.spec.axle * 1.2 + cs * wz * side;
+          this.particles.emit(bx, 0.35, bz, { color: DRIFT_SPARK[c.drift.level], n: 2, size: 0.75, life: 0.28, spread: 10, up: 5, grav: 35, alpha: 1, vx: -c.vx * 0.2, vz: -c.vz * 0.2 });
+        }
       }
       // turbo start: flames and puffs from the exhaust
       if (c.turbo > 0) this.exhaust(c, 0.6 + 0.4 * Math.min(1, c.turbo / 0.5), Math.max(1, Math.round(dt * 45)));
