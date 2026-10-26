@@ -1,0 +1,877 @@
+{
+ "garden": {
+  "note": "a summer garden: birds, a breeze in the leaves; bees and a mower far off",
+  "beds": [
+   {
+    "src": "amb/garden-bed1.mp3",
+    "loop": 44,
+    "xf": 2,
+    "g": 0.24
+   }
+  ],
+  "fx": {
+   "src": "amb/garden-fx.mp3",
+   "cuts": {
+    "bee": [
+     [
+      0.28,
+      4.54
+     ],
+     [
+      5.08,
+      4.54
+     ],
+     [
+      9.88,
+      5.04
+     ]
+    ],
+    "mower": [
+     [
+      15.18,
+      16.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "bee",
+    8,
+    18,
+    4,
+    0.16
+   ],
+   [
+    "mower",
+    40,
+    70,
+    15,
+    0.13
+   ]
+  ]
+ },
+ "gingerbread": {
+  "note": "a cosy room with a crackling fire",
+  "beds": [
+   {
+    "src": "amb/gingerbread-bed1.mp3",
+    "loop": 40,
+    "xf": 2,
+    "g": 0.24,
+    "pan": -0.2
+   }
+  ],
+  "fx": {
+   "src": "amb/gingerbread-fx.mp3",
+   "cuts": {
+    "pop": [
+     [
+      0.28,
+      0.54
+     ],
+     [
+      1.08,
+      0.54
+     ],
+     [
+      1.88,
+      0.54
+     ],
+     [
+      2.68,
+      0.54
+     ],
+     [
+      3.48,
+      0.54
+     ],
+     [
+      4.28,
+      0.54
+     ],
+     [
+      5.08,
+      0.54
+     ],
+     [
+      5.88,
+      0.54
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "pop",
+    3,
+    9,
+    2,
+    0.15
+   ]
+  ]
+ },
+ "toybox": {
+  "note": "a quiet child's room; wind-up toys and squeaks",
+  "beds": [
+   {
+    "src": "amb/toybox-bed1.mp3",
+    "loop": 30,
+    "xf": 2,
+    "g": 0.24
+   }
+  ],
+  "fx": {
+   "src": "amb/toybox-fx.mp3",
+   "cuts": {
+    "windup": [
+     [
+      0.28,
+      4.54
+     ],
+     [
+      5.08,
+      3.04
+     ]
+    ],
+    "squeak": [
+     [
+      8.38,
+      0.64
+     ],
+     [
+      9.28,
+      0.64
+     ],
+     [
+      10.18,
+      0.64
+     ],
+     [
+      11.08,
+      0.64
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "windup",
+    9,
+    20,
+    3,
+    0.15
+   ],
+   [
+    "squeak",
+    12,
+    28,
+    7,
+    0.12
+   ]
+  ]
+ },
+ "desk": {
+  "note": "a study: a clock ticking, pencil scratches",
+  "beds": [
+   {
+    "src": "amb/desk-bed1.mp3",
+    "loop": 40,
+    "xf": 2,
+    "g": 0.24,
+    "pan": 0.2
+   }
+  ],
+  "fx": {
+   "src": "amb/desk-fx.mp3",
+   "cuts": {
+    "scratch": [
+     [
+      0.28,
+      2.54
+     ],
+     [
+      3.08,
+      2.54
+     ],
+     [
+      5.88,
+      2.54
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "scratch",
+    5,
+    12,
+    2,
+    0.16
+   ]
+  ]
+ },
+ "bathroom": {
+  "note": "a bathroom: drips, the drain gurgles, bubbles",
+  "beds": [
+   {
+    "src": "amb/bathroom-bed1.mp3",
+    "loop": 22,
+    "xf": 2,
+    "g": 0.24
+   }
+  ],
+  "fx": {
+   "src": "amb/bathroom-fx.mp3",
+   "cuts": {
+    "gurgle": [
+     [
+      0.28,
+      5.04
+     ]
+    ],
+    "bubbles": [
+     [
+      5.58,
+      1.24
+     ],
+     [
+      7.08,
+      1.24
+     ],
+     [
+      8.58,
+      1.24
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "gurgle",
+    12,
+    25,
+    6,
+    0.15
+   ],
+   [
+    "bubbles",
+    6,
+    14,
+    3,
+    0.15
+   ]
+  ]
+ },
+ "pool": {
+  "note": "a pub with a pool table",
+  "beds": [
+   {
+    "src": "amb/pool-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.22
+   }
+  ],
+  "fx": {
+   "src": "amb/pool-fx.mp3",
+   "cuts": {
+    "clacks": [
+     [
+      0.28,
+      1.44
+     ],
+     [
+      1.98,
+      1.44
+     ],
+     [
+      3.68,
+      1.44
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "clacks",
+    6,
+    14,
+    2,
+    0.17
+   ]
+  ]
+ },
+ "watertable": {
+  "note": "water lapping; gulls",
+  "beds": [
+   {
+    "src": "amb/watertable-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.24
+   }
+  ],
+  "fx": {
+   "src": "amb/watertable-fx.mp3",
+   "cuts": {
+    "gulls": [
+     [
+      0.28,
+      4.04
+     ],
+     [
+      4.58,
+      4.04
+     ],
+     [
+      8.88,
+      4.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "gulls",
+    10,
+    24,
+    5,
+    0.13
+   ]
+  ]
+ },
+ "workshop": {
+  "note": "a wooden workshop; a radio being tuned, a drill",
+  "beds": [
+   {
+    "src": "amb/workshop-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.24
+   }
+  ],
+  "fx": {
+   "src": "amb/workshop-fx.mp3",
+   "cuts": {
+    "radio": [
+     [
+      0.28,
+      4.04
+     ],
+     [
+      4.58,
+      4.04
+     ]
+    ],
+    "drill": [
+     [
+      8.88,
+      3.04
+     ],
+     [
+      12.18,
+      3.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "radio",
+    10,
+    22,
+    4,
+    0.13
+   ],
+   [
+    "drill",
+    18,
+    35,
+    9,
+    0.13
+   ]
+  ]
+ },
+ "boardroom": {
+  "note": "an office: air conditioning, people at work; keyboards",
+  "beds": [
+   {
+    "src": "amb/boardroom-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.22
+   }
+  ],
+  "fx": {
+   "src": "amb/boardroom-fx.mp3",
+   "cuts": {
+    "typing": [
+     [
+      0.28,
+      3.04
+     ],
+     [
+      3.58,
+      3.04
+     ],
+     [
+      6.88,
+      3.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "typing",
+    5,
+    12,
+    1.5,
+    0.15
+   ]
+  ]
+ },
+ "mars": {
+  "note": "thin wind over a desert; radio blips",
+  "beds": [
+   {
+    "src": "amb/mars-bed1.mp3",
+    "loop": 38,
+    "xf": 2,
+    "g": 0.26
+   }
+  ],
+  "fx": {
+   "src": "amb/mars-fx.mp3",
+   "cuts": {
+    "beeps": [
+     [
+      0.28,
+      2.64
+     ],
+     [
+      3.18,
+      3.04
+     ],
+     [
+      6.48,
+      3.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "beeps",
+    9,
+    20,
+    3,
+    0.12
+   ]
+  ]
+ },
+ "railway": {
+  "note": "open country, birds; a train passing far off",
+  "beds": [
+   {
+    "src": "amb/railway-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.24
+   }
+  ],
+  "fx": {
+   "src": "amb/railway-fx.mp3",
+   "cuts": {
+    "train": [
+     [
+      0.28,
+      18.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "train",
+    45,
+    80,
+    20,
+    0.12
+   ]
+  ]
+ },
+ "pinball": {
+  "note": "an amusement arcade; pinball bells and flippers",
+  "beds": [
+   {
+    "src": "amb/pinball-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.2
+   }
+  ],
+  "fx": {
+   "src": "amb/pinball-fx.mp3",
+   "cuts": {
+    "ding": [
+     [
+      0.28,
+      1.24
+     ],
+     [
+      1.78,
+      1.24
+     ],
+     [
+      3.28,
+      1.24
+     ],
+     [
+      4.78,
+      1.24
+     ],
+     [
+      6.28,
+      1.24
+     ]
+    ],
+    "flip": [
+     [
+      7.78,
+      0.64
+     ],
+     [
+      8.68,
+      0.64
+     ],
+     [
+      9.58,
+      0.64
+     ],
+     [
+      10.48,
+      0.64
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "ding",
+    4,
+    10,
+    1,
+    0.14
+   ],
+   [
+    "flip",
+    3,
+    8,
+    2,
+    0.13
+   ]
+  ]
+ },
+ "chemlab": {
+  "note": "a lab: equipment hum, bubbling flasks",
+  "beds": [
+   {
+    "src": "amb/chemlab-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.22
+   },
+   {
+    "src": "amb/chemlab-bed2.mp3",
+    "loop": 18,
+    "xf": 2,
+    "g": 0.16,
+    "pan": 0.3
+   }
+  ],
+  "fx": {
+   "src": "amb/chemlab-fx.mp3",
+   "cuts": {
+    "boil": [
+     [
+      0.28,
+      5.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "boil",
+    12,
+    24,
+    6,
+    0.13
+   ]
+  ]
+ },
+ "dollhouse": {
+  "note": "wind howling round an old house; creaks; distant thunder",
+  "beds": [
+   {
+    "src": "amb/dollhouse-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.24
+   }
+  ],
+  "fx": {
+   "src": "amb/dollhouse-fx.mp3",
+   "cuts": {
+    "creak": [
+     [
+      0.28,
+      1.64
+     ],
+     [
+      2.18,
+      1.64
+     ],
+     [
+      4.08,
+      1.64
+     ],
+     [
+      5.98,
+      1.64
+     ],
+     [
+      7.88,
+      1.64
+     ],
+     [
+      9.78,
+      1.64
+     ]
+    ],
+    "thunder": [
+     [
+      11.68,
+      14.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "creak",
+    6,
+    14,
+    3,
+    0.15
+   ],
+   [
+    "thunder",
+    24,
+    45,
+    12,
+    0.18
+   ]
+  ]
+ },
+ "watchmaker": {
+  "note": "a quiet workshop with clocks; winding",
+  "beds": [
+   {
+    "src": "amb/watchmaker-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.22
+   }
+  ],
+  "fx": {
+   "src": "amb/watchmaker-fx.mp3",
+   "cuts": {
+    "wind": [
+     [
+      0.28,
+      5.04
+     ],
+     [
+      5.58,
+      3.54
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "wind",
+    14,
+    28,
+    6,
+    0.13
+   ]
+  ]
+ },
+ "moselle": {
+  "note": "the Moselle valley from the Moselh\u00f6henweg; glasses clink",
+  "beds": [
+   {
+    "src": "amb/moselle-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.24
+   }
+  ],
+  "fx": {
+   "src": "amb/moselle-fx.mp3",
+   "cuts": {
+    "glasses": [
+     [
+      0.28,
+      1.24
+     ],
+     [
+      1.78,
+      1.24
+     ],
+     [
+      3.28,
+      1.24
+     ],
+     [
+      4.78,
+      1.24
+     ],
+     [
+      6.28,
+      1.24
+     ],
+     [
+      7.78,
+      2.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "glasses",
+    8,
+    18,
+    3,
+    0.15
+   ]
+  ]
+ },
+ "fouer": {
+  "note": "a funfair: the dodgem rink and the crowd; cheers",
+  "beds": [
+   {
+    "src": "amb/fouer-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.22
+   },
+   {
+    "src": "amb/fouer-bed2.mp3",
+    "loop": 40,
+    "xf": 2,
+    "g": 0.16,
+    "pan": 0.3
+   }
+  ],
+  "fx": {
+   "src": "amb/fouer-fx.mp3",
+   "cuts": {
+    "cheer": [
+     [
+      0.28,
+      5.04
+     ],
+     [
+      5.58,
+      5.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "cheer",
+    16,
+    32,
+    8,
+    0.13
+   ]
+  ]
+ },
+ "grund": {
+  "note": "a stream by the old quarter; church bells now and then",
+  "beds": [
+   {
+    "src": "amb/grund-bed1.mp3",
+    "loop": 29.6,
+    "xf": 2,
+    "g": 0.22
+   }
+  ],
+  "fx": {
+   "src": "amb/grund-fx.mp3",
+   "cuts": {
+    "bells": [
+     [
+      0.28,
+      20.04
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "bells",
+    45,
+    75,
+    15,
+    0.13
+   ]
+  ]
+ },
+ "oldtown": {
+  "note": "a town square; pigeons",
+  "beds": [
+   {
+    "src": "amb/oldtown-bed1.mp3",
+    "loop": 50,
+    "xf": 2,
+    "g": 0.22
+   }
+  ],
+  "fx": {
+   "src": "amb/oldtown-fx.mp3",
+   "cuts": {
+    "coo": [
+     [
+      0.28,
+      3.54
+     ],
+     [
+      4.08,
+      3.54
+     ],
+     [
+      7.88,
+      3.54
+     ]
+    ]
+   }
+  },
+  "ev": [
+   [
+    "coo",
+    6,
+    14,
+    2,
+    0.14
+   ]
+  ]
+ }
+}

@@ -1,0 +1,5 @@
+# downloaded recordings (fetch again with tools/fs_search.py --get, see README) and renders
+raw/**/*.mp3
+raw/**/*.wav
+work/*
+!work/amb.json
