@@ -516,7 +516,7 @@ export function buildCar(type, colorDef, num) {
   let fans = null; // hovercraft propellers
   const extra = {}; // bumper car: pole and spark
 
-  if (type === 'sports' || type === 'rally') {
+  if (type === 'sports' || type === 'rally' || type === 'drifter') { // drifter: placeholder model
     const rally = type === 'rally';
     const lower = rally
       ? [[-2.05, 0.32], [1.95, 0.32], [2.15, 0.5], [2.12, 0.74], [0.95, 0.9], [-1.95, 0.94], [-2.15, 0.86], [-2.15, 0.42]]

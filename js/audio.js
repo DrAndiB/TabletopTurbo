@@ -31,6 +31,7 @@ const VEH = {
   boat: { base: 72, step: 6, gears: 1, spread: 0, range: 1.5, a: 'sawtooth', b: 'square', bRatio: 1, bMix: 0.5, det: 9, drive: 2, am: [1, 0.25], lp: [900, 2600, 800], q: 2, gurgle: true, vol: 0.85, skid: 'spray' },
   hover: { fan: true, base: 55, step: 4, gears: 1, spread: 0, range: 0.7, a: 'sine', b: 'sawtooth', bRatio: 2, bMix: 0.25, lp: [260, 380, 200], q: 0.8, vol: 0.8, skid: 'air' },
   snowmobile: { cvt: true, base: 84, step: 7, a: 'square', b: 'sawtooth', bRatio: 1, bMix: 0.6, det: 12, drive: 4, am: [0.5, 0.45], lp: [1100, 3000, 700], q: 2.5, vol: 0.7, skid: 'snow' },
+  drifter: { base: 100, step: 9, gears: 5, spread: 0.26, range: 0.8, a: 'sawtooth', b: 'square', bRatio: 0.5, bMix: 0.45, whine: 3, lp: [620, 1900, 700], q: 2, vib: [27, 4], vol: 0.95, crackle: true, skid: 'squeal' },
   bumper: { electric: true, hum: 100, base: 170, top: 520, step: 12, a: 'triangle', b: 'sine', bRatio: 1, bMix: 1, lp: [900, 900, 300], q: 0.7, sparks: true, vol: 0.66, skid: 'rubber' },
 };
 // skid layer: noise (buffer name, playback rate) through a filter; g = level at full slide, roll = level while

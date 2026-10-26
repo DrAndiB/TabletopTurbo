@@ -22,6 +22,8 @@ export const VEHICLES = {
   monster: { maxSpeed: 44, accel: 60, brake: 110, reverseMax: 17, turnRate: 3.1, latGrip: 135, drag: 0.2, rolling: 5, len: 4.6, wid: 3.0, r: 1.45, axle: 1.05, mass: 1.5, offroadGrip: 1.0, clearance: 1.7, stepUp: 1.8 },
   // luxury SUV: heavy and planted
   suv: { maxSpeed: 46, accel: 60, brake: 115, reverseMax: 17, turnRate: 3.2, latGrip: 140, drag: 0.22, rolling: 6, len: 4.6, wid: 2.3, r: 1.2, axle: 1.15, mass: 1.3 },
+  // drift car (Drift Cup): a wide rear-drive coupe; a brake tap while steering kicks it into a slide (drift: true)
+  drifter: { maxSpeed: 47, accel: 66, brake: 115, reverseMax: 17, turnRate: 3.35, latGrip: 140, drag: 0.22, rolling: 6, len: 4.4, wid: 2.3, r: 1.14, axle: 1.08, mass: 1.0, drift: true },
   rally: { maxSpeed: 46, accel: 66, brake: 120, reverseMax: 17, turnRate: 3.4, latGrip: 140, drag: 0.22, rolling: 6, len: 4.3, wid: 2.25, r: 1.14, axle: 1.05, mass: 1.05 },
 };
 

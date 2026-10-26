@@ -19,6 +19,10 @@ import moselle from './moselle.js';
 import fouer from './fouer.js';
 import grund from './grund.js';
 import oldtown from './oldtown.js';
+import butter from './butter.js';
+import pass from './pass.js';
+import bowling from './bowling.js';
+import rooftop from './rooftop.js';
 
 // Cups of four tables, easiest cup first and easiest table first within each cup (Mario Kart style).
 // `level` (1-4) is the difficulty shown in the menu, `color` the cup's accent. Worlds that are not in
@@ -31,6 +35,8 @@ export const CUPS = [
   { id: 'chaos', name: 'Chaos Cup', level: 4, color: '#8a4fd8', blurb: 'For experts only', worlds: ['pinball', 'chemlab', 'dollhouse', 'watchmaker'] },
   // a tour of Luxembourg, easy to expert within the cup
   { id: 'duchy', name: 'Grand Duchy Cup', level: 3, color: '#00a1de', blurb: 'A tour of Luxembourg, easy to expert', worlds: ['moselle', 'fouer', 'grund', 'oldtown'] },
+  // drift cars only: tap the brake while steering to slide, hold the slide to charge a boost
+  { id: 'drift', name: 'Drift Cup', level: 3, color: '#e8337a', blurb: 'Slide sideways, charge sparks, boost out', worlds: ['butter', 'pass', 'bowling', 'rooftop'] },
 ];
 
 // menu order = cup order (also the order of the "Grand Tour" championship)
@@ -40,9 +46,10 @@ const ALL = [
   workshop, boardroom, mars, railway,
   pinball, chemlab, dollhouse, watchmaker,
   moselle, fouer, grund, oldtown,
+  butter, pass, bowling, rooftop,
 ];
 // Worlds still under construction can be listed here: they stay out of the menu but load with ?world=<id>.
-const IN_PROGRESS = new Set([]);
+const IN_PROGRESS = new Set(['butter', 'pass', 'bowling', 'rooftop']);
 export const WORLDS = ALL.filter((w) => !IN_PROGRESS.has(w.id));
 export function worldById(id) { return ALL.find((w) => w.id === id) || WORLDS[0]; }
 // the playable tables of a cup, in cup order
