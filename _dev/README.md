@@ -53,6 +53,23 @@ Read `WORLD_GUIDE.md` (units, camera, kit API, quality bar, performance budget).
 3. Add a thumbnail `img/<id>.jpg` (352×220).
 4. Run the checks below, then remove it from `IN_PROGRESS`.
 
+## Drifting (Drift Cup)
+
+Drift cars (`drift: true` in `VEHICLES`, physics.js) have a slide mode, tuned in `DRIFT`:
+- A brake tap while steering at speed (`minSpeed`, `minSteer`) starts a slide in the steering direction. For a moment
+  (`tap`) the brake doesn't slow the car.
+- While sliding, the path turns at a share of the grip turn rate (`turn`: wide with the steering centred, tight with
+  it held into the slide, a little wider with slight countersteer) and the body runs at a slip angle to it (`angle`).
+  The engine pulls along the path, and the slide scrubs `scrub` of the speed per second.
+- Steering out (`out`, for `release` seconds) or centring the steering for `fizzle` seconds ends the slide. Sliding at
+  speed charges it: blue sparks after `levels[0]` s, orange after `levels[1]`; ending it by steering out fires the
+  turbo (`boost`). A crash (`stunEnd`) or dropping below `minEnd` ends it without a boost.
+- CPU drivers (`AIDriver.driftDrive`) tap into slides at the entry of corners that turn far enough (chance per skill:
+  `SKILLS.drift`), steer the slide by pure pursuit on the path, and steer out when the road ahead straightens. Their
+  ordinary braking sets `car.noDriftTap`, so it never starts a slide by accident.
+- The game shows the hints ("Tap the brake while steering to drift!", then "Steer out of the slide to boost!") once,
+  sparks at the rear wheels, and plays `driftLevel` and the turbo sound.
+
 ## Audio
 
 Race music, the menu theme and each world's background are recordings in `audio/` (about 48 MB: music 36 MB,

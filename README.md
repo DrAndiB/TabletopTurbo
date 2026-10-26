@@ -5,17 +5,20 @@ up to four players on one keyboard, plus gamepads and computer drivers.
 
 **Play it:** https://andreasbraun.lu/demos/tabletop-turbo/
 
-- **20 miniature worlds in five cups**, from easy to expert:
+- **24 miniature worlds in six cups**, from easy to expert:
   - Crumb Cup: Breakfast Rush, Garden Grand Prix, Gingerbread Village, Toy Box Mayhem
   - Doodle Cup: Homework Hustle, Bath Time Overflow, Corner Pocket, Splash Lagoon Regatta
   - Turbo Cup: Workbench Rally, Quarterly Review, Mars Rover Run, Branch Line Bash
   - Chaos Cup: Pinball Wizard, Reaction Rally, Haunted Dollhouse, Watchmaker's Bench
   - Grand Duchy Cup (Luxembourg, easy to expert): Crémant Curves, Fouer Frenzy, Grund Prix, Old Town Jigsaw
-- **Eleven vehicle types:** sports cars, formula racers, rally cars, 4x4 trucks, Mars rovers, speedboats,
-  hovercraft, snowmobiles, monster trucks, luxury SUVs and fairground bumper cars, each with its own
-  engine sound.
+  - Drift Cup (drift cars, easy to expert): Butter Slide, Switchback Pass, Ten-Pin Drift, Neon Rooftop
+- **Twelve vehicle types:** sports cars, formula racers, rally cars, 4x4 trucks, Mars rovers, speedboats,
+  hovercraft, snowmobiles, monster trucks, luxury SUVs, fairground bumper cars and drift coupés, each with its
+  own engine sound.
+- **Drifting (Drift Cup):** at speed, tap the brake while steering to kick the tail out; hold the slide through
+  the corner to charge sparks (blue, then orange) and steer out of it for a boost.
 - **Music and sound:** an original piece for every world and the menu, with a layer added on the final lap, and
-  recorded background sounds for every world.
+  recorded background sounds for every world (the Drift Cup tables still use synthesised music and backgrounds).
 - **Modes:** head-to-head (the screen follows the leader; drop off its edge and you're out), lap races,
   cup championships with gold/silver/bronze trophies, and time trial against your own ghost car.
 - **Arcade touches:** adjustable catch-up, slipstream, crashes that shove and spin, turbo starts,

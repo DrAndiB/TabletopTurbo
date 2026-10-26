@@ -82,7 +82,9 @@ export default {
   arm), set `e.holdT = 0.25` from `tick` for every car queuing in front of it (humans too, e.g. within ~35 units
   before it while it is closed or about to close); the stuck timer pauses while `holdT > 0`.
 - World options: `gravity: 0.6` scales gravity (Mars); `wake: {color}` sets boat foam colour.
-- Vehicles: `sports | formula | rally | truck | rover | boat | hover | snowmobile | monster | suv`.
+- Vehicles: `sports | formula | rally | truck | rover | boat | hover | snowmobile | monster | suv | bumper | drifter`.
+  `drifter` (Drift Cup) slides on a brake tap while steering and boosts out of a held slide (`DRIFT` in physics.js):
+  give it a wider road (16–18) and long sweepers and S-bends to slide through.
   `hover` (hovercraft) ignores water/slow/sticky/rough penalties (slick still slides) and floats on a cushion;
   `monster` (monster truck) rides over colliders lower than 1.7 and climbs steps up to 1.8 (mark a collider
   `solid: true` to block it anyway); `snowmobile` steers on skis; `suv` is a heavy luxury SUV.
