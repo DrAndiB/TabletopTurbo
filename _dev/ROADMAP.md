@@ -1,5 +1,20 @@
 # Tabletop Turbo: roadmap and idea bank
 
+## Version 1.4 (built October 2026): the Drift Cup
+
+Moved up from the idea bank on 26 October 2026. Decided with Andreas: a drift boost (not a score mode), started by a
+brake tap while steering (no extra key), only on the four new tables, with a new drift car.
+
+- **Drift mechanics** (`DRIFT` in physics.js, CPU drifting in ai.js): a brake tap while steering kicks the tail out;
+  hold the slide to charge sparks (blue, then orange); steer out of it for a boost. Hints for new players.
+- **Drift car** (`drifter`): a wide rear-drive coupé with flared arches, a big wing and gold wheels.
+- **Four tables, easy to expert:** Butter Slide (a baking worktop), Switchback Pass (an alpine pass diorama with
+  three linked hairpins and a gorge), Ten-Pin Drift (real-size bowling lanes, gutters and pins, a rolling ball),
+  Neon Rooftop (a night diorama of a car park and roofs, with a jump across an alley).
+- Synthesised music and backgrounds for now; recorded versions can be rendered in the sound lab later.
+- Also in this round: portrait play and the Screen setting in the Android app, the camera leading the car when the
+  phone is upright, recorded music and backgrounds (engines back to the synthesised voices).
+
 ## Version 1.3 (built October 2026)
 
 All ten items below are in 1.3.
@@ -66,7 +81,7 @@ note on the plan agreed so far. Items 1–9 are fixes and polish; item 10 is new
 - **More Luxembourg tracks** (spares from the Grand Duchy Cup brainstorm): Kirchberg (red bridge, tram,
   Pfaffenthal lift), Vianden (castle, chairlift), Mullerthal (sandstone gorges), Esch-Belval blast furnaces (could
   double as an industrial drift track).
-- **Drift tracks.** Tracks built for sliding: slippery surfaces (polished floor, ice, a buttered tray), wide
-  sweeping corners, maybe drift scoring for angle and duration as its own mode.
+- **Drift score mode.** Points for slide angle, speed and duration, with combos, as its own mode on the Drift Cup
+  tables (the boost is in 1.4).
 - **Battle mode on arena tracks.** Enclosed arenas instead of laps (a dinner plate, a frying pan, a chessboard).
   Possible rules: push everyone off (sumo), tag or hot potato, capture the flag; possibly power-ups.
