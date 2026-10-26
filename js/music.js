@@ -385,6 +385,9 @@ const DR = {
   bandOrgan: { pat: { bd: 'x.......x.......', cy: 'o...............', s: '..o.o...o.o.o.o.' }, fill: { s: 'xoxoxoxoxoxoxoxo' } },
   folkrock: { pat: { k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', tb: '....x.......x...' }, fill: { s: '....x.......xxxx' } },
   chamber: { pat: { k: 'x.......x.......', rim: '....x.......x...', sh: 'x.o.x.o.x.o.x.o.' } },
+  // four on the floor with open hats on the offbeat (Eurobeat), and a half-time night groove (synthwave)
+  euro: { pat: { k: 'x...x...x...x...', s: '....x.......x...', oh: '..x...x...x...x.', h: 'x.x.x.x.x.x.x.x.' }, fill: { s: '....x.......xxxx' } },
+  halftime: { pat: { k: 'x.....x...x.....', s: '........x.......', h: 'x.x.x.x.x.x.x.x.', oh: '..............x.' }, fill: { s: '........x...x.xx' } },
 };
 
 export const PIECES = {
@@ -665,6 +668,60 @@ export const PIECES = {
       { id: 'bass', play: 'bass', inst: 'pizz', ...B.root4, center: 43, gain: 0.697 },
       { id: 'drums', play: 'drums', ...DR.chamber, gain: 0.168 },
       { id: 'glock', play: 'double', of: 'lead', inst: 'glock', oct: 12, gain: 0.194, layer: 'final', pan: 0.3 },
+    ],
+  },
+  // ---------------- Drift Cup
+  // kitchen funk: clavinet, slap bass and a cheeky lead; horns on the final lap
+  butter: {
+    level: 1.146, bpm: 112, key: 'E', scale: 'dorian', form: 'A B A B',
+    sections: { A: ['Em7', 'A7', 'Em7', 'A7', 'Em7', 'A7', 'G A7', 'Em7'], B: ['Cmaj7', 'Bm7', 'Am7', 'D7', 'Cmaj7', 'Bm7', 'Am7', 'B7'] },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'popLead', rh: 'funk', range: [62, 79], seed: 101, send: 0.2, gain: 1.0 },
+      { id: 'clav', play: 'comp', inst: 'clav', r: '..x...x.x.x...x.', voice: 'triad', center: 60, gain: 0.35, pan: -0.3 },
+      { id: 'bass', play: 'bass', inst: 'slapBass', ...B.funk, center: 40, gain: 0.42 },
+      { id: 'drums', play: 'drums', ...DR.funk, gain: 0.5 },
+      { id: 'horns', play: 'comp', inst: 'brass', r: 'x.....x.........', voice: 'triad', center: 64, gain: 0.55, pan: 0.25, layer: 'final' },
+    ],
+  },
+  // a fast, driving minor-key synth anthem for the hairpins (Eurobeat-style), strings on the final lap
+  pass: {
+    level: 0.965, bpm: 150, key: 'B', scale: 'minor', form: 'A B A C',
+    sections: {
+      A: ['Bm', 'G', 'A', 'F#m', 'Bm', 'G', 'A', 'F#'],
+      B: ['G', 'A', 'Bm', 'Bm', 'G', 'A', 'F#', 'F#'],
+      C: ['Em', 'F#m', 'G', 'A', 'Em', 'F#m', 'G A', 'F#'],
+    },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'synLead', rh: 'rock', range: [64, 81], seed: 107, send: 0.22, gain: 1.0 },
+      { id: 'arp', play: 'comp', inst: 'synpluck', r: 'x.x.x.x.x.x.x.x.', arp: 'up', span: 2, center: 62, gain: 0.5, pan: -0.25 },
+      { id: 'bass', play: 'bass', inst: 'popBass', ...B.chip8, center: 38, gain: 0.4 },
+      { id: 'drums', play: 'drums', ...DR.euro, gain: 0.5 },
+      { id: 'strings', play: 'comp', inst: 'strings', r: 'x...............', voice: 'full', center: 64, gain: 0.45, send: 0.3, layer: 'final' },
+    ],
+  },
+  // twangy surf rock for the lanes, an organ on the final lap
+  bowling: {
+    level: 1.214, bpm: 152, key: 'E', scale: 'minor', form: 'A B A B',
+    sections: { A: ['Em', 'Em', 'G', 'A', 'Em', 'Em', 'C B7', 'Em'], B: ['C', 'D', 'G', 'Em', 'C', 'D', 'B7', 'B7'] },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'twang', rh: 'rock', range: [59, 76], seed: 109, send: 0.35, gain: 1.0 },
+      { id: 'chug', play: 'comp', inst: 'chug', r: 'x.x.x.x.x.x.x.x.', voice: 'power', center: 52, gain: 0.3, pan: -0.3 },
+      { id: 'bass', play: 'bass', inst: 'rockBass', ...B.rock8, center: 40, gain: 0.32 },
+      { id: 'drums', play: 'drums', ...DR.rock, gain: 0.45 },
+      { id: 'organ', play: 'comp', inst: 'organ', r: 'x.......x.......', voice: 'triad', center: 64, gain: 0.5, pan: 0.25, layer: 'final' },
+    ],
+  },
+  // night synthwave: a soft lead over pads and a pulsing arpeggio, half-time drums
+  rooftop: {
+    level: 0.757, bpm: 104, key: 'F#', scale: 'minor', form: 'A B A B',
+    sections: { A: ['F#m', 'D', 'A', 'E', 'F#m', 'D', 'A', 'C#'], B: ['Bm', 'D', 'F#m', 'E', 'Bm', 'D', 'E', 'C#'] },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'softLead', rh: 'lofi', range: [61, 78], seed: 113, send: 0.35, gain: 1.0 },
+      { id: 'pad', play: 'comp', inst: 'pad', r: 'x...............', voice: 'full', center: 60, gain: 0.6, send: 0.4 },
+      { id: 'arp', play: 'comp', inst: 'synpluck', r: 'xxxxxxxxxxxxxxxx', arp: 'updown', span: 2, center: 66, gain: 0.32, pan: 0.25 },
+      { id: 'bass', play: 'bass', inst: 'subBass', ...B.chip8, center: 37, gain: 0.5 },
+      { id: 'drums', play: 'drums', ...DR.halftime, gain: 0.45 },
+      { id: 'brass', play: 'comp', inst: 'brass', r: 'x.......x.......', voice: 'triad', center: 66, gain: 0.45, pan: -0.2, layer: 'final' },
     ],
   },
 };

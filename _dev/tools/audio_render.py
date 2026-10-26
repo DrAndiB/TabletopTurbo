@@ -16,9 +16,9 @@ from playwright.async_api import async_playwright
 BASE = os.environ.get('TT_BASE', 'http://localhost:8123/')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out', 'audio')
 SR = 44100
-VEHICLES = ['sports', 'formula', 'rally', 'truck', 'monster', 'suv', 'rover', 'boat', 'hover', 'snowmobile', 'bumper']
+VEHICLES = ['sports', 'formula', 'rally', 'truck', 'monster', 'suv', 'rover', 'boat', 'hover', 'snowmobile', 'bumper', 'drifter']
 WORLDS = ['breakfast', 'garden', 'gingerbread', 'toybox', 'desk', 'bathroom', 'pool', 'watertable', 'workshop', 'boardroom',
-          'mars', 'railway', 'pinball', 'chemlab', 'dollhouse', 'watchmaker', 'moselle', 'fouer', 'grund', 'oldtown']
+          'mars', 'railway', 'pinball', 'chemlab', 'dollhouse', 'watchmaker', 'moselle', 'fouer', 'grund', 'oldtown', 'butter', 'pass', 'bowling', 'rooftop']
 
 JS = r"""
 async ({ kind, id, sec, sr, music, fx }) => {

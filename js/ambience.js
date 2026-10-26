@@ -296,6 +296,12 @@ const AMBIENT = {
   fouer: { bed: [{ n: 'pink', f: ['bandpass', 650, 0.7], g: 0.06, am: [0.33, 0.5] }, { n: 'pink', f: ['bandpass', 1700, 1.2], g: 0.02, am: [0.19, 0.6] }], ev: [['ridebell', 10, 22, 4, 0.025], ['cheer', 14, 30, 8, 0.03], ['ding', 6, 14, 3, 0.012]] },
   grund: { bed: [{ n: 'brown', f: ['lowpass', 550, 0.7], g: 0.06, am: [0.4, 0.4] }, { n: 'white', f: ['bandpass', 1300, 1.5], g: 0.01, am: [0.7, 0.6] }], ev: [['bubbles', 2, 6, 1, 0.015], ['churchbells', 45, 70, 15, 0.03], ['birds', 6, 14, 3, 0.012]] },
   oldtown: { bed: [{ n: 'pink', f: ['bandpass', 800, 0.8], g: 0.045, am: [0.29, 0.5] }, { n: 'pink', f: ['bandpass', 2100, 1.4], g: 0.012, am: [0.41, 0.6] }], ev: [['coo', 6, 14, 2, 0.03], ['clink', 10, 22, 5, 0.012], ['peep', 15, 30, 8, 0.008]] },
+  // Drift Cup: a kitchen (fridge hum, clinks, the oven timer), a windy mountain pass with a stream and far-off bells,
+  // a bowling alley (murmur, pins, the ball return, cheers), a city at night in light rain (traffic, a radio)
+  butter: { bed: [{ n: 'brown', f: ['lowpass', 400, 0.7], g: 0.04 }, { hum: [50, 100], g: 0.004 }], ev: [['clink', 5, 13, 3, 0.03], ['ding', 30, 60, 15, 0.012], ['birds', 6, 14, 3, 0.012]] },
+  pass: { bed: [{ n: 'white', f: ['bandpass', 600, 0.7], g: 0.04, am: [0.11, 0.7], sweep: [0.06, 300] }, { n: 'brown', f: ['lowpass', 500, 0.7], g: 0.03, am: [0.37, 0.4] }], ev: [['birds', 5, 12, 2, 0.014], ['bubbles', 3, 7, 1, 0.01], ['churchbells', 50, 80, 20, 0.02]] },
+  bowling: { bed: [{ n: 'pink', f: ['bandpass', 600, 0.8], g: 0.05, am: [0.31, 0.5] }, { hum: [60, 120], g: 0.004 }], ev: [['clacks', 4, 10, 2, 0.04], ['ding', 12, 25, 6, 0.012], ['cheer', 20, 40, 10, 0.02]] },
+  rooftop: { bed: [{ n: 'brown', f: ['lowpass', 300, 0.7], g: 0.05, am: [0.17, 0.4] }, { n: 'white', f: ['bandpass', 3000, 0.6], g: 0.012, am: [0.9, 0.3] }], ev: [['radio', 14, 28, 6, 0.012], ['beeps', 18, 35, 9, 0.006]] },
 };
 export const ambientFor = (id) => AMBIENT[id] || null;
 
