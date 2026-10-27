@@ -551,14 +551,14 @@ export class Sound {
   // soft rush of air when a car tucks into a slipstream
   whoosh(pan = 0, vol = 1) { this.sweep(0.75, { from: 380, to: 2400, q: 0.9, vol: 0.09 * vol, pan, attack: 0.25 }); }
   // turbo start: a rising "fwoom" with a little engine yelp
-  turbo(pan = 0) {
-    this.sweep(0.9, { from: 260, to: 3200, q: 0.7, vol: 0.16, pan, attack: 0.06 });
-    this.tone(140, 0.55, { type: 'sawtooth', vol: 0.07, slideTo: 420, attack: 0.02 });
+  turbo(pan = 0, vol = 1) {
+    this.sweep(0.9, { from: 260, to: 3200, q: 0.7, vol: 0.16 * vol, pan, attack: 0.06 });
+    this.tone(140, 0.55, { type: 'sawtooth', vol: 0.07 * vol, slideTo: 420, attack: 0.02 });
   }
   // drift charge: a bright crackle and a ping (higher for the orange sparks)
-  driftLevel(level, pan = 0) {
-    this.noiseBurst(0.12, { freq: 5200, type: 'highpass', vol: 0.07, pan, buf: 'crackle' });
-    this.tone(level > 1 ? 1568 : 1175, 0.16, { type: 'triangle', vol: 0.05, slideTo: level > 1 ? 1760 : 1319, pan });
+  driftLevel(level, pan = 0, vol = 1) {
+    this.noiseBurst(0.12, { freq: 5200, type: 'highpass', vol: 0.07 * vol, pan, buf: 'crackle' });
+    this.tone(level > 1 ? 1568 : 1175, 0.16, { type: 'triangle', vol: 0.05 * vol, slideTo: level > 1 ? 1760 : 1319, pan });
   }
   // bogged-down launch: a sputter and a short tyre squeal
   bog(pan = 0) {

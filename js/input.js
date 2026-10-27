@@ -106,7 +106,7 @@ export class Input {
   // `launch` is the turbo-start press for auto-gas drivers (any touch, or either Easy-keys steering key);
   // the game only looks at it during the countdown.
   read(cfg) {
-    const out = { throttle: 0, brake: 0, steer: 0, launch: 0 };
+    const out = { throttle: 0, brake: 0, steer: 0, launch: 0, both: 0 };
     if (cfg.type === 'keys' || cfg.type === 'simple') {
       const b = this.bindings[cfg.slot];
       const L = this.down.has(b.left), R = this.down.has(b.right);
@@ -115,8 +115,12 @@ export class Input {
         out.throttle = U ? 1 : 0; out.brake = D ? 1 : 0;
         out.steer = (R ? 1 : 0) - (L ? 1 : 0);
       } else {
-        // two-key mode: always accelerating, both keys together = brake
-        if (L && R) { out.brake = 1; }
+        // two-key mode: always accelerating, both keys together = brake (`both`: the key held first, which drift
+        // cars use: holding one key and tapping the other kicks a slide that way)
+        if (L && R) {
+          out.brake = 1;
+          for (const k of this.down) { if (k === b.left) { out.both = -1; break; } if (k === b.right) { out.both = 1; break; } }
+        }
         else { out.throttle = 1; out.steer = (R ? 1 : 0) - (L ? 1 : 0); }
         if (D) { out.brake = 1; out.throttle = 0; }
         out.launch = L || R ? 1 : 0;
@@ -137,8 +141,7 @@ export class Input {
       }
     } else if (cfg.type === 'touch') {
       const t = this.touch;
-      if (t.left && t.right) out.brake = 1;
-      else {
+      if (t.left && t.right) { out.brake = 1; out.both = (t.leftAt || 0) <= (t.rightAt || 0) ? -1 : 1; } else {
         // a brake button brakes (and reverses from a standstill) while the other thumb keeps steering
         if (t.brake) out.brake = 1; else out.throttle = 1;
         out.steer = (t.right ? 1 : 0) - (t.left ? 1 : 0);

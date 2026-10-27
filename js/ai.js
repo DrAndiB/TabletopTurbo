@@ -109,7 +109,7 @@ export class AIDriver {
       return;
     }
 
-    if (car.spec.drift && this.driftDrive(dt, speed, s, tgt)) return;
+    if (car.spec.drift && this.driftDrive(dt, speed, s, tgt, opts)) return;
 
     // occasional small mistakes
     this.mistakeT -= dt;
@@ -150,7 +150,7 @@ export class AIDriver {
   // Drift cars: slide through the bigger corners (a brake tap while steering), steer the slide so its path
   // reaches the racing line, steer out when the corner is over (that fires the boost). Returns true when it
   // drove the car this step.
-  driftDrive(dt, speed, s, tgt) {
+  driftDrive(dt, speed, s, tgt, opts = {}) {
     const car = this.car, tr = this.track, sp = car.spec, d = car.drift;
     this.driftCool = Math.max(0, (this.driftCool || 0) - dt);
     car.noDriftTap = true; // braking for a corner is not a drift unless decided below
@@ -171,7 +171,9 @@ export class AIDriver {
       if (d.t > 0.35 && ahead < 0.1 && (align < 0.2 || q < 0.1)) car.steer = -d.dir; // steer out (boost)
       else if (d.t > 0.2 && (q < -0.1 || inside)) car.steer = -d.dir;
       else car.steer = d.dir * clamp((q - DRIFT.turn[0]) / DRIFT.turn[1], -0.28, 1);
-      car.throttle = 1;
+      // pace as on grip: the catch-up ease-off and the cool-down lap ask for less
+      const cap = sp.maxSpeed * this.skill.speed * (opts.speedMul ?? 1) * Math.min(1, opts.paceMul ?? 1);
+      car.throttle = v > cap ? 0.2 : 1;
       car.brake = q > DRIFT.turn[0] + DRIFT.turn[1] + 0.2 && v > 24 ? 0.5 : 0; // too fast for the corner: scrub speed
       this.stuckT = 0;
       return true;

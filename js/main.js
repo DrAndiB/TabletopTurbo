@@ -672,7 +672,7 @@ input.on((type, e) => {
 // touch zones
 for (const side of ['left', 'right']) {
   const z = $('#touch-' + side);
-  const on = (v) => (e) => { e.preventDefault(); input.touch[side] = v; z.classList.toggle('down', v); };
+  const on = (v) => (e) => { e.preventDefault(); if (v && !input.touch[side]) input.touch[side + 'At'] = performance.now(); input.touch[side] = v; z.classList.toggle('down', v); };
   z.addEventListener('pointerdown', on(true));
   z.addEventListener('pointerup', on(false));
   z.addEventListener('pointercancel', on(false));

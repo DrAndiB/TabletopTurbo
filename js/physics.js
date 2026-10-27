@@ -81,6 +81,8 @@ export const DRIFT = {
   boost: [0.55, 1.05],   // turbo seconds at each level when the slide ends
 };
 
+const DM = [0, 0]; // driftMove's result (reused: no allocation per physics step)
+
 // Knock a car loose after a velocity change (dvx, dvz). Returns the stun applied (seconds).
 export function stunCar(car, dvx, dvz, scale = 1) {
   const c = Math.cos(car.angle), s = Math.sin(car.angle);
@@ -412,7 +414,9 @@ export class PhysicsWorld {
     }
     d.t += dt;
     const k = car.steer * d.dir, speed = Math.hypot(car.vx, car.vz);
-    if (car.stun > D.stunEnd || speed < D.minEnd) { this.endDrift(car, false); return; }
+    // (also when something knocked the car the wrong way, e.g. the side of a ramp: the body would whip round)
+    const back = Math.abs(wrapAngle(Math.atan2(car.vz, car.vx) - car.angle)) > 1.2;
+    if (car.stun > D.stunEnd || speed < D.minEnd || back) { this.endDrift(car, false); return; }
     d.outT = k < D.out ? d.outT + dt : 0;
     d.idleT = Math.abs(car.steer) < 0.15 ? d.idleT + dt : 0;
     if (d.outT >= D.release || d.idleT >= D.fizzle) { this.endDrift(car, true); return; }
@@ -457,7 +461,8 @@ export class PhysicsWorld {
     const vx = Math.cos(th) * v, vz = Math.sin(th) * v;
     const vLat = -vx * s + vz * c;
     car.slip = Math.abs(vLat);
-    return [vx * c + vz * s, vLat];
+    DM[0] = vx * c + vz * s; DM[1] = vLat;
+    return DM;
   }
 
   stepCar(car, dt, ctx) {
@@ -508,6 +513,7 @@ export class PhysicsWorld {
     const accMul = ctx?.accelMul ?? 1;
 
     if (!car.airborne && sp.drift) this.driftControl(car, vLong, dt, stunK);
+    else if (sp.drift) car.brakePrev = car.brake; // (a brake pressed in the air is no tap on landing)
     if (!car.airborne && car.drift) {
       [vLong, vLat] = this.driftMove(car, top, accMul, S, dt);
     } else if (!car.airborne) {

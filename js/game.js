@@ -2,7 +2,7 @@
 // and the arcade layer (catch-up, slipstream, turbo starts, crash juice).
 import * as THREE from '../vendor/three.bundle.js';
 import { Track } from './track.js';
-import { PhysicsWorld, Car, VEHICLES } from './physics.js';
+import { PhysicsWorld, Car, VEHICLES, DRIFT } from './physics.js';
 import { buildCar, syncCar, disposeCar } from './cars.js';
 import { AIDriver } from './ai.js';
 import { makeKit } from './kit.js';
@@ -121,6 +121,7 @@ export class Game {
   // drivers: [{type:'keys'|'simple'|'pad'|'touch'|'cpu', slot, pad, color}]
   // mode: 'h2h' | 'race' | 'tt' (time trial, one driver)
   startMatch({ drivers, mode = 'h2h', pointsToWin = 5, laps = 3, skill = 'normal', catchup = 'mild' }) {
+    this.driftHintAt = 0;
     for (const c of this.cars) { this.R.scene.remove(c.model.root); this.R.scene.remove(c.model.shadow); disposeCar(c.model); }
     this.launchHintShown = false;
     this.mode = mode;
@@ -295,6 +296,10 @@ export class Game {
       } else {
         const ctl = this.input.read(e.driver);
         c.throttle = ctl.throttle; c.brake = ctl.brake; c.steer = ctl.steer;
+        // Easy keys and touch zones: both held is the brake. A drift car keeps steering with the key held first (a tap
+        // of the other key kicks the slide that way); in a slide, rolling onto the other key steers out of it
+        // (both still held while the tap is fresh is still the tap: keep steering into the slide)
+        if (ctl.both && c.spec.drift) { if (c.drift) { c.brake = 0; c.steer = c.drift.t < DRIFT.tap ? ctl.both : -ctl.both; } else c.steer = ctl.both; }
         this.trackGas(e, autoGas(e.driver) ? ctl.launch : ctl.throttle);
       }
       if (!racing) {
@@ -303,15 +308,16 @@ export class Game {
         if (e.ai) { e.ai.stuckT = 0; e.ai.reverseT = 0; }
       }
     }
-    if (this.driftHintAt && this.time >= this.driftHintAt && this.state === 'race') {
+    if (this.driftHintAt && this.time >= this.driftHintAt && this.state === 'race' && this.cars[0]?.car.spec.drift) {
       this.driftHintAt = 0; this.driftHintShown = true;
-      const touch = this.cars.some((e) => e.human && e.driver.type === 'touch');
-      this.hud.flash(touch ? 'Tap BRAKE while steering to drift!' : 'Tap the brake while steering to drift!', '#fff4dc');
+      const has = (t) => this.cars.some((e) => e.human && e.driver.type === t);
+      const tip = has('touch') ? 'Tap BRAKE while steering to drift!' : has('simple') ? 'Hold one arrow, tap the other to drift!' : 'Tap the brake while steering to drift!';
+      this.hud.flash(tip, '#fff4dc');
     }
     for (const e of this.cars) {
       if (e.out) continue;
       const c = e.car;
-      if (!racing && c.state === 'drive') { c.vx = c.vz = c.w = 0; continue; } // held on the grid
+      if (!racing && c.state === 'drive') { c.vx = c.vz = c.w = 0; c.drift = null; continue; } // held on the grid
       // humans get the catch-up bonus as more top speed and pull; CPU ease-off lives in the AI's pace
       const cu = e.human ? e.cu : Math.max(1, e.cu);
       const top = this.boostTop(c) * cu;
@@ -651,16 +657,18 @@ export class Game {
       case 'fall': if (ev.kind === 'hole') S.plop(); else S.fall(); break;
       case 'pocket': S.plop(); break;
       case 'driftLevel': {
-        S.driftLevel(ev.level, pan);
+        if (this.state === 'attract') break;
+        const hum = this.cars.find((x) => x.car === ev.car)?.human;
+        S.driftLevel(ev.level, pan, hum ? 1 : 0.35);
         const c = ev.car, cs = Math.cos(c.angle), sn = Math.sin(c.angle);
         this.particles.emit(c.x - cs * 2, c.y + 0.5, c.z - sn * 2, { color: DRIFT_SPARK[ev.level], n: 10, size: 0.55, life: 0.3, spread: 14, up: 6, grav: 30, alpha: 1 });
-        const e = this.cars.find((x) => x.car === c);
-        if (e && e.human && !this.driftOutHint) { this.driftOutHint = true; this.hud.flash('Steer out of the slide to boost!', '#fff4dc'); }
+        if (hum && !this.driftOutHint) { this.driftOutHint = true; this.hud.flash('Steer out of the slide to boost!', '#fff4dc'); }
         break;
       }
       case 'driftBoost': {
-        S.turbo(pan);
+        if (this.state === 'attract') break;
         const e = this.cars.find((x) => x.car === ev.car);
+        S.turbo(pan, e && e.human ? 1 : 0.35);
         if (e && e.human) this.rumble(e, 0.35 + 0.25 * ev.level, 120 + 80 * ev.level);
         break;
       }
@@ -1019,7 +1027,7 @@ export class Game {
         for (let n = Math.floor(dt * 110 + Math.random()); n > 0; n--) {
           const side = Math.random() < 0.5 ? -1 : 1, wz = c.spec.wid * 0.47;
           const bx = c.x - cs * c.spec.axle * 1.2 - sn * wz * side, bz = c.z - sn * c.spec.axle * 1.2 + cs * wz * side;
-          this.particles.emit(bx, 0.35, bz, { color: DRIFT_SPARK[c.drift.level], n: 2, size: 0.75, life: 0.28, spread: 10, up: 5, grav: 35, alpha: 1, vx: -c.vx * 0.2, vz: -c.vz * 0.2 });
+          this.particles.emit(bx, c.y + 0.35, bz, { color: DRIFT_SPARK[c.drift.level], n: 2, size: 0.75, life: 0.28, spread: 10, up: 5, grav: 35, alpha: 1, vx: -c.vx * 0.2, vz: -c.vz * 0.2 });
         }
       }
       // turbo start: flames and puffs from the exhaust

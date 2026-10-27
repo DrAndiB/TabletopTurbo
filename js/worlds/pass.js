@@ -1401,13 +1401,16 @@ export default {
         const near = roadD(x, z) < 14 && kind !== 'pine';
         if (near && cramped(x, z, 0.6 + 5.0)) return false;
         const y = gy(x, z) - 0.15;
-        const t = { x, y, z, ry: r() * TAU, rx: r.range(-0.04, 0.04), rz: r.range(-0.04, 0.04), color: col };
+        const t = { x, y, z, ry: r() * TAU, rx: r.range(-0.04, 0.04), rz: r.range(-0.04, 0.04), color: col, near };
         if (kind === 'spruce') { t.sx = t.sz = h * r.range(0.9, 1.15); t.sy = h; spruces.push(t); } else if (kind === 'larch') { t.sx = t.sz = h * r.range(0.95, 1.2); t.sy = h; larches.push(t); } else { t.sx = t.sz = h; t.sy = h * 0.7; pines.push(t); }
         if (near) K.circle(x, z, 0.6, y + h);
         if (kind !== 'pine') AO(x, z, h * 0.16, h * 0.16, 0.32, 0, y + 0.15); else AO(x, z, h * 0.45, h * 0.45, 0.25, 0, y + 0.15);
         return true;
       };
-      const QN = lowQ ? 0.75 : 1;
+      // the same trees (and colliders) at every quality, so the course never changes with the graphics setting:
+      // Low only draws fewer of the ones away from the road (below)
+      const QN = 1;
+      const thin = (list) => (lowQ ? list.filter((t, i) => t.near || i % 4 !== 3) : list);
       // forests on the lower slopes of the massif, the west slopes and the infield hills (clumps from noise)
       for (let i = 0; i < 26000 && spruces.length + larches.length < 760 * QN; i++) {
         const x = r.range(TX0 + 3, TX1 - 3), z = r.range(TZ0 + 3, TZ1 - 3);
@@ -1438,9 +1441,9 @@ export default {
         if (hides(x, z, h0 + 2.5, 1)) continue;
         addTree('pine', x, z, r.range(2.0, 3.6), r.pick([0x2a4a2a, 0x34522e, 0x3e5a34, 0x2e4426]));
       }
-      chunked(spruceGeo, treeMat, spruces, { colors: true }, 130);
-      chunked(larchGeo, treeMat, larches, { colors: true }, 140);
-      chunked(pineGeo, treeMat, pines, { colors: true, cast: false }, 140);
+      chunked(spruceGeo, treeMat, thin(spruces), { colors: true }, 130);
+      chunked(larchGeo, treeMat, thin(larches), { colors: true }, 140);
+      chunked(pineGeo, treeMat, thin(pines), { colors: true, cast: false }, 140);
       // boulders: verges, meadows, the foot of the cliffs, the gorge bed
       const bGeo = (() => { // an angular, faceted block of limestone
         let g = new T.IcosahedronGeometry(1, 1); g.deleteAttribute('uv'); g = BU.mergeVertices(g);
@@ -1481,15 +1484,14 @@ export default {
       chunked(bGeo0, bMat, boulders.filter((b) => b.s != null && b.s < 0.95), { colors: true, cast: false }, 140);
       // scree fans at the foot of the cliffs, pebbles round the lake
       const scree = A.pebbles.slice();
-      const QS = lowQ ? 0.5 : 1;
-      for (let i = 0; i < 40000 && scree.length < 3200 * QS; i++) {
+      for (let i = 0; i < 40000 && scree.length < 3200; i++) {
         const x = r.range(TX0 + 1, TX1 - 1), z = r.range(TZ0 + 1, TZ1 - 1);
         const h0 = gy(x, z), sl = slopeAt(x, z);
         if (roadD(x, z) < 1.6 || inGorge(x, z, 0.5) || sl > 1.5 || isBlocked(x, z)) continue;
         if (!(rockAt(x, z) > 0.25 && rockAt(x, z) < 0.95) && r() > 0.03) continue;
         scree.push({ x, y: h0 + 0.05, z, s: r.range(0.12, 0.42), ry: r() * TAU, rx: r() * 2, color: r.pick([0xc0beb6, 0xa8a69e, 0x8e8c86, 0xd2d0c8]) });
       }
-      chunked(new T.OctahedronGeometry(1, 0).scale(1, 0.6, 0.85), K.std({ color: 0xffffff, roughness: 0.9 }), scree, { colors: true, cast: false }, 140);
+      chunked(new T.OctahedronGeometry(1, 0).scale(1, 0.6, 0.85), K.std({ color: 0xffffff, roughness: 0.9 }), lowQ ? scree.filter((p, i) => i % 2 === 0) : scree, { colors: true, cast: false }, 140);
       // alpine grass tufts and flowers (gentian blue, edelweiss white, yellow, pink)
       const Q = (K.quality && K.quality.grass) || 0.7;
       const pos = [], nrm = [], col = [], idx = [];

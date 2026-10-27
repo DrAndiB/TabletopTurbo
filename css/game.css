@@ -292,7 +292,7 @@ body:not([data-screen="none"]) #touch { display: none; }
 .chili.off { opacity: .22; filter: grayscale(1); }
 
 /* championship: cup selector */
-.cup-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+.cup-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; } /* six cups + the Grand Tour: 4 + 3 */
 .cup-list[hidden] { display: none; }
 .cup-card { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 11px 4px 7px; border: var(--line) solid var(--ink); border-radius: 12px; background: var(--paper); box-shadow: 0 3px 0 var(--ink); text-align: center; }
 .cup-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 6px; background: var(--cc); }
