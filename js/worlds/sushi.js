@@ -32,7 +32,7 @@ const BV = 11; // belt speed on its centreline (units/s)
 const FLOOR = -88, STOOL_Y = -28;
 const BOUNDS = { minX: -176, maxX: 148, minZ: -114, maxZ: 108 };
 // plates: radius (visual / collider), height, sideways offset on the slats
-const PL = { r: 6.6, cr: 6.1, h: 2.4, off: 5.0 };
+const PL = { r: 6.6, cr: 6.1, h: 2.4, off: 5.0, offIn: 6.6 }; // offIn: hugging the island rail along the WITH stretch
 const PL_GAPS = [1.25, 0.8, 1.05, 0.7, 1.35, 0.9, 1.1, 0.75, 1.3, 0.85, 1.2, 0.8, 1.0];
 const PL_SIDE = [1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1, -1];
 const PL_COL = [0xd8342c, 0x2f6fd0, 0xf2c230, 0x2a2a2e, 0xe8edf2, 0x3fa05a, 0xe66aa0, 0xd8342c, 0x2f6fd0, 0xf2c230, 0xe8edf2, 0xf08a24, 0x8a5ad0];
@@ -102,14 +102,21 @@ function plates() {
   });
   return PLATES;
 }
-// lateral offset on the slats (+ = right of the belt's travel = the island side): own side on the straights,
-// pushed to the outside of the bends; but from the end of the west straight, round the NW bend and along the north
-// straight past the exit off the WITH stretch they keep to the island side (u = 0 is the end of the NW bend), so
-// cars come round that bend on the outside and the way off to the chef's side stays open
+// lateral offset on the slats (+ = right of the belt's travel = the island side). Arc length u runs from the end of
+// the NW bend (0) east along the north straight (X1 at ~117), round the NE bend (156-189), down the east straight,
+// round the SE bend (233-267), west along the south straight and round the west end. The plates keep their own side
+// where the road crosses at X1; round the NE bend and down the top of the east straight they keep to the island
+// side (the AGAINST stretch leaves the belt on the outside there), drift across to the outside lower down (the one
+// weave on the way up), stay outside round the SE bend and past the island road's merge (its side clear), then cross
+// back: all along the WITH stretch (south straight, west end, to past the exit onto the chef's side) they hug the
+// island rail, so cars merge, overtake and leave on the outside and the inside of the bends is the gamble.
 function plateLat(p, cn, u) {
-  const v = u > BG.L / 2 ? u - BG.L : u;
-  const inner = ss(-56, -40, v) * (1 - ss(74, 90, v));
-  return lerp(lerp(p.side * PL.off, -PL.off, cn), PL.off, inner);
+  const L = BG.L;
+  let lat = lerp(p.side * PL.off, -PL.off, cn);
+  lat = lerp(lat, PL.off, ss(124, 140, u) * (1 - ss(205, 226, u)));
+  lat = lerp(lat, -PL.off, ss(205, 226, u) * (1 - ss(300, 322, u)));
+  const w = u > L / 2 ? ss(300, 322, u) : 1 - ss(74, 90, u);
+  return lerp(lat, PL.offIn, w);
 }
 const _bf = { x: 0, z: 0, tx: 1, tz: 0, k: 0, cn: 0, i: 0 };
 function platePose(p, t, o) {
@@ -696,8 +703,10 @@ export default {
       }
       { const q = track.at(A.sX1); A.x1Map = q.nx * G.tx[A.bn.i] + q.nz * G.tz[A.bn.i]; } // track lateral -> belt arc length
       { // the island road meets the AGAINST stretch: where it first reaches the slats
+        // (either edge of the road: it meets the belt's edge at a slant)
         let k = tr0(track, A.sX1 + 30);
-        for (; k < N; k++) { beltNear(track.x[k], track.z[k], -1, A.bn); if (Math.abs(A.bn.lat) < BHW + 1) break; }
+        const hit = (i) => { for (const o of [-RW / 2, 0, RW / 2]) { beltNear(track.x[i] - track.tz[i] * o, track.z[i] + track.tx[i] * o, -1, A.bn); if (Math.abs(A.bn.lat) < BHW + 1.5) return true; } return false; };
+        for (; k < N; k++) if (hit(k)) break;
         A.sAM = k * track.ds; A.uAM = A.bn.i * G.ds;
       }
       A.sEX = sAt(EX.x, -95);
@@ -1131,6 +1140,15 @@ export default {
         }
       }
       cs.f = f; cs.x = c.x; cs.z = c.z;
+      // carried away along a part of the belt the road doesn't use: back onto the road after a moment
+      if (st === 'race' && f > 0.5 && Math.abs(e.lateral) > RW / 2 + 5) cs.away = (cs.away || 0) + dt;
+      else cs.away = Math.max(0, (cs.away || 0) - 2 * dt);
+      if (cs.away > 1.0) {
+        cs.away = 0;
+        game.particles.emit(c.x, c.y + 1, c.z, { color: 0xffffff, n: 14, size: 2.2, life: 0.6, spread: 8, up: 4, grav: 0, grow: 2.5, alpha: 0.7 });
+        game.respawn(e);
+        cs.f = 0; cs.x = c.x; cs.z = c.z; cs.hint = -1;
+      }
     }
     if (!moving && st !== 'countdown') return;
     // ---- CPU drivers
@@ -1151,18 +1169,18 @@ export default {
         const lane = A.uX1 + e.lateral * A.x1Map;
         const dEnter = dX - BHW - 2.4 - 2.6;
         const tEnter = timeTo(dEnter, Math.max(0, c.fwdSpeed));
-        if (plateNear(lane, time + tEnter)) { e.holdT = 0.25; if (e.ai) guardStop(e, c, dEnter - 1.2); }
+        if ((!cs || cs.f < 0.05) && plateNear(lane, time + tEnter)) { e.holdT = 0.25; if (e.ai) guardStop(e, c, dEnter - 1.2); }
       }
       // the merge onto the AGAINST stretch: plates come round the corner head-on, wait for a gap
       const dM = wrap(A.sAM - e.trackS, Lr);
       if (dM < 50 && dM > 0.5) {
         const dEnter = dM - 3.5;
         const tEnter = timeTo(dEnter, Math.max(0, c.fwdSpeed));
-        if (plateNear(A.uAM, time + tEnter, 2.2)) { e.holdT = 0.25; if (e.ai) guardStop(e, c, dEnter - 1); }
+        if ((!cs || cs.f < 0.05) && plateNear(A.uAM, time + tEnter, 2.2)) { e.holdT = 0.25; if (e.ai) guardStop(e, c, dEnter - 1.5); }
       }
       if (!e.ai) continue;
       // pinned nose-first against a plate (too slow to steer away while the slats carry both): turn off it
-      if (cs && cs.f > 0.5 && Math.abs(c.fwdSpeed) < 4) {
+      if (cs && cs.f > 0.5 && Math.abs(c.fwdSpeed) < 6) {
         const hx = Math.cos(c.angle), hz = Math.sin(c.angle);
         for (let i = 0; i < PLATES.length; i++) {
           const col = A.plateCols[i], dx = col.x - c.x, dz = col.z - c.z, d = Math.hypot(dx, dz);
