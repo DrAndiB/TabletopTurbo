@@ -14,7 +14,7 @@ up to four players on one keyboard, plus gamepads and computer drivers.
   - Drift Cup (drift cars, easy to expert): Butter Slide, Switchback Pass, Ten-Pin Drift, Neon Rooftop
 - **Twelve vehicle types:** sports cars, formula racers, rally cars, 4x4 trucks, Mars rovers, speedboats,
   hovercraft, snowmobiles, monster trucks, luxury SUVs, fairground bumper cars and drift coupés, each with its
-  own engine sound.
+  own recorded engine sound (the drift coupé borrows the sports car's).
 - **Drifting (Drift Cup):** at speed, tap the brake while steering to kick the tail out; hold the slide through
   the corner to charge sparks (blue, then orange) and steer out of it for a boost.
 - **Music and sound:** an original piece for every world and the menu, with a layer added on the final lap, and
@@ -76,10 +76,10 @@ js/textures.js      procedural textures
 js/track.js         spline track and road ribbons
 js/input.js         keyboard (4 players), gamepads, touch
 js/audio.js         sound: engines per vehicle, crashes, cues, mixing
-js/samples.js       the recordings in audio/ (music, backgrounds), how they loop and play
+js/samples.js       the recordings in audio/ (engines, music, backgrounds), how they loop and play
 js/music.js         synthesised music, used where a recording is missing or still loading
 js/ambience.js      synthesised backgrounds (same fallback) and cue sounds (train whistles, sluice gate, escapement)
-audio/              music and background recordings (sources in audio/CREDITS.md)
+audio/              engine loops, music and background recordings (sources in audio/CREDITS.md)
 js/hud.js, js/fx.js, js/records.js (best laps, ghosts, trophies), js/util.js
 js/worlds/*.js      one file per world; js/worlds/index.js holds the cups and the menu order
 img/                menu thumbnails and social preview images
