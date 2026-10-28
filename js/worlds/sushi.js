@@ -669,7 +669,8 @@ export default {
       K.group.add(tray);
       A.tray = tray;
       A.trayAO = K.contact(EX.x, EX.zk, 3.6, 8, 0.4);
-      A.exMover = K.mover({ type: 'box', hw: EX.hw, hd: EX.hd, h: EX.h }, (t) => ({ x: EX.x, z: exZ(t), angle: PI / 2 }));
+      // (bounce 0: the tray shoves a car out of its way, it doesn't fire it across the counter)
+      A.exMover = K.mover({ type: 'box', hw: EX.hw, hd: EX.hd, h: EX.h, bounce: 0 }, (t) => ({ x: EX.x, z: exZ(t), angle: PI / 2 }));
     }
 
     // ============================================================ precomputed track data for tick (ride stretches, crossings)
@@ -1167,6 +1168,7 @@ export default {
     // ---- CPU drivers
     const tr = game.track, Lr = tr.length;
     for (const e of game.cars) {
+      const ai = e.ai || (e.finished ? e.cooldown : null); // (a finished human rolls on autopilot: same guards)
       const c = e.car;
       if (e.out || c.state !== 'drive' || c.airborne) continue;
       const cs = A.carry[c.index];
@@ -1174,7 +1176,7 @@ export default {
       const dE = wrap(A.sEX - e.trackS, Lr);
       if (dE < 60) {
         const occ = exBlocked(time, dE, c);
-        if (occ.wait) { e.holdT = 0.25; if (e.ai) guardStop(e, c, dE - EX.hd - 2.3 - 2.6); }
+        if (occ.wait) { e.holdT = 0.25; if (ai) guardStop(e, c, dE - EX.hd - 2.3 - 2.6); }
       }
       // X1: wait for a gap in the plates
       const dX = wrap(A.sX1 - e.trackS, Lr);
@@ -1182,7 +1184,7 @@ export default {
         const lane = A.uX1 + e.lateral * A.x1Map;
         const dEnter = dX - BHW - 2.4 - 2.6;
         const tEnter = timeTo(dEnter, Math.max(0, c.fwdSpeed));
-        if ((!cs || cs.f < 0.05) && plateNear(lane, time + tEnter)) { e.holdT = 0.25; if (e.ai) guardStop(e, c, dEnter - 1.2); }
+        if ((!cs || cs.f < 0.05) && plateNear(lane, time + tEnter)) { e.holdT = 0.25; if (ai) guardStop(e, c, dEnter - 1.2); }
       }
       // the merge onto the AGAINST stretch: plates come round the corner head-on, wait for a gap
       let ln = A.amLanes[0];
@@ -1197,9 +1199,9 @@ export default {
           const ahead = wrap(o.trackS - e.trackS, Lr), om = wrap(o.trackS - A.sAM + 20, Lr);
           if (ahead > 0 && ahead < 22 && om < 40) busy = true;
         }
-        if ((!cs || cs.f < 0.05) && (busy || plateComing(ln.u, time + tEnter, 30, 9))) { e.holdT = 0.25; if (e.ai) guardStop(e, c, dEnter - 6); }
+        if ((!cs || cs.f < 0.05) && (busy || plateComing(ln.u, time + tEnter, 30, 9))) { e.holdT = 0.25; if (ai) guardStop(e, c, dEnter - 6); }
       }
-      if (!e.ai) continue;
+      if (!ai) continue;
       // pinned nose-first against a plate (too slow to steer away while the slats carry both): turn off it
       if (cs && cs.f > 0.5 && Math.abs(c.fwdSpeed) < 6) {
         const hx = Math.cos(c.angle), hz = Math.sin(c.angle);
@@ -1217,8 +1219,8 @@ export default {
       if (cs && cs.f > 0.3 && dW > -8 && dW < 80) {
         const vmax = Math.sqrt(30 * 30 + 2 * 62 * Math.max(0, dW - 14));
         if (dW < 46) {
-          const want = -3.6 - e.ai.lineOffset(e.trackS + 10);
-          e.ai.avoid += (want - e.ai.avoid) * Math.min(1, dt * 9);
+          const want = -3.6 - ai.lineOffset(e.trackS + 10);
+          ai.avoid += (want - ai.avoid) * Math.min(1, dt * 9);
         }
         const sp = c.fwdSpeed;
         if (sp > vmax) { const kk = Math.max(vmax / Math.max(sp, 0.01), 1 - 3 * dt); c.vx *= kk; c.vz *= kk; }
@@ -1248,8 +1250,8 @@ export default {
         let target = best > 0 ? best - need : best + need;
         if (Math.abs(target) > half) target = best > 0 ? best + need : best - need;
         target = clamp(target, -half, half);
-        const want = target - e.ai.lineOffset(e.trackS + 10);
-        e.ai.avoid += (want - e.ai.avoid) * Math.min(1, dt * 9);
+        const want = target - ai.lineOffset(e.trackS + 10);
+        ai.avoid += (want - ai.avoid) * Math.min(1, dt * 9);
       }
     }
   },
@@ -1355,7 +1357,7 @@ function guardStop(e, c, stopD) {
   const sp = Math.max(0, c.fwdSpeed);
   const vmax = Math.sqrt(2 * 70 * Math.max(0, stopD));
   if (sp > vmax) { const k = vmax / Math.max(sp, 0.01); c.vx *= k; c.vz *= k; }
-  e.ai.stuckT = 0;
+  const ai = e.ai || e.cooldown; if (ai) ai.stuckT = 0;
 }
 // nearest sample of a track to (x, z) around hint (no allocation): fills o.s, o.lat
 function nearTrack(tr, x, z, hint, o) {

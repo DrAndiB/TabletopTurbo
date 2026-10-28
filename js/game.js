@@ -331,7 +331,8 @@ export class Game {
     }
     P.collideCars(this.cars.filter((e) => !e.out).map((e) => e.car));
     if (P.movers.length) P.updateMovers(this.time, dt);
-    if (P.spinners.length) { P.updateSpinners(this.time, dt); P.carrySpinners(this.cars.filter((e) => !e.out).map((e) => e.car), dt); }
+    // (cars held on the grid during a countdown aren't carried round: a head-to-head round can restart on a turntable)
+    if (P.spinners.length) { P.updateSpinners(this.time, dt); if (racing) P.carrySpinners(this.cars.filter((e) => !e.out).map((e) => e.car), dt); }
     // fixed-rate gameplay hook for worlds (currents, wind, force zones): tick(dt, time, game)
     if (this.def.tick && racingOrHeld(this.state)) this.def.tick(dt, this.time, this);
     P.stepDynamics(dt, this.cars.filter((e) => !e.out).map((e) => e.car));

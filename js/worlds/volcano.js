@@ -94,7 +94,9 @@ function rockPose(k, t, o = ROCK_O) {
     o.r = ROCK.pond + v2 * 0.35 * (1 - Math.exp(-q * 3)); o.sink = ss(0, 0.8, q);
     if (q > 0.8) o.vis = false;
   }
-  o.live = o.r > 29.5 && o.r < 44.5;
+  // solid only while it is on the terrace road and short of the outer wall: past r 41.5 it would squeeze a slow car
+  // through the wall (the gap to the wall is narrower than a monster truck)
+  o.live = o.r > 29.5 && o.r < 41.5;
   return o;
 }
 // cycle time at which the boulder's centre passes radius rr (rolling down)
@@ -338,7 +340,8 @@ export default {
       wall(1, SC - 3, SD);
       K.circle(C.x, C.z, RW - W / 2 - 0.2, 70, { solid: true });
       // the cone's back foot (between the two climbs)
-      for (let a = 200; a <= 340; a += 14) { const t = a * DEG; K.circle(C.x + Math.cos(t) * 35, C.z + Math.sin(t) * 35, 3.2, 8, { solid: true }); }
+      // (none on the road: the end pillars would stand invisibly in the inside lane of both climbs)
+      for (let a = 200; a <= 340; a += 14) { const t = a * DEG, x = C.x + Math.cos(t) * 35, z = C.z + Math.sin(t) * 35; if (K.offRoad(x, z, 3.2 + 1)) K.circle(x, z, 3.2, 8, { solid: true }); }
     }
 
     // ============================================================ boulders (movers, live only while on the terrace)
@@ -1294,8 +1297,11 @@ export default {
   tick(dt, time, game) {
     if (!A || !A.cross.length) return;
     // a countdown starts the volcano clock again (the first eruption comes ERU.first s after GO)
-    if (game.state === 'countdown' && A.prevState !== 'countdown') { A.t0 = time + Math.max(0, game.countT); A.prevU = null; }
-    A.prevState = game.state;
+    // (also a countdown restarted during a countdown, from the pause menu: countT jumps back up)
+    const newCount = game.state === 'countdown' && (A.prevState !== 'countdown' || game.countT > (A.prevCountT ?? 0) + 0.01);
+    if (newCount) { A.t0 = time + Math.max(0, game.countT); A.prevU = null; }
+    A.prevState = game.state; A.prevCountT = game.countT;
+    const loud = game.state !== 'attract'; // no booms and clacks behind the menus
     const u = eruU(time), pu = A.prevU;
     A.prevU = u;
     const crossed = (a) => pu != null && (pu <= u ? pu < a && u >= a : pu < a || u >= a);
@@ -1324,24 +1330,30 @@ export default {
           c.w += (c.index % 2 ? 1 : -1) * (1.2 + 1.6 * (1 - d / BOMB.R));
           c.stun = Math.max(c.stun, 0.3);
         }
-        game.physics.events.push({ type: 'clack', strength: 26, x: sp.x, z: sp.z });
+        if (loud) game.physics.events.push({ type: 'clack', strength: 26, x: sp.x, z: sp.z });
         if (game.addShake && game.onScreen(sp.x, sp.y, sp.z, 0.1)) game.addShake(0.35);
       }
     }
     // sounds: the steam whistle in the build-up, the boom
     if (crossed(ERU.P - 3.4)) game.sound.cue('whistle', { x: C.x, z: C.z, game });
     if (crossed(0)) {
-      game.physics.events.push({ type: 'clack', strength: 40, x: C.x, z: C.z });
+      if (loud) game.physics.events.push({ type: 'clack', strength: 40, x: C.x, z: C.z });
       if (eruK(time) === 0 && game.state === 'race' && game.hud && game.cars.some((e) => e.human)) game.hud.flash('ERUPTION!', '#ff5a1f');
     }
 
     const L = game.track.length;
-    // a car that sank into a flooded crossing comes back a few lengths before it, not on its edge
+    // a car that sank into a flooded crossing comes back before it, far enough back that its run-up doesn't meet the
+    // same flood again (further while more of the flood is still to come)
     for (const e of cars) {
       if (e.car.state !== 'falling' || e.car.fallKind !== 'hole') continue;
       for (const cr of A.cross) {
         const d = mod(e.lastGoodS - cr.s + L / 2, L) - L / 2;
-        if (d > -(CH.hw + 9) && d < CH.hw + 2) e.lastGoodS = mod(cr.s - CH.hw - 7, L);
+        if (d > -(CH.hw + 40) && d < CH.hw + 2) {
+          let t1 = 0;
+          for (const st of cr.strips) t1 = Math.max(t1, st.t1);
+          const rem = Math.max(0, t1 - u);
+          e.lastGoodS = mod(cr.s - CH.hw - 7 - Math.min(45, rem * 22), L);
+        }
       }
     }
     for (const e of cars) {

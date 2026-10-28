@@ -1078,7 +1078,7 @@ export default {
       d.s0 = a * track.ds; d.s1 = b * track.ds;
       const p = track.at((d.s0 + d.s1) / 2); d.westSide = p.nx < 0 ? 1 : -1; // (the arm comes in from the east)
     }
-    if (typeof window !== 'undefined') window.__vy = A;
+    if (typeof location !== 'undefined' && /[?&]test=1/.test(location.search)) window.__vy = A; // debug handle, test mode only
   },
 
   // fixed rate: the bass kicks, the CPU drivers' lane choice at the decks, the cues

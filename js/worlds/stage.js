@@ -1536,23 +1536,45 @@ export default {
     A.zones.push({ kind: 'fly', s0: hz.fly[0] - 3, len: hz.fly[1] - hz.fly[0] + 6, look: 44, lats: LATS_ROAD });
     A.zones.push({ kind: 'bag', s0: hz.bag - 4, len: 8, look: 30, lats: LATS_ROAD });
     A.track = track; A.hz = hz;
-    if (typeof window !== 'undefined') window.__stage = A;
+    if (typeof location !== 'undefined' && /[?&]test=1/.test(location.search)) window.__stage = A; // debug handle, test mode only
   },
 
   // fixed rate: the traps open and close; CPU drivers read the moving scenery ahead; a car that dropped through a
   // trap comes back up with a run-up before the trap room
   tick(dt, time, game) {
     if (!A) return;
-    for (const Tq of A.traps) Tq.hole.open = trapOpenU(trapU(Tq, time));
     const L = A.L, tr = A.track;
+    // A trap never drops a car that couldn't act: closed through the countdown, and for a moment after GO under a
+    // car that stood on it (a head-to-head round can restart in the trap room); and under a car that just came back
+    // up from a trap for 3.5 s (the respawn run-up would otherwise meet the same open centre lane every cycle), or
+    // was just respawned onto it.
+    const st = game.state;
+    if (st === 'race' && A.prevState === 'countdown') A.goT = time;
+    A.prevState = st;
+    const fresh = st === 'countdown' || (A.goT != null && time - A.goT < 1.2);
+    for (const Tq of A.traps) {
+      let held = st === 'countdown';
+      if (!held) {
+        for (const e of game.cars) {
+          const c = e.car;
+          // (c.ghost: any respawn just put it here, e.g. a stuck reset inside the trap room)
+          if (e.out || c.state !== 'drive' || !(fresh || c.ghost > 0 || (e.trapUpT != null && time - e.trapUpT < 3.5))) continue;
+          const dx = c.x - Tq.x, dz = c.z - Tq.z;
+          if (Math.abs(dx * Tq.c + dz * Tq.s) < Tq.hw + 1.6 && Math.abs(-dx * Tq.s + dz * Tq.c) < Tq.hd + 1.6) { held = true; break; }
+        }
+      }
+      Tq.held = held;
+      Tq.hole.open = !held && trapOpenU(trapU(Tq, time));
+    }
     A.step = (A.step || 0) + 1;
     for (let ci = 0; ci < game.cars.length; ci++) {
       const e = game.cars[ci], c = e.car;
       if (e.out) continue;
       if (c.state === 'falling') {
-        if (c.fallKind === 'hole' && c.z < -60 && c.x > 0 && c.x < 60) e.lastGoodS = A.trapRespawnS;
+        if (c.fallKind === 'hole' && c.z < -60 && c.x > 0 && c.x < 60) { e.lastGoodS = A.trapRespawnS; e.trapFell = true; }
         continue;
       }
+      if (e.trapFell && c.state === 'drive') { e.trapFell = false; e.trapUpT = time; }
       if (c.state !== 'drive' || !e.ai) { if (e.stagePlan) e.stagePlan.z = null; continue; }
       const s = e.trackS;
       let Z = null, d0 = 0;
@@ -1614,7 +1636,7 @@ export default {
     {
       const m1 = A.m1, m2 = A.m2, m3 = A.m3, col = A.col;
       for (let i = 0; i < A.traps.length; i++) {
-        const Tq = A.traps[i], u = trapU(Tq, time), fr = trapFrac(u), wn = trapWarn(u);
+        const Tq = A.traps[i], u = trapU(Tq, time), fr = Tq.held ? 0 : trapFrac(u), wn = Tq.held ? 0 : trapWarn(u);
         m1.makeRotationY(-Tq.ang); m1.setPosition(Tq.x, 0, Tq.z);
         for (let k = 0; k < 2; k++) {
           const sd = k ? 1 : -1, w = Tq.hd - 0.12;
