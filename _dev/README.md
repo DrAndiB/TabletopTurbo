@@ -72,17 +72,17 @@ Drift cars (`drift: true` in `VEHICLES`, physics.js) have a slide mode, tuned in
 
 ## Audio
 
-Race music, the menu theme and each world's background are recordings in `audio/` (about 48 MB: music 36 MB,
-backgrounds 14 MB), listed with their loop points and levels in `js/samples.js`. Engines stay synthesised
-(recorded engine loops were tried in October 2026 and dropped: the synthesised ones sound better in play).
+Engines, race music, the menu theme and each world's background are recordings in `audio/` (about 49 MB: music
+36 MB, backgrounds 14 MB, engines under 1 MB), listed with their loop points and levels in `js/samples.js`.
 `Game.loadWorld` waits behind the loading card for that world's files (about 2.5 MB, at most 4 s); the menu theme
 starts downloading while the title waits for the first click. Anything missing or not loaded in time falls back
-to the synthesised version below, from the next race on with the recording. Engines, crashes, landings, skids,
-jingles and cues are synthesised. Sources and licences: `audio/CREDITS.md` (Freesound, CC0). The music was composed and
+to the synthesised version below, from the next race on with the recording. Crashes, landings, skids, jingles and
+cues are still synthesised. Sources and licences: `audio/CREDITS.md` (Freesound, CC0). The music was composed and
 rendered (FluidSynth, GeneralUser GS) outside this repository, in a `sound-lab` folder on Andreas's computer
 (`sound-lab/scores/<id>.py`); to change a piece, render it there and replace the mp3.
 
-- `js/samples.js`: the recordings. Beds loop by crossfading two copies; music copies overlap so the reverb tail rings
+- `js/samples.js`: the recordings. Engine loops are stored twice back to back and pitched by the revs
+  (`rate = (f / f0) ^ bend`); beds loop by crossfading two copies; music copies overlap so the reverb tail rings
   over the next loop, and the `-final` layer runs in sync and fades in on the final lap. Watchmaker's music is
   locked to the balance wheel (`sync`).
 
