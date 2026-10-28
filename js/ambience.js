@@ -302,6 +302,12 @@ const AMBIENT = {
   pass: { bed: [{ n: 'white', f: ['bandpass', 600, 0.7], g: 0.04, am: [0.11, 0.7], sweep: [0.06, 300] }, { n: 'brown', f: ['lowpass', 500, 0.7], g: 0.03, am: [0.37, 0.4] }], ev: [['birds', 5, 12, 2, 0.014], ['bubbles', 3, 7, 1, 0.01], ['churchbells', 50, 80, 20, 0.02]] },
   bowling: { bed: [{ n: 'pink', f: ['bandpass', 600, 0.8], g: 0.05, am: [0.31, 0.5] }, { hum: [60, 120], g: 0.004 }], ev: [['clacks', 4, 10, 2, 0.04], ['ding', 12, 25, 6, 0.012], ['cheer', 20, 40, 10, 0.02]] },
   rooftop: { bed: [{ n: 'brown', f: ['lowpass', 300, 0.7], g: 0.05, am: [0.17, 0.4] }, { n: 'white', f: ['bandpass', 3000, 0.6], g: 0.012, am: [0.9, 0.3] }], ev: [['radio', 14, 28, 6, 0.012], ['beeps', 18, 35, 9, 0.006]] },
+  // Mayhem Cup: a busy sushi bar (murmur, the belt rattling, clinks and the order chime), a club (crowd, sub rumble),
+  // a theatre during the show (a hushed house, creaks, applause), a science fair with a fizzing, rumbling volcano
+  sushi: { bed: [{ n: 'pink', f: ['bandpass', 700, 0.8], g: 0.045, am: [0.27, 0.5] }, { n: 'crackle', f: ['bandpass', 1800, 1.2], g: 0.02 }], ev: [['clink', 4, 10, 2, 0.03], ['ding', 12, 25, 6, 0.012], ['glasses', 15, 30, 8, 0.012]] },
+  vinyl: { bed: [{ n: 'pink', f: ['bandpass', 500, 0.7], g: 0.05, am: [0.21, 0.5] }, { hum: [55, 110], g: 0.006 }], ev: [['cheer', 14, 30, 6, 0.03], ['beeps', 18, 35, 9, 0.008]] },
+  stage: { bed: [{ n: 'pink', f: ['bandpass', 400, 0.7], g: 0.03, am: [0.13, 0.4] }], ev: [['creak', 8, 18, 4, 0.025], ['cheer', 25, 50, 12, 0.02]] },
+  volcano: { bed: [{ n: 'brown', f: ['lowpass', 220, 0.8], g: 0.07, am: [0.17, 0.5] }, { n: 'crackle', f: ['highpass', 3500, 0.7], g: 0.02 }], ev: [['bubbles', 2, 5, 1, 0.03], ['thunder', 22, 40, 10, 0.06], ['gurgle', 9, 18, 5, 0.025]] },
 };
 export const ambientFor = (id) => AMBIENT[id] || null;
 

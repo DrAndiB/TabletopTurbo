@@ -724,6 +724,64 @@ export const PIECES = {
       { id: 'brass', play: 'comp', inst: 'brass', r: 'x.......x.......', voice: 'triad', center: 66, gain: 0.45, pan: -0.2, layer: 'final' },
     ],
   },
+  // ---------------- Mayhem Cup
+  // conveyor-belt sushi: bright, fast city pop; glockenspiel on the final lap
+  sushi: {
+    level: 0.977, bpm: 140, key: 'E', form: 'A B A B',
+    sections: { A: ['Emaj7', 'C#m7', 'Amaj7', 'B', 'Emaj7', 'C#m7', 'F#m7 B', 'E'], B: ['Amaj7', 'G#m7', 'F#m7', 'B7', 'Amaj7', 'G#m7', 'C#m7', 'B7'] },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'popLead', rh: 'pop', range: [64, 81], seed: 127, send: 0.2, gain: 1.0 },
+      { id: 'keys', play: 'comp', inst: 'epiano', r: '..x...x...x...x.', voice: 'triad', center: 62, gain: 0.3, pan: -0.25 },
+      { id: 'bass', play: 'bass', inst: 'slapBass', ...B.funk, center: 40, gain: 0.42 },
+      { id: 'drums', play: 'drums', ...DR.pop, gain: 0.5 },
+      { id: 'glock', play: 'double', of: 'lead', inst: 'glock', oct: 12, gain: 0.6, pan: 0.3, layer: 'final' },
+    ],
+  },
+  // a club night: four on the floor, pulsing sub bass and a filtered lead; brass stabs on the final lap
+  vinyl: {
+    level: 0.832, bpm: 124, key: 'A', scale: 'minor', form: 'A B A B',
+    sections: { A: ['Am', 'Am', 'F', 'G', 'Am', 'Am', 'F', 'E'], B: ['Dm', 'Am', 'F', 'G', 'Dm', 'Am', 'E', 'E'] },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'synLead', rh: 'lofi', range: [62, 79], seed: 131, send: 0.3, gain: 1.0 },
+      { id: 'pad', play: 'comp', inst: 'pad', r: 'x...............', voice: 'full', center: 60, gain: 0.55, send: 0.35 },
+      { id: 'arp', play: 'comp', inst: 'synpluck', r: '..x...x...x...x.', voice: 'triad', center: 64, gain: 0.4, pan: 0.25 },
+      { id: 'bass', play: 'bass', inst: 'subBass', ...B.chip8, center: 36, gain: 0.5 },
+      { id: 'drums', play: 'drums', ...DR.euro, gain: 0.5 },
+      { id: 'brass', play: 'comp', inst: 'brass', r: 'x.....x.........', voice: 'triad', center: 64, gain: 0.45, pan: -0.2, layer: 'final' },
+    ],
+  },
+  // the overture: a theatrical minor-key waltz with strings and woodwind; brass on the final lap
+  stage: {
+    level: 1.995, bpm: 156, meter: 3, key: 'G', scale: 'minor', form: 'A B A C',
+    sections: {
+      A: ['Gm', 'D7', 'Gm', 'Cm', 'Gm', 'D7', 'Eb D7', 'Gm'],
+      B: ['Bb', 'F7', 'Bb', 'Gm', 'Cm', 'F7', 'Bb', 'D7'],
+      C: ['Cm', 'Gm', 'D7', 'Gm', 'Eb', 'Cm', 'D7', 'D7'],
+    },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'oboe', rh: 'waltz', range: [62, 81], seed: 137, send: 0.3, gain: 1.0 },
+      { id: 'strings', play: 'comp', inst: 'strings', r: '....x...x...', voice: 'triad', center: 62, gain: 0.5, send: 0.3 },
+      { id: 'bass', play: 'bass', inst: 'pizz', ...B.waltz, center: 43, gain: 0.7 },
+      { id: 'drums', play: 'drums', ...DR.waltz, gain: 0.3 },
+      { id: 'brass', play: 'comp', inst: 'brass', r: 'x...........', voice: 'triad', center: 60, gain: 0.5, pan: 0.2, layer: 'final' },
+    ],
+  },
+  // a B-movie disaster: organ and driving rock in D minor; strings join for the final lap
+  volcano: {
+    level: 1.365, bpm: 162, key: 'D', scale: 'minor', form: 'A B A C',
+    sections: {
+      A: ['Dm', 'Dm', 'Bb', 'A', 'Dm', 'Dm', 'Gm A', 'Dm'],
+      B: ['Gm', 'Dm', 'Bb', 'A', 'Gm', 'Dm', 'E', 'A7'],
+      C: ['Bb', 'C', 'Dm', 'Dm', 'Bb', 'C', 'A', 'A7'],
+    },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'organLead', rh: 'rock', range: [62, 79], seed: 139, send: 0.25, gain: 1.0 },
+      { id: 'chug', play: 'comp', inst: 'chug', r: 'x.x.x.x.x.x.x.x.', voice: 'power', center: 50, gain: 0.3, pan: -0.3 },
+      { id: 'bass', play: 'bass', inst: 'rockBass', ...B.rock8, center: 38, gain: 0.34 },
+      { id: 'drums', play: 'drums', ...DR.rock, gain: 0.5 },
+      { id: 'strings', play: 'comp', inst: 'strings', r: 'x...............', voice: 'full', center: 62, gain: 0.5, send: 0.3, layer: 'final' },
+    ],
+  },
 };
 // worlds without a piece of their own (new or renamed worlds) borrow one
 export const pieceFor = (id) => PIECES[id] ? id : 'breakfast';
