@@ -970,6 +970,18 @@ export default {
       bowl(cyl(5.2, 5.2, 0.08, 24), 0xcfe0e8, { y: 2.8 }, M.liquid, false);
       AO(-100, -104, 6, 6, 0.4);
       K.circle(-100, -104, 5.4, 3.6);
+      // a lidded miso bowl and a board of rolled omelette, ready for the pass
+      const mb = frame(-64, 0, -76, 0.3);
+      mb(lathe([[2.4, 0], [3.0, 0.4], [4.6, 2.6], [5.0, 4.4], [4.7, 4.5], [0.01, 4.5]], 32), 0x5a0e0a, {}, M.paint);
+      mb(lathe([[0.01, 4.4], [4.9, 4.4], [4.4, 6.0], [2.0, 6.9], [1.4, 7.0], [1.4, 7.6], [0.01, 7.6]], 32), 0x1a0a08, {}, M.paint);
+      AO(-64, -76, 5.6, 5.6, 0.45);
+      K.circle(-64, -76, 5, 7.5);
+      const tb = frame(-80, 0, -64, -0.2);
+      tb(rbox(16, 1.2, 8, 0.3), 0xd9b27a, { y: 0.6 }, M.paint);
+      for (let i = 0; i < 4; i++) tb(rbox(3.2, 2.4, 5.2, 0.5), 0xf6cf3a, { x: -5.4 + i * 3.6, y: 2.4 }, M.food);
+      tb(cyl(0.25, 0.25, 15, 6).rotateZ(PI / 2), 0xe2c99a, { y: 1.5, z: 3.2 }, M.paint);
+      AO(-80, -64, 9, 5, 0.4, 0.2);
+      K.box(-80, -64, 8, 4, 0.2, 4);
       const tw = frame(-166, 0, -102, 0.1);
       tw(rbox(14, 1.6, 9, 0.7), 0xf2efe8, { y: 0.8 }, M.matte);
       tw(box(14.1, 1.62, 1.2), 0x2a3a66, { y: 0.8, z: 2.5 }, M.matte);
@@ -1018,7 +1030,9 @@ export default {
       for (const s of [-1, 1]) { const m = K.mesh(new T.PlaneGeometry(10, 7.5), mm, -14 , 3.6, 6 + s * 1.2, { cast: true }); m.rotation.order = 'YXZ'; m.rotation.y = s > 0 ? 0 : PI; m.rotation.x = -0.32 * s; }
       AO(-14, 6, 6, 3, 0.35);
       K.box(-14, 6, 5, 2, 0, 7.5);
-      gari(42, -16); soyDish(54, -24); teacup(36, 2, 0.85);
+      gari(42, -16); soyDish(54, -24); teacup(40, -2, 0.85);
+      // a stack of clean plates on the inside of the island road's last bend (it also closes a cut across the stone)
+      stack(34.5, 13, 9);
     }
 
     // ---- lanterns above the back wall and their warm glow
@@ -1038,7 +1052,7 @@ export default {
       const cap = cyl(3.3, 3.3, 1.4, 16);
       A.lanterns = [];
       for (const [x, ph] of [[-150, 0.3], [-96, 1.7], [-44, 2.9], [36, 0.9], [96, 2.2]]) {
-        const z = BOUNDS.minZ - 9, y = 33;
+        const z = BOUNDS.minZ + 7, y = 25;
         const m = K.mesh(lg, lanternMat, x, y, z, { cast: false }); A.lanterns.push({ m, ph, y });
         K.mesh(cap, K.std({ color: 0x1a0c08, roughness: 0.6 }), x, y + 7, z, { cast: false });
         K.mesh(cap, K.std({ color: 0x1a0c08, roughness: 0.6 }), x, y - 7, z, { cast: false });
