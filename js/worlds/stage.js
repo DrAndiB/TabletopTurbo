@@ -1582,7 +1582,13 @@ export default {
           const pair = typeof cand !== 'number', c0 = pair ? cand[0] : cand, c1 = pair ? cand[1] : cand;
           if (hitAt < 0) {
             const keep = sameZ && (pair ? e.stagePlan.l[0] === c0 && e.stagePlan.l[1] === c1 : e.stagePlan.l === c0);
-            const cost = Math.abs(c0 - e.lateral) * 0.12 + Math.abs(c1 - c0) * 0.15 + Math.abs(c0) * 0.04 + (keep ? -0.4 : 0);
+            let cost = Math.abs(c0 - e.lateral) * 0.12 + Math.abs(c1 - c0) * 0.15 + Math.abs(c0) * 0.04 + (keep ? -0.4 : 0);
+            // a CPU running alongside already has that lane: take another one if there is a free one
+            if (pair) for (const o of game.cars) {
+              if (o === e || !o.stagePlan || o.stagePlan.z !== Z || o.car.state !== 'drive') continue;
+              const ds = mod(o.trackS - s + L / 2, L) - L / 2;
+              if (Math.abs(ds) < 9 && Math.abs(o.stagePlan.l[0] - c0) < 0.1) cost += 0.8;
+            }
             if (cost < bestCost) { bestCost = cost; best = cand; }
           } else if (hitAt > bestReach) { bestReach = hitAt; reachL = cand; }
         }
