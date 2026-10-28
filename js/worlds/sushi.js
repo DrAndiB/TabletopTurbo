@@ -103,13 +103,19 @@ function plates() {
   return PLATES;
 }
 // lateral offset on the slats (+ = right of the belt's travel = the island side): own side on the straights,
-// pushed to the outside of every bend
-function plateLat(p, cn) { return lerp(p.side * PL.off, -PL.off, cn); }
+// pushed to the outside of the bends; but from the end of the west straight, round the NW bend and along the north
+// straight past the exit off the WITH stretch they keep to the island side (u = 0 is the end of the NW bend), so
+// cars come round that bend on the outside and the way off to the chef's side stays open
+function plateLat(p, cn, u) {
+  const v = u > BG.L / 2 ? u - BG.L : u;
+  const inner = ss(-56, -40, v) * (1 - ss(74, 90, v));
+  return lerp(lerp(p.side * PL.off, -PL.off, cn), PL.off, inner);
+}
 const _bf = { x: 0, z: 0, tx: 1, tz: 0, k: 0, cn: 0, i: 0 };
 function platePose(p, t, o) {
   const u = p.u0 + BV * t;
   beltAt(u, _bf);
-  const lat = plateLat(p, _bf.cn);
+  const lat = plateLat(p, _bf.cn, wrap(u, BG.L));
   o.x = _bf.x - _bf.tz * lat; o.z = _bf.z + _bf.tx * lat;
   o.a = Math.atan2(_bf.tz, _bf.tx) + p.spin; o.u = wrap(u, BG.L); o.lat = lat;
   return o;
@@ -1155,13 +1161,29 @@ export default {
         if (plateNear(A.uAM, time + tEnter, 2.2)) { e.holdT = 0.25; if (e.ai) guardStop(e, c, dEnter - 1); }
       }
       if (!e.ai) continue;
-      // braking zone before the exit off the WITH stretch (65 over the ground on the slats)
-      if (cs && cs.f > 0.3) {
-        const dW = wrap(A.sWX + 6 - e.trackS + Lr / 2, Lr) - Lr / 2;
-        if (dW > -2 && dW < 70) {
-          const vmax = Math.sqrt(31 * 31 + 2 * 62 * Math.max(0, dW)), sp = c.fwdSpeed;
-          if (sp > vmax) { const kk = Math.max(vmax / sp, 1 - 3 * dt); c.vx *= kk; c.vz *= kk; }
+      // pinned nose-first against a plate (too slow to steer away while the slats carry both): turn off it
+      if (cs && cs.f > 0.5 && Math.abs(c.fwdSpeed) < 4) {
+        const hx = Math.cos(c.angle), hz = Math.sin(c.angle);
+        for (let i = 0; i < PLATES.length; i++) {
+          const col = A.plateCols[i], dx = col.x - c.x, dz = col.z - c.z, d = Math.hypot(dx, dz);
+          if (d > PL.cr + c.spec.r + c.spec.axle + 0.6 || dx * hx + dz * hz < 0) continue;
+          const side = -dx * hz + dz * hx; // plate to the right (+) or left (-) of the nose
+          c.angle -= Math.sign(side || 1) * 1.6 * dt;
+          c.x -= (dx / d) * 2.5 * dt; c.z -= (dz / d) * 2.5 * dt;
         }
+      }
+      // the exit off the WITH stretch (62 over the ground on the slats): brake for it, keep to the exit side and
+      // don't overtake plates there (on the slats they stand still; the exit sweeps back along the belt to you)
+      const dW = wrap(A.sWX - e.trackS + Lr / 2, Lr) - Lr / 2;
+      if (cs && cs.f > 0.3 && dW > -8 && dW < 80) {
+        const vmax = Math.sqrt(30 * 30 + 2 * 62 * Math.max(0, dW - 14));
+        if (dW < 46) {
+          const want = -3.6 - e.ai.lineOffset(e.trackS + 10);
+          e.ai.avoid += (want - e.ai.avoid) * Math.min(1, dt * 9);
+        }
+        const sp = c.fwdSpeed;
+        if (sp > vmax) { const kk = Math.max(vmax / Math.max(sp, 0.01), 1 - 3 * dt); c.vx *= kk; c.vz *= kk; }
+        if (dW < 46) continue;
       }
       // plates ahead on (or merging onto) the belt: pass them on their open side
       const ri = tr.idx(e.trackS);
