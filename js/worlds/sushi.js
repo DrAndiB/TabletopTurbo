@@ -35,7 +35,7 @@ const BOUNDS = { minX: -176, maxX: 148, minZ: -114, maxZ: 108 };
 const PL = { r: 6.6, cr: 6.1, h: 2.4, off: 5.0, offIn: 5.6 }; // off: own side at X1, offIn: the island side elsewhere
 const PL_GAPS = [1.25, 0.8, 1.05, 0.7, 1.35, 0.9, 1.1, 0.75, 1.3, 0.85, 1.2, 0.8, 1.0];
 const PL_SIDE = [1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1, -1];
-const PL_COL = [0xd8342c, 0x2f6fd0, 0xf2c230, 0x2a2a2e, 0xe8edf2, 0x3fa05a, 0xe66aa0, 0xd8342c, 0x2f6fd0, 0xf2c230, 0xe8edf2, 0xf08a24, 0x8a5ad0];
+const PL_COL = [0xd8342c, 0x2f6fd0, 0xf2c230, 0x2a2a2e, 0x8fc4ea, 0x3fa05a, 0xe66aa0, 0xd8342c, 0x2f6fd0, 0xf2c230, 0xf2ead8, 0xf08a24, 0x8a5ad0];
 const PL_KIND = ['salmon', 'maki', 'tuna', 'gunkan', 'tamago', 'shrimp', 'inari', 'salmon', 'tuna', 'maki', 'shrimp', 'gunkan', 'tamago'];
 const PL_DOME = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0];
 // the express tray: a lane across the top of the chef's loop, kitchen hatch (north) to the pick-up station
@@ -317,7 +317,7 @@ export default {
     {
       // slat texture: crescent slats (one per tile along v), a dark seam at both edges
       const sc = canvas(128, 128, (g, w, h) => {
-        g.fillStyle = '#c9d3d9'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#aebdc8'; g.fillRect(0, 0, w, h);
         const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,0.25)'); gr.addColorStop(0.7, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.12)');
         g.fillStyle = gr; g.fillRect(0, 0, w, h);
         // the crescent seam (repeats at v = 0 and 1)
@@ -1297,11 +1297,12 @@ function timeTo(x, v) {
   const a = 52;
   return (-v + Math.sqrt(v * v + 2 * a * x)) / a;
 }
+const NEAR_T = [-0.3, 0, 0.18], EX_K = [0, EX.P];
 // is a plate's rim within reach of the car's lane (belt arc length) at time t (a little before and after)?
 function plateNear(lane, t, extra = 0) {
   const L = BG.L, reach = PL.cr + 1.05 + 1.6 + extra;
   for (const p of PLATES) {
-    for (const dt of [-0.3, 0, 0.18]) {
+    for (const dt of NEAR_T) {
       const d = wrap(p.u0 + BV * (t + dt) - lane + L / 2, L) - L / 2;
       if (Math.abs(d) < reach) return true;
     }
@@ -1327,7 +1328,7 @@ function exBlocked(time, dE, c) {
   const t0 = timeTo(near, sp) - 0.25, t1 = timeTo(far, sp) + 0.3;
   const u = exU(time);
   for (const [a, b] of A.exOcc) {
-    for (const k of [0, EX.P]) {
+    for (const k of EX_K) {
       const ta = a + k - u, tb = b + k - u;
       if (tb > 0 && ta < t1 && tb > t0) _exo.wait = true;
     }
