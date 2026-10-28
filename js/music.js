@@ -738,8 +738,9 @@ export const PIECES = {
     ],
   },
   // a club night: four on the floor, pulsing sub bass and a filtered lead; brass stabs on the final lap
+  // (bars locked to the game clock, like Watchmaker's: the speaker kicks and the moving faders keep this beat)
   vinyl: {
-    level: 0.832, bpm: 124, key: 'A', scale: 'minor', form: 'A B A B',
+    level: 0.832, bpm: 124, key: 'A', scale: 'minor', form: 'A B A B', sync: { bar: 4 * 60 / 124 },
     sections: { A: ['Am', 'Am', 'F', 'G', 'Am', 'Am', 'F', 'E'], B: ['Dm', 'Am', 'F', 'G', 'Dm', 'Am', 'E', 'E'] },
     parts: [
       { id: 'lead', play: 'melody', inst: 'synLead', rh: 'lofi', range: [62, 79], seed: 131, send: 0.3, gain: 1.0 },
