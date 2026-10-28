@@ -1,5 +1,20 @@
 # Tabletop Turbo: roadmap and idea bank
 
+## Version 1.5 (built October 2026): the Mayhem Cup
+
+Andreas asked for "a new challenging cup, 4 tracks, go crazy" (28 October 2026). The hardest cup in the game, each
+table built round a moving floor, every hazard telegraphed and periodic:
+- **Sushi Express** (formula): a conveyor-belt sushi counter. The road rides the belt with it (a boost) and against
+  it (a headwind), plates ride the belt as traffic, an express delivery tray shoots across the loop.
+- **Vinyl Frenzy** (hovercraft): a club DJ booth. Two spinning records (one slingshot, one against you), tone arms
+  that swing in, mixer faders sliding across the road in a wave, speakers that shove cars on every kick (124 bpm,
+  the music locked to it).
+- **Opening Night** (rally): a set designer's theatre model during the show. A revolving stage carrying scenery
+  through the road, a trap room with trapdoors in sequence, flying flats and a swinging sandbag, the orchestra pit.
+- **Eruption!** (monster truck): a science-fair volcano erupting every 20 s. Foam surges flood two crossings (beat
+  it or wait), lava bombs land on glowing target rings, boulders roll down across the terrace.
+- Synthesised music and backgrounds for now (Vinyl Frenzy's is beat-locked).
+
 ## Version 1.4 (built October 2026): the Drift Cup
 
 Moved up from the idea bank on 26 October 2026. Decided with Andreas: a drift boost (not a score mode), started by a

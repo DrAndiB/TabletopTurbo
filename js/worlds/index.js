@@ -56,7 +56,7 @@ const ALL = [
   sushi, vinyl, stage, volcano,
 ];
 // Worlds still under construction can be listed here: they stay out of the menu but load with ?world=<id>.
-const IN_PROGRESS = new Set(['sushi', 'vinyl', 'stage', 'volcano']);
+const IN_PROGRESS = new Set([]);
 export const WORLDS = ALL.filter((w) => !IN_PROGRESS.has(w.id));
 export function worldById(id) { return ALL.find((w) => w.id === id) || WORLDS[0]; }
 // the playable tables of a cup, in cup order
