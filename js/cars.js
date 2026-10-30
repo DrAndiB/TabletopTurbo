@@ -503,6 +503,7 @@ function buildBumper(add, tilt, body, dark, M, colorDef, num, wheels) {
 }
 
 export function buildCar(type, colorDef, num) {
+  if (type === 'buggy') return buildCar('rally', colorDef, num); // stand-in until the buggy model is in
   const M = mats();
   const body = bodyMat(colorDef.body);
   const dark = bodyMat(colorDef.dark);

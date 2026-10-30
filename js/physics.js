@@ -24,6 +24,8 @@ export const VEHICLES = {
   suv: { maxSpeed: 46, accel: 60, brake: 115, reverseMax: 17, turnRate: 3.2, latGrip: 140, drag: 0.22, rolling: 6, len: 4.6, wid: 2.3, r: 1.2, axle: 1.15, mass: 1.3 },
   // drift car (Drift Cup): a wide rear-drive coupe; a brake tap while steering kicks it into a slide (drift: true)
   drifter: { maxSpeed: 47, accel: 66, brake: 115, reverseMax: 17, turnRate: 3.35, latGrip: 140, drag: 0.22, rolling: 6, len: 4.4, wid: 2.3, r: 1.14, axle: 1.08, mass: 1.0, drift: true },
+  // dune buggy: light and rear-engined, quick off the line, sure-footed in sand, a little loose on the road
+  buggy: { maxSpeed: 46, accel: 68, brake: 115, reverseMax: 17, turnRate: 3.4, latGrip: 132, drag: 0.22, rolling: 5, len: 4.2, wid: 2.4, r: 1.16, axle: 1.02, mass: 0.95, offroadGrip: 1.0 },
   rally: { maxSpeed: 46, accel: 66, brake: 120, reverseMax: 17, turnRate: 3.4, latGrip: 140, drag: 0.22, rolling: 6, len: 4.3, wid: 2.25, r: 1.14, axle: 1.05, mass: 1.05 },
 };
 
