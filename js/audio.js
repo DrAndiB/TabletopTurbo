@@ -23,7 +23,8 @@ const MUSIC_LEVEL = 0.084; // race music sits ~8 dB under one engine at full thr
 const VEH = {
   sports: { base: 92, step: 9, gears: 4, spread: 0.3, range: 0.8, a: 'sawtooth', b: 'square', bRatio: 0.5, bMix: 0.35, lp: [520, 1500, 550], q: 1.8, vib: [23, 4], vol: 1, skid: 'squeal' },
   formula: { base: 150, step: 11, gears: 6, spread: 0.2, range: 0.75, a: 'sawtooth', b: 'square', bRatio: 2, bMix: 0.16, whine: 4, lp: [1300, 4400, 900], q: 3.5, vib: [41, 3], tc: 0.025, vol: 1.3, skid: 'sharp' },
-  buggy: { base: 96, step: 8, gears: 4, spread: 0.28, range: 0.8, a: 'square', b: 'sawtooth', bRatio: 0.5, bMix: 0.6, drive: 3, am: [0.5, 0.3], lp: [700, 2600, 700], q: 1.6, vol: 0.77, crackle: true, skid: 'gravel' },
+  // dune buggy: a lumpy, raspy air-cooled flat four, lower and chuggier than the rally car
+  buggy: { base: 86, step: 7, gears: 4, spread: 0.3, range: 0.85, a: 'square', b: 'sawtooth', bRatio: 0.5, bMix: 0.7, drive: 3.5, am: [0.5, 0.45], lp: [600, 2200, 650], q: 1.5, vol: 0.8, crackle: true, skid: 'gravel' },
   rally: { base: 96, step: 8, gears: 5, spread: 0.28, range: 0.8, a: 'square', b: 'sawtooth', bRatio: 0.5, bMix: 0.6, drive: 3, am: [0.5, 0.3], lp: [700, 2600, 700], q: 1.6, vol: 0.77, crackle: true, skid: 'gravel' },
   truck: { base: 44, step: 3, gears: 4, spread: 0.25, range: 0.9, a: 'square', b: 'sine', bRatio: 0.5, bMix: 1, am: [0.5, 0.6], clatter: 0.2, lp: [300, 700, 320], q: 1.2, tc: 0.14, vol: 0.82, skid: 'dirt' },
   monster: { base: 34, step: 2.5, gears: 3, spread: 0.3, range: 0.9, a: 'sawtooth', b: 'square', bRatio: 0.5, bMix: 0.8, am: [0.25, 0.7], lp: [210, 600, 260], q: 1.3, tc: 0.12, vol: 1.17, skid: 'rumble' },

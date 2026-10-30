@@ -32,6 +32,8 @@ const pcOf = (s) => { let p = NOTE[s[0]]; for (let i = 1; i < s.length; i++) p +
 const mod12 = (x) => ((x % 12) + 12) % 12;
 const SCALES = {
   major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], mixolydian: [0, 2, 4, 5, 7, 9, 10],
+  // hijaz (phrygian dominant): the half step and augmented second above the root give the Pharaoh Cup its colour
+  hijaz: [0, 1, 4, 5, 7, 8, 10],
 };
 const QUAL = {
   '': [0, 4, 7], m: [0, 3, 7], 7: [0, 4, 7, 10], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], 6: [0, 4, 7, 9], m6: [0, 3, 7, 9],
@@ -142,6 +144,9 @@ export const INST = {
   chug: { kind: 'buf', syn: 'ks', t60: 0.35, bright: 0.55, pick: 0.15, len: 0.5, damp: 0.07, drive: 2.2 },
   upright: { kind: 'buf', syn: 'ks', t60: 1.3, bright: 0.16, pick: 0.2, len: 1.2, damp: 0.08 },
   pizz: { kind: 'buf', syn: 'ks', t60: 0.5, bright: 0.35, pick: 0.3, len: 0.6 },
+  // Pharaoh Cup: a warm, short oud with a plectrum attack and a bright qanun zither
+  oud: { kind: 'buf', syn: 'ks', t60: 1.25, bright: 0.44, pick: 0.11, len: 1.1, damp: 0.1 },
+  qanun: { kind: 'buf', syn: 'ks', t60: 1.5, bright: 0.72, pick: 0.07, stretch: 0.2, len: 1.3, damp: 0.08 },
   celesta: { kind: 'buf', syn: 'fm', ratio: 4, index: 1.3, idecay: 9, t60: 1.8, len: 1.6 },
   epiano: { kind: 'buf', syn: 'fm', ratio: 1, index: 1.7, idecay: 3, t60: 3.2, len: 2.0, tine: 0.07, damp: 0.18 },
   musicbox: { kind: 'buf', syn: 'add', partials: [[1, 1, 2.4], [6.27, 0.22, 0.45], [17.55, 0.06, 0.12]], click: 0.05, len: 1.8 },
@@ -166,6 +171,8 @@ export const INST = {
   theremin: { kind: 'mono', wave: [1, 0.12, 0.04], vib: [4.8, 12, 0.25], env: [0.12, 0.3, 0.9, 0.3], glide: 0.11, gain: 0.4 },
   accordion: { kind: 'mono', wave: REED, wave2: REED, det2: 10, mix2: 0.85, filter: ['lowpass', 2000, 0.5], env: [0.03, 0.1, 0.9, 0.07], gain: 0.2 },
   flute: { kind: 'mono', wave: [1, 0.28, 0.08, 0.04], vib: [5, 7, 0.28], env: [0.06, 0.2, 0.85, 0.1], glide: 0.02, gain: 0.38 },
+  // ney: a soft, airy end-blown flute that slides between notes
+  ney: { kind: 'mono', wave: [1, 0.2, 0.1, 0.05, 0.03], filter: ['lowpass', 1700, 0.5], vib: [5, 10, 0.35], env: [0.09, 0.2, 0.8, 0.15], glide: 0.06, gain: 0.36 },
   oboe: { kind: 'mono', wave: [1, 0.8, 0.55, 0.38, 0.24, 0.15, 0.09, 0.05], filter: ['lowpass', 1900, 0.6], vib: [5.2, 6, 0.28], env: [0.04, 0.2, 0.8, 0.08], glide: 0.02, gain: 0.27 },
   softLead: { kind: 'mono', wave: 'triangle', wave2: 'sine', mix2: 0.7, det2: -1200, filter: ['lowpass', 1500, 0.5], vib: [0.7, 14, 0], env: [0.02, 0.5, 0.55, 0.25], gain: 0.42 },
   bloop: { kind: 'mono', wave: 'sine', wave2: 'triangle', det2: 1200, mix2: 0.25, env: [0.005, 0.15, 0.6, 0.06], glide: 0.03, scoop: 0.84, gain: 0.45 },
@@ -323,6 +330,9 @@ const DRUMS = {
   bg: [0.25, (t, r) => Math.sin(TAU * (380 * t + 40 * (1 - exp(-t * 40)) / 40)) * exp(-t * 26) + (r() * 2 - 1) * exp(-t * 400) * 0.2],
   br: [0.3, (t, r, f) => f.lp(r() * 2 - 1) * Math.min(1, t / 0.03) * exp(-t * 14), { lp: ['lp', 3200, 0.6] }],
   tm: [0.6, (t) => Math.sin(TAU * (95 * t + 50 * (1 - exp(-t * 12)) / 12)) * exp(-t * 8)],
+  // darbuka: the deep 'doum' in the middle of the head and the sharp 'tek' at the rim
+  dm: [0.4, (t, r) => Math.sin(TAU * (92 * t + 70 * (1 - exp(-t * 34)) / 34)) * exp(-t * 10) + (r() * 2 - 1) * exp(-t * 500) * 0.15],
+  tk: [0.12, (t, r, f) => f.bp(r() * 2 - 1) * exp(-t * 48) * 0.9 + Math.sin(TAU * 640 * t) * exp(-t * 70) * 0.45, { bp: ['bp', 2700, 1.0] }],
   rd: [1.2, (t, r, f, sr) => f.hp(metallic(sr, HAT.map((x) => x * 1.3), t)) * exp(-t * 3) * 0.6 + Math.sin(TAU * 3400 * t) * exp(-t * 5) * 0.2, { hp: ['hp', 5500, 0.7] }],
   cr: [1.6, (t, r, f, sr) => f.hp(r() * 2 - 1 + metallic(sr, HAT, t) * 0.5) * exp(-t * 2.6), { hp: ['hp', 3500, 0.7] }],
   bd: [0.9, (t, r, f) => Math.sin(TAU * (55 * t + 25 * (1 - exp(-t * 6)) / 6)) * exp(-t * 4.5) + f.lp(r() * 2 - 1) * exp(-t * 30) * 0.5, { lp: ['lp', 400, 0.7] }],
@@ -388,6 +398,10 @@ const DR = {
   // four on the floor with open hats on the offbeat (Eurobeat), and a half-time night groove (synthwave)
   euro: { pat: { k: 'x...x...x...x...', s: '....x.......x...', oh: '..x...x...x...x.', h: 'x.x.x.x.x.x.x.x.' }, fill: { s: '....x.......xxxx' } },
   halftime: { pat: { k: 'x.....x...x.....', s: '........x.......', h: 'x.x.x.x.x.x.x.x.', oh: '..............x.' }, fill: { s: '........x...x.xx' } },
+  // Egyptian darbuka rhythms with a riq (tambourine): maqsum (D T . T D . T .), saidi (D T . D D . T .), baladi (D D . T D . T .)
+  maqsum: { pat: { dm: 'x.......x.......', tk: '..x.o.x.o...x.o.', tb: 'x.o.x.o.x.o.x.o.' }, fill: { tk: '..x.o.x.x.x.xxxx' } },
+  saidi: { pat: { dm: 'x.....x.x.......', tk: '..x.........x.o.', tb: 'x...x...x...x...' }, fill: { dm: 'x.....x.x...x.x.', tk: '..x.........xxxx' } },
+  baladi: { pat: { dm: 'x.x.....x.......', tk: '......x.o...x.o.', sh: 'x.o.x.o.x.o.x.o.' }, fill: { tk: '......x.x.x.xxxx' } },
 };
 
 export const PIECES = {
@@ -781,6 +795,68 @@ export const PIECES = {
       { id: 'bass', play: 'bass', inst: 'rockBass', ...B.rock8, center: 38, gain: 0.34 },
       { id: 'drums', play: 'drums', ...DR.rock, gain: 0.5 },
       { id: 'strings', play: 'comp', inst: 'strings', r: 'x...............', voice: 'full', center: 62, gain: 0.5, send: 0.3, layer: 'final' },
+    ],
+  },
+  // Pharaoh Cup: hijaz melodies over darbuka rhythms. The sandpit: a bright, bouncy maqsum with oud and qanun, the ney
+  // doubling the tune on the final lap
+  giza: {
+    level: 1.585, bpm: 120, key: 'D', scale: 'hijaz', form: 'A B A B',
+    sections: { A: ['D', 'D', 'Eb', 'D', 'Gm', 'Cm', 'Eb', 'D'], B: ['Gm', 'Gm', 'Cm', 'D', 'Gm', 'Eb', 'Cm D', 'D'] },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'oud', rh: 'folk', range: [62, 79], seed: 149, send: 0.2, gain: 1.0 },
+      { id: 'qanun', play: 'comp', inst: 'qanun', r: '..x...x...x...x.', voice: 'triad', center: 66, gain: 0.28, pan: 0.3 },
+      { id: 'bass', play: 'bass', inst: 'upright', ...B.root4, center: 38, gain: 0.6 },
+      { id: 'drums', play: 'drums', ...DR.maqsum, gain: 0.55 },
+      { id: 'ney', play: 'double', of: 'lead', inst: 'ney', oct: 0, gain: 0.45, pan: -0.25, layer: 'final' },
+    ],
+  },
+  // the Nile: a lilting saidi under an airy ney, oud chords and strings; the qanun shadows the tune on the final lap
+  nile: {
+    level: 0.8, bpm: 104, key: 'A', scale: 'hijaz', form: 'A B A B',
+    sections: { A: ['A', 'Bb', 'A', 'Dm', 'Gm', 'Dm', 'Bb', 'A'], B: ['Dm', 'Dm', 'Bb', 'A', 'Dm', 'Gm', 'Bb A', 'A'] },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'ney', rh: 'lofi', range: [64, 79], seed: 151, send: 0.35, gain: 1.0 },
+      { id: 'oud', play: 'comp', inst: 'oud', r: 'x..x..x.x..x..x.', voice: 'triad', center: 57, gain: 0.32, pan: -0.3 },
+      { id: 'pad', play: 'comp', inst: 'strings', r: 'x...............', voice: 'full', center: 60, gain: 0.35, send: 0.3 },
+      { id: 'bass', play: 'bass', inst: 'subBass', ...B.lofi, center: 33, gain: 0.45 },
+      { id: 'drums', play: 'drums', ...DR.saidi, gain: 0.5 },
+      { id: 'qanun', play: 'double', of: 'lead', inst: 'qanun', oct: 12, gain: 0.35, pan: 0.3, layer: 'final' },
+    ],
+  },
+  // inside the pyramid: a dark baladi with a reedy mizmar-like lead, a low drone and chugging oud; the qanun on the
+  // final lap
+  tomb: {
+    level: 1.27, bpm: 132, key: 'E', scale: 'hijaz', form: 'A B A C',
+    sections: {
+      A: ['E', 'F', 'E', 'E', 'Dm', 'F', 'Dm', 'E'],
+      B: ['Am', 'Dm', 'Am', 'E', 'Am', 'F', 'Dm', 'E'],
+      C: ['F', 'E', 'Dm', 'E', 'F', 'E', 'Dm', 'E7'],
+    },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'oboe', rh: 'march', range: [59, 76], seed: 157, send: 0.3, gain: 0.9 },
+      { id: 'oud', play: 'comp', inst: 'oud', r: 'x.x...x.x.x...x.', voice: 'power', center: 52, gain: 0.32, pan: -0.25 },
+      { id: 'drone', play: 'comp', inst: 'pad', r: 'x...............', voice: 'full', center: 52, gain: 0.45, send: 0.4 },
+      { id: 'bass', play: 'bass', inst: 'organBass', ...B.pedal, center: 40, gain: 0.45 },
+      { id: 'drums', play: 'drums', ...DR.baladi, gain: 0.55 },
+      { id: 'qanun', play: 'double', of: 'lead', inst: 'qanun', oct: 12, gain: 0.35, pan: 0.3, layer: 'final' },
+    ],
+  },
+  // the sandstorm: a fast saidi with an Egyptian-orchestra violin lead, qanun runs and swelling strings; brass stabs
+  // on the final lap
+  valley: {
+    level: 1.035, bpm: 150, key: 'B', scale: 'hijaz', form: 'A B A C',
+    sections: {
+      A: ['B', 'C', 'B', 'B', 'Am', 'C', 'Am', 'B'],
+      B: ['Em', 'Am', 'Em', 'B', 'Em', 'C', 'Am', 'B7'],
+      C: ['C', 'B', 'Am', 'B', 'C', 'B', 'Am', 'B'],
+    },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'fiddle', rh: 'reel', range: [62, 79], seed: 163, send: 0.25, gain: 1.0 },
+      { id: 'qanun', play: 'comp', inst: 'qanun', r: 'x.x.x.x.x.x.x.x.', voice: 'triad', center: 64, gain: 0.22, pan: 0.3 },
+      { id: 'strings', play: 'comp', inst: 'strings', r: 'x.......x.......', voice: 'full', center: 60, gain: 0.4, send: 0.3 },
+      { id: 'bass', play: 'bass', inst: 'popBass', ...B.pop8, center: 35, gain: 0.4 },
+      { id: 'drums', play: 'drums', ...DR.saidi, gain: 0.55 },
+      { id: 'brass', play: 'comp', inst: 'brass', r: 'x.....x.........', voice: 'triad', center: 62, gain: 0.45, pan: -0.2, layer: 'final' },
     ],
   },
 };

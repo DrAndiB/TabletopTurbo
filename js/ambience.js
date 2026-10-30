@@ -308,6 +308,12 @@ const AMBIENT = {
   vinyl: { bed: [{ n: 'pink', f: ['bandpass', 500, 0.7], g: 0.05, am: [0.21, 0.5] }, { hum: [55, 110], g: 0.006 }], ev: [['cheer', 14, 30, 6, 0.03], ['beeps', 18, 35, 9, 0.008]] },
   stage: { bed: [{ n: 'pink', f: ['bandpass', 400, 0.7], g: 0.03, am: [0.13, 0.4] }], ev: [['creak', 8, 18, 4, 0.025], ['cheer', 25, 50, 12, 0.02]] },
   volcano: { bed: [{ n: 'brown', f: ['lowpass', 220, 0.8], g: 0.07, am: [0.17, 0.5] }, { n: 'crackle', f: ['highpass', 3500, 0.7], g: 0.02 }], ev: [['bubbles', 2, 5, 1, 0.03], ['thunder', 22, 40, 10, 0.06], ['gurgle', 9, 18, 5, 0.025]] },
+  // Pharaoh Cup: a sunny garden (birds, a bee, a breeze), the river (lapping water, birds, splashes), inside the pyramid
+  // (a hollow draught, drips, creaks), the desert valley (gusting wind and blown sand)
+  giza: { bed: [{ n: 'pink', f: ['bandpass', 2400, 0.6], g: 0.008, am: [0.11, 0.6] }, { n: 'white', f: ['bandpass', 900, 0.6], g: 0.012, am: [0.07, 0.6], sweep: [0.05, 250] }], ev: [['birds', 3, 8, 1, 0.02], ['bee', 8, 18, 4, 0.016], ['trill', 12, 25, 6, 0.01]] },
+  nile: { bed: [{ n: 'brown', f: ['lowpass', 600, 0.7], g: 0.06, am: [0.23, 0.6], sweep: [0.13, 180] }, { n: 'white', f: ['bandpass', 2400, 1.2], g: 0.006, am: [0.6, 0.7] }], ev: [['splash', 6, 14, 3, 0.018], ['birds', 5, 12, 2, 0.014], ['trill', 12, 24, 7, 0.01]] },
+  tomb: { bed: [{ n: 'white', f: ['bandpass', 380, 3], g: 0.035, am: [0.08, 0.8], sweep: [0.04, 160] }, { n: 'brown', f: ['lowpass', 180, 0.7], g: 0.04 }], ev: [['drip', 4, 9, 2, 0.03], ['creak', 10, 22, 6, 0.02]] },
+  valley: { bed: [{ n: 'white', f: ['bandpass', 700, 0.8], g: 0.05, am: [0.09, 0.75], sweep: [0.05, 420] }, { n: 'pink', f: ['highpass', 3000, 0.6], g: 0.01, am: [0.2, 0.6] }], ev: [['birds', 12, 25, 6, 0.008]] },
 };
 export const ambientFor = (id) => AMBIENT[id] || null;
 
