@@ -1523,6 +1523,10 @@ export default {
       c.root.position.set(c.x0 + c.nx * lat, q.y, c.z0 + c.nz * lat);
       c.root.rotation.set(0, -c.angle, q.k > 0 ? -0.05 * q.k : 0);
       c.jaw.rotation.z = q.jaw * 0.55;
+      // the lunge: a splash, then the jaws clap shut
+      const cu = CROC.rise + 0.15;
+      if (live && game.sound && c.pu != null && c.pu < cu && q.u >= cu && q.u - c.pu < 1) game.sound.cue('snap', { x: c.root.position.x, z: c.root.position.z, game });
+      c.pu = q.u;
       if (P && live && game.onScreen(c.root.position.x, 0, c.root.position.z, 0.15)) {
         const hx = c.root.position.x - c.nx * 1.5, hz = c.root.position.z - c.nz * 1.5;
         if (q.u < CROC.rise && Math.random() < dt * 14) P.emit(hx + (Math.random() - 0.5) * 2, 0.1, hz + (Math.random() - 0.5) * 2, { color: 0xffffff, size: 0.45, life: 0.5, spread: 0.6, up: 1.2, grav: 0, grow: 1.6, alpha: 0.75 });

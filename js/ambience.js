@@ -415,6 +415,17 @@ export const CUES = {
     c.start(t); m.start(t); finish([c, m], [c, m, mg, ...nodes], t + 0.55);
     hitBuf(A, t + 0.12, 'ratchet', v * 0.05, pan, 1.4);
   },
+  // a toy crocodile lunges: a splash, then its plastic jaws clap shut twice
+  snap(A, t, pan, v) {
+    const ctx = A.ctx, { g, nodes } = out(A, pan), s = src(A, 'white', true), bp = filt(ctx, 'bandpass', 600, 0.8);
+    s.connect(bp); bp.connect(g);
+    bp.frequency.setValueAtTime(500, t); bp.frequency.exponentialRampToValueAtTime(2200, t + 0.35);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.38, t + 0.04); g.gain.setTargetAtTime(0, t + 0.12, 0.14);
+    s.start(t, Math.random()); finish([s], [s, bp, ...nodes], t + 0.9);
+    blip(A, t + 0.24, 150, 0.1, v * 0.11, pan, 'triangle');
+    hitBuf(A, t + 0.24, 'clack', v * 0.18, pan, 0.72);
+    hitBuf(A, t + 0.37, 'clack', v * 0.13, pan, 0.8);
+  },
   // the escapement: tick and tock on alternate beats
   tick(A, t, pan, v, o = {}) {
     const f = o.alt ? 2600 : 1950;
