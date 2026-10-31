@@ -65,6 +65,11 @@ export default {
   vehicle: 'buggy',
   seed: 83,
   track: { points: TRACK, width: W, startS: START },
+  // head-to-head restarts move on past the Nile jump and the camel crossing
+  noGrid(track) {
+    const sc = track.nearest(CAR.x, CAR.roadZ).s;
+    return [[JUMP.s0 - 14, S_NILE + 6], [sc - W / 2 - 6, sc + W / 2 + 6]];
+  },
   bounds: { minX: FR.x0, maxX: FR.x1, minZ: FR.z0, maxZ: FR.z1 },
   fallOffEdges: false,
   floorY: FR.bot,

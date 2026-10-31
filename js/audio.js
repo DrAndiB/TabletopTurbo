@@ -493,7 +493,7 @@ export class Sound {
     if (T === 'snowmobile') { this.noiseBurst(0.25, { freq: 1800, q: 0.8, type: 'bandpass', vol: v * 0.8, pan, buf: 'snow' }); this.tone(75, 0.15, { type: 'sine', vol: v * 0.7, slideTo: 48, pan }); return; }
     const k = T === 'truck' ? 0.8 : T === 'formula' ? 1.3 : T === 'rover' ? 0.9 : 1;
     this.tone(70 * k, 0.18, { type: 'sine', vol: v, slideTo: 45 * k, pan });
-    if (T === 'rally' || T === 'truck') this.noiseBurst(0.2, { freq: 900, q: 0.8, type: 'bandpass', vol: v * 0.5, pan, buf: 'gravel' });
+    if (T === 'rally' || T === 'truck' || T === 'buggy') this.noiseBurst(0.2, { freq: 900, q: 0.8, type: 'bandpass', vol: v * 0.5, pan, buf: 'gravel' });
     if (T === 'rover') this.noiseBurst(0.3, { freq: 3500, type: 'highpass', vol: v * 0.3, pan });
   }
   // rubbery fairground-bumper "boing"

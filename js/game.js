@@ -740,8 +740,18 @@ export class Game {
     if (champ) return this.endMatch(champ);
     this.round++;
     for (const e of this.cars) { e.out = false; e.car.state = 'drive'; }
-    // everybody restarts where the round was won
-    this.placeGrid(this.lastRoundS + 4, this.roundWinner, (this.lastRoundProg ?? 0) + 4);
+    // everybody restarts where the round was won, moved on past any stretch the world keeps clear of a grid (a jump
+    // over a hole, crossing traffic): def.noGrid(track) gives [s0, s1] arc-length spans
+    let s = this.lastRoundS + 4, prog = (this.lastRoundProg ?? 0) + 4;
+    const L = this.track.length, spans = this.def.noGrid ? this.def.noGrid(this.track) : [];
+    const fwd = (a, b) => ((b - a) % L + L) % L;
+    for (let k = 0; k < 4; k++) {
+      const hit = spans.find(([a, b]) => fwd(a, s + 2) < fwd(a, b) + 13); // the grid reaches 10.5 back, 2 ahead
+      if (!hit) break;
+      const d = fwd(s, hit[1] + 11);
+      s += d; prog += d;
+    }
+    this.placeGrid(s, this.roundWinner, prog);
     this.snapCamera();
     this.hud.message('', null);
     this.beginCountdown(false);

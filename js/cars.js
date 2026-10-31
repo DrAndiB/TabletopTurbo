@@ -520,14 +520,14 @@ export function buildCar(type, colorDef, num) {
   if (type === 'buggy') {
     // dune buggy (Pharaoh Cup): a short fibreglass tub in the player's colour with arched front fenders, two bucket
     // seats and a helmeted driver under a tubular roll cage, an air-cooled engine out in the open at the back with
-    // chrome exhausts, a light bar on the cage, skinny front wheels and big, wide rear ones
+    // its exhausts, a light bar on the cage, skinny front wheels and big, wide rear ones
     const tub = [[-1.6, 0.36], [1.6, 0.36], [2.05, 0.5], [2.12, 0.64], [1.85, 0.78], [0.6, 0.84], [0.38, 1.0], [0.2, 0.88], [-1.1, 0.84], [-1.45, 0.66], [-1.6, 0.6]];
     add(new THREE.Mesh(profileExtrude(smoothProfile(tub, 2), 1.5, 0.14), body));
-    // open cockpit well with two bucket seats
-    const well = add(new THREE.Mesh(new RoundedBoxGeometry(1.25, 0.1, 1.36, 2, 0.08), M.black));
+    // open cockpit well with two bucket seats (dark parts share the driver's material: fewer draw calls)
+    const well = add(new THREE.Mesh(new RoundedBoxGeometry(1.25, 0.1, 1.36, 2, 0.08), dark));
     well.position.set(-0.45, 0.88, 0);
     for (const sz of [-0.36, 0.36]) {
-      const seat = add(new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.62, 0.52, 2, 0.08), M.black));
+      const seat = add(new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.62, 0.52, 2, 0.08), dark));
       seat.position.set(-0.86, 1.12, sz); seat.rotation.z = 0.22;
     }
     // driver: jacket in the dark colour, white helmet with a visor, hands on a little wheel
@@ -537,7 +537,7 @@ export function buildCar(type, colorDef, num) {
     helmet.position.set(-0.5, 1.62, 0.36);
     const visor = add(new THREE.Mesh(new THREE.SphereGeometry(0.285, 18, 10, -0.9, 1.8, 1.0, 0.7), M.helmetVisor));
     visor.position.copy(helmet.position);
-    const sw = add(new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.035, 6, 14), M.black));
+    const sw = add(new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.035, 6, 14), dark));
     sw.position.set(-0.08, 1.12, 0.36); sw.rotation.y = Math.PI / 2; sw.rotation.x = 0; sw.rotation.z = 0.5;
     // arched fenders over the front wheels
     for (const sz of [-0.98, 0.98]) {
@@ -559,17 +559,17 @@ export function buildCar(type, colorDef, num) {
     }
     tube(-1.0, 1.64, -0.5, -1.0, 1.64, 0.5, 0.05);
     // light bar on the hoop with three spot lamps
-    const lb = add(new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.16, 0.95, 2, 0.04), M.black));
+    const lb = add(new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.16, 0.95, 2, 0.04), dark));
     lb.position.set(-0.94, 1.8, 0);
     for (const sz of [-0.3, 0, 0.3]) { const l = add(new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 12), M.head)); l.rotation.z = Math.PI / 2; l.position.set(-0.85, 1.8, sz); }
-    // air-cooled engine at the back: finned block, two air filters, chrome exhausts
+    // air-cooled engine at the back: finned block, two air filters, exhausts (all one aluminium material)
     const block = add(new THREE.Mesh(new RoundedBoxGeometry(0.55, 0.4, 0.95, 2, 0.06), M.alu));
     block.position.set(-1.88, 0.86, 0);
     for (let i = 0; i < 4; i++) { const fin = add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.46, 1.0), M.alu)); fin.position.set(-1.7 - i * 0.12, 0.88, 0); }
     for (const sz of [-0.3, 0.3]) {
-      const flt = add(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.12, 14), M.chrome));
+      const flt = add(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.12, 14), M.alu));
       flt.position.set(-1.86, 1.13, sz);
-      const ex = add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.62, 10), M.chrome));
+      const ex = add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.62, 10), M.alu));
       ex.position.set(-2.1, 0.78, sz * 1.25); ex.rotation.z = -1.1;
     }
     // nose: round headlights, a little bash plate, the race number on the bonnet
@@ -584,7 +584,7 @@ export function buildCar(type, colorDef, num) {
     // the spare tyre strapped flat on the bonnet, the race number on its hub
     const spare = add(new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.13, 8, 20), M.tire));
     spare.rotation.x = Math.PI / 2; spare.position.set(1.18, 0.94, 0);
-    const strap = add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.98), M.black));
+    const strap = add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.98), dark));
     strap.position.set(1.18, 1.04, 0);
     const dec = new THREE.Mesh(new THREE.CircleGeometry(0.25, 24), numberDecal(num, colorDef));
     dec.rotation.x = -Math.PI / 2; dec.rotation.z = -Math.PI / 2;

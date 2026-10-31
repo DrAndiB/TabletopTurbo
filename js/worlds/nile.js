@@ -108,6 +108,11 @@ export default {
   vehicle: 'boat',
   seed: 89,
   track: { points: TRACK, width: W, startS: START_S },
+  // head-to-head restarts move on past the feluccas' crossings and the crocodiles' inlets
+  noGrid() {
+    const m = FEL.ds / 2 + FEL.hw + 4; // a tacking felucca swings its hull along the river
+    return [...FELS.map((f) => [f.s - m, f.s + m]), ...CROCS.map((c) => [c.s - 7, c.s + 7])];
+  },
   bounds: { minX: TRAY.x0, maxX: TRAY.x1, minZ: TRAY.z0, maxZ: TRAY.z1 },
   fallOffEdges: false,
   floorY: -80,

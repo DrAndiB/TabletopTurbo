@@ -87,6 +87,8 @@ export default {
   vehicle: 'rally',
   seed: 101,
   track: { points: TRACK, width: W, startS: START },
+  // head-to-head restarts move on past the wadi jump
+  noGrid() { return A && A.sJ0 != null ? [[A.sJ0 - 14, A.sW + A.hwAlong + 2]] : []; },
   bounds: BOUNDS,
   fallOffEdges: true,
   floorY: -76,
@@ -280,12 +282,13 @@ export default {
       return y + (n1(x, z, 0.35, 77) - 0.5) * 1.4 * ss(0, 2, t) + (n2(x, z, 0.5) - 0.5) * 0.8 * ss(0.5, 3, t);
     };
     // dunes: transverse ridges across the east wind, gentle on the windward (east) side, a steep slip face to the west
-    const CAMP = { x: 102, z: -76, rx: 50, rz: 30 }, SITE = { x: -82, z: 30, r: 30 };
+    const CAMP = { x: 102, z: -76, rx: 50, rz: 30 }, SITE = { x: -82, z: 30, r: 30 }, DIG = { x: 40, z: 28, rx: 30, rz: 16 };
     const ampAt = (x, z) => {
       let a = 0.85 + 2.0 * ss(10, 70, x) * ss(-46, -26, z) + 1.2 * ss(80, 97, z) - 0.6 * ss(-60, -92, z);
       const dc = Math.hypot((x - CAMP.x) / CAMP.rx, (z - CAMP.z) / CAMP.rz), dsit = Math.hypot(x - SITE.x, z - SITE.z) / SITE.r;
       a *= 1 - 0.85 * ss(1.1, 0.7, dc);
       a *= 1 - 0.7 * ss(1.1, 0.6, dsit);
+      a *= 1 - 0.85 * ss(1.1, 0.7, Math.hypot((x - DIG.x) / DIG.rx, (z - DIG.z) / DIG.rz));
       return Math.max(0.08, a);
     };
     const DS = { f: 0, amp: 0 };
@@ -410,6 +413,7 @@ export default {
     }
     // the jump: a ramp whose lip is at the wadi's near edge
     const sJ1 = sW - hwAlong - 0.15, sJ0 = sJ1 - JUMP.len;
+    A.sJ0 = sJ0; A.hwAlong = hwAlong;
     {
       const p = track.at((sJ0 + sJ1) / 2);
       K.ramp(p.x, p.z, p.angle, JUMP.len, W + 2, JUMP.h, 0);
@@ -1178,6 +1182,95 @@ export default {
         put(box(0.7, 1.0, 0.8), 0xc8a070, { x: hx, y: 1.6, z: hz + 3.0, rx: 0.3 }, mSmooth);
         AO(hx, hz, 5, 4, 0.5);
         K.circle(hx, hz, 3.6, 5);
+      }
+      // a new tomb being dug out in the middle of the valley: a stairway cut down into the rock, a tripod hoist over
+      // it, a little spoil railway with tip wagons out to the sand heaps, wheelbarrows, baskets, tents and the diggers
+      {
+        const ex = DIG.x - 16, ez = DIG.z, pl = 8, pw = 3.6; // the stairway's mouth; it runs down towards the west
+        const gy = (x, z) => H(x, z);
+        let y0 = 0;
+        for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]]) y0 = Math.max(y0, gy(ex + (dx * pl) / 2, ez + (dz * pw) / 2));
+        const stairC = canvas(256, 128, (g, w, h) => {
+          const q = g.createLinearGradient(w, 0, 0, 0);
+          q.addColorStop(0, '#c9a676'); q.addColorStop(0.55, '#6a5036'); q.addColorStop(1, '#0b0806');
+          g.fillStyle = q; g.fillRect(0, 0, w, h);
+          for (let k = 0; k < 10; k++) {
+            const x = w - 6 - k * 21;
+            g.fillStyle = `rgba(255,236,200,${0.5 - k * 0.045})`; g.fillRect(x - 3, 12, 3, h - 24);
+            g.fillStyle = `rgba(0,0,0,${0.22 + k * 0.05})`; g.fillRect(x - 21, 12, 18, h - 24);
+          }
+          g.fillStyle = 'rgba(40,28,16,0.9)'; g.fillRect(0, 0, w, 12); g.fillRect(0, h - 12, w, 12);
+          g.fillStyle = '#050302'; g.fillRect(0, 30, 30, h - 60); // the doorway at the foot of the stairs
+        });
+        const pit = K.mesh(new T.PlaneGeometry(pl, pw).rotateX(-PI / 2), K.std({ map: tex(stairC, [1, 1], false), roughness: 1 }), ex, y0 + 0.08, ez, { cast: false });
+        pit.renderOrder = 1;
+        for (const sd of [-1, 1]) put(box(pl + 0.8, 0.5, 0.45), 0xc8b08c, { x: ex, y: y0 + 0.2, z: ez + sd * (pw / 2 + 0.22) }, mStone);
+        put(box(0.45, 0.5, pw + 0.9), 0xc8b08c, { x: ex + pl / 2 + 0.22, y: y0 + 0.2, z: ez }, mStone);
+        put(box(0.7, 1.3, pw + 0.9), 0xb89a74, { x: ex - pl / 2 - 0.35, y: y0 + 0.5, z: ez }, mStone); // the rock face over the door
+        AO(ex, ez, pl / 2 + 1, pw / 2 + 1, 0.35);
+        K.box(ex, ez, pl / 2 + 0.6, pw / 2 + 0.6, 0, 1.3);
+        // a rod between two points (pre-rotated, then placed by put)
+        const up = new T.Vector3(0, 1, 0), dir = new T.Vector3(), rq = new T.Quaternion();
+        const rod = (ax, ay, az, bx, by, bz, rad, col, mat) => {
+          dir.set(bx - ax, by - ay, bz - az); const len = dir.length(); dir.normalize();
+          const g = cyl(rad, rad, len, 6); g.applyQuaternion(rq.setFromUnitVectors(up, dir));
+          put(g, col, { x: (ax + bx) / 2, y: (ay + by) / 2, z: (az + bz) / 2 }, mat);
+        };
+        // the tripod hoist over the stairway, a rope and a basket on its way up
+        const hx = ex - 1, top = y0 + 6.4;
+        for (let k = 0; k < 3; k++) {
+          const a = (k * TAU) / 3 + 0.5, fx = hx + Math.cos(a) * 3.3, fz = ez + Math.sin(a) * 3.3;
+          rod(fx, gy(fx, fz), fz, hx, top, ez, 0.12, 0x7a5a36, mWood);
+          K.circle(fx, fz, 0.3, 4);
+        }
+        put(cyl(0.3, 0.3, 0.22, 10), 0x4a3a2a, { x: hx, y: top - 0.25, z: ez, rx: PI / 2 }, mWood);
+        rod(hx, top - 0.3, ez, hx, y0 + 2.2, ez, 0.03, 0xd8c8a0, mFabric);
+        put(cyl(0.45, 0.32, 0.55, 10), 0x9a7a4a, { x: hx, y: y0 + 1.9, z: ez }, mFabric);
+        // the spoil railway: two rails on sleepers from the stairway out to the heaps
+        const r0 = ex + pl / 2 + 1.2, r1 = ex + 30;
+        for (const sd of [-0.55, 0.55]) put(box(r1 - r0, 0.1, 0.1), 0x5a5048, { x: (r0 + r1) / 2, y: gy((r0 + r1) / 2, ez) + 0.2, z: ez + sd }, mSmooth);
+        for (let x = r0 + 0.4; x < r1; x += 1.1) put(box(0.32, 0.08, 1.6), 0x6a4a2a, { x, y: gy(x, ez) + 0.12, z: ez }, mWood);
+        // tip wagons: a square skip on a little chassis; the last one tipping onto the heap
+        const wagon = (x, tip) => {
+          const y = gy(x, ez) + 0.25;
+          put(box(1.5, 0.22, 1.2), 0x3a3a38, { x, y: y + 0.32, z: ez }, mSmooth);
+          for (const [dx, dz] of [[-0.5, -0.55], [0.5, -0.55], [-0.5, 0.55], [0.5, 0.55]]) put(cyl(0.24, 0.24, 0.1, 10), 0x2a2a28, { x: x + dx, y: y + 0.22, z: ez + dz, rx: PI / 2 }, mSmooth);
+          put(cyl(0.95, 0.6, 0.85, 4), 0x8a5a36, { x, y: y + 0.9, z: ez, ry: PI / 4, rz: tip ? -0.75 : 0, order: 'XZY' }, mSmooth);
+          if (!tip) put(cyl(0.8, 0.8, 0.12, 4), 0xd8bc8c, { x, y: y + 1.28, z: ez, ry: PI / 4 }, mSmooth);
+          AO(x, ez, 1.0, 0.9, 0.35);
+          K.circle(x, ez, 0.9, 1.8);
+        };
+        wagon(ex + 9, false); wagon(ex + 11.2, false); wagon(r1 - 0.8, true);
+        // the spoil heaps, a little paler where fresh sand was tipped
+        for (const [dx, dz, rr, hh, col] of [[34, -3.5, 6.5, 4.2, 0xdcb98a], [31.5, 8.5, 5.2, 3.4, 0xd0aa7a], [41, 5, 4.2, 2.6, 0xe4c49a], [42, -9, 3.6, 2.2, 0xd6b282]]) {
+          const x = ex + dx, z = ez + dz;
+          put(K.lathe([[rr, 0], [rr * 0.9, hh * 0.15], [rr * 0.6, hh * 0.6], [rr * 0.25, hh * 0.96], [0.001, hh]], 18), col, { x, y: gy(x, z) - 0.15, z, sz: 0.85, ry: dx }, mSmooth);
+          AO(x, z, rr * 1.05, rr * 0.95, 0.3);
+          K.circle(x, z, rr * 0.75, hh);
+        }
+        // wheelbarrows, baskets, a sieve on trestles, two tents, the diggers and their foreman
+        const barrow = (x, z, ry) => {
+          const y = gy(x, z);
+          put(box(1.3, 0.45, 0.9), 0x5a6a6a, { x, y: y + 0.55, z, ry }, mSmooth);
+          put(cyl(0.3, 0.3, 0.12, 10), 0x2a2a28, { x: x + Math.cos(ry) * 0.85, y: y + 0.3, z: z - Math.sin(ry) * 0.85, rx: PI / 2, ry }, mSmooth);
+          for (const sd of [-0.32, 0.32]) put(box(1.3, 0.08, 0.08), 0x7a5a36, { x: x - Math.cos(ry) * 0.9 + Math.sin(ry) * sd, y: y + 0.55, z: z + Math.sin(ry) * 0.9 + Math.cos(ry) * sd, ry }, mWood);
+          AO(x, z, 1.1, 0.7, 0.3, ry);
+        };
+        barrow(ex + 4, ez + 4, 0.4); barrow(ex + 14, ez - 4, -0.3);
+        for (const [dx, dz] of [[2, -3.6], [2.6, -3.0], [1.4, -3.1], [-6.5, 3.6]]) { const x = ex + dx, z = ez + dz; put(cyl(0.42, 0.3, 0.42, 10), 0x9a7a4a, { x, y: gy(x, z) + 0.21, z }, mFabric); }
+        {
+          const sx = ex + 6, sz = ez + 7, y = gy(sx, sz);
+          for (const sd of [-1, 1]) for (const k of [-1, 1]) put(cyl(0.06, 0.06, 1.1, 5), 0x6a4a2a, { x: sx + sd * 1.0, y: y + 0.55, z: sz + k * 0.6 }, mWood);
+          put(box(2.4, 0.12, 1.5), 0x8a6a42, { x: sx, y: y + 1.1, z: sz }, mWood);
+          put(box(2.0, 0.06, 1.2), 0xb09868, { x: sx, y: y + 1.18, z: sz }, mFabric);
+          AO(sx, sz, 1.5, 1.0, 0.3);
+        }
+        tent(ex - 9, ez + 11, 0.3, 4.5, 3.2, 2.6, 0xebdcbe);
+        tent(ex - 2, ez + 13, -0.2, 4.0, 3.0, 2.4, 0xd8c49c);
+        figure(ex + 1.5, ez + 2.9, PI / 2); figure(ex - 2.2, ez - 2.9, -PI / 2, 0xe8e0d0, 0xc8b48c, 1);
+        figure(ex + 7.5, ez + 1.4, PI, 0xd8cdb8); figure(ex + 12.8, ez - 1.3, 0.2, 0xf2ece0, 0xa89070, 1);
+        figure(ex + 27, ez + 2.2, -PI / 2, 0xe8dcc8); figure(ex + 6.4, ez + 5.6, -0.4, 0xb8a070, 0x8a7a5a); // the foreman in khaki at the sieve
+        figure(ex + 15, ez - 4.6, 1.2, 0xf2ece0, 0xc8b48c, 1);
       }
     }
 

@@ -34,8 +34,10 @@ const KING = { x: -100, z: -44, r: 12.5 }; // the King's Chamber dais (inside th
 const TREAS = { x: 62, z: -1, r: 12.5 }; // the treasury dais (inside the east hairpin)
 
 // ---- the stone doors: a closed spell, the rise, open (the last Wn s of it with the warning), the drop. Phased as a
-// green wave at DOOR.wave units/s from the start line (a car at that pace meets every door just after it opened).
-const DOOR = { P: 8, C: 2.6, R: 0.8, Wn: 1.5, D: 0.45, top: 6.6, solid: 1.8, sh: 4.6, th: 1.8, wave: 36 };
+// green wave from the start line: a car lapping in DOOR.cyc cycles (25 s, a hard CPU's pace with the doors open)
+// meets every door just after it opened, on every lap (the wave's speed comes from the track length, so the doors
+// stay in step lap after lap); slower cars drift out of step and now and then wait at a closed door.
+const DOOR = { P: 8.3, cyc: 3, C: 2.6, R: 0.8, Wn: 1.5, D: 0.45, top: 6.6, solid: 1.8, sh: 4.6, th: 1.8 };
 const DOOR_AT = [[60, 62], [-48, -66], [0, 20]];
 // ---- the sand falls: idle, a trickle, the pour, the heap, then it drains away through the floor joints
 const SAND = { P: 9, idle: 2.0, trick: 1.4, pour: 2.8, pile: 1.6, R: 4.8, edge: 3.6 };
@@ -461,7 +463,12 @@ export default {
     const topAt = (x, z, n = track.distTo(x, z)) => {
       if (x < KING.x + 0.5 && Math.hypot(x - KING.x, z - KING.z) < KING.r) return H + 1.3;
       if (x > TREAS.x - 0.5 && Math.hypot(x - TREAS.x, z - TREAS.z) < TREAS.r) return 0.7;
-      return Math.max(cutP(z), roadY(n.s) + 4.5);
+      const y0 = roadY(n.s), h = Math.max(cutP(z), y0 + 4.5);
+      // on the camera (south) side of a passage the cut stays low at the wall and rises gently further out, so the
+      // near lane is never hidden at 62°
+      const k = ss(0.15, 0.55, (z - track.z[n.i]) / Math.max(0.01, n.dist));
+      if (k <= 0) return h;
+      return lerp(h, Math.min(h, y0 + 1.4 + Math.max(0, n.dist - track.w[n.i] / 2 - 1.6) * 1.6), k);
     };
     const stoneTint = (x, z, y) => {
       const n = bil(NF, x * 0.9 + 40, z * 0.9 + 70), n2 = bil(NF2, x * 0.25, z * 0.25);
@@ -659,7 +666,7 @@ export default {
       const gemsL = [], strips = [];
       DOOR_AT.forEach(([dx, dz], k) => {
         const s = sAt(dx, dz), p = track.at(s), y = roadY(s), w = p.w;
-        const ph = mod(DOOR.C + DOOR.R + 0.5 - sRel(s, START_S) / DOOR.wave, DOOR.P);
+        const ph = mod(DOOR.C + DOOR.R + 0.5 - sRel(s, START_S) / (L / (DOOR.cyc * DOOR.P)), DOOR.P);
         const col = K.box(p.x, p.z, DOOR.th / 2, w / 2 + 0.8, p.angle, 0);
         const D = { k, s, x: p.x, z: p.z, y, w, c: Math.cos(p.angle), sn: Math.sin(p.angle), ph, col, hold: false, phase: -1, last: null };
         // jambs and the lintel (local x along the road, local z across, +z = the driver's right)
@@ -991,7 +998,12 @@ export default {
     if (!A || !A.doors.length) return;
     // a countdown starts the clocks again (also a countdown restarted from the pause menu)
     const newCount = game.state === 'countdown' && (A.prevState !== 'countdown' || game.countT > (A.prevCountT ?? 0) + 0.01);
-    if (newCount) { A.t0 = time + Math.max(0, game.countT); for (const D of A.doors) { D.col.h = 0; D.hold = false; } }
+    if (newCount) {
+      A.t0 = time + Math.max(0, game.countT);
+      // no slam, rumble or dust for a door or sand fall that changes state at the restart itself
+      for (const D of A.doors) { D.col.h = 0; D.hold = false; D.phase = -1; D.by = null; }
+      for (const S of A.sands) S.phase = -1;
+    }
     A.prevState = game.state; A.prevCountT = game.countT;
     const L = A.L, cars = game.cars;
     // doors: solid while down; a slab closing onto a car waits on its roof until the car is through
@@ -1084,6 +1096,9 @@ export default {
         const u = doorU(D, time);
         let b = doorB(u);
         if (D.hold) b = Math.max(b, 2.2);
+        // a slab that sat on a car's roof drops at its own speed once the car is through (never in one frame)
+        if (D.by != null && b < D.by) b = Math.max(b, D.by - (2 * DOOR.top / DOOR.D) * Math.max(0, Math.min(dt, 0.1)));
+        D.by = b;
         D.g.position.y = D.y + b + DOOR.sh / 2;
         const wn = doorWarn(u), closed = b < DOOR.solid + 0.2, rising = u >= DOOR.C && u < DOOR.C + DOOR.R;
         const flash = Math.floor(time * 7) % 2 === 0;

@@ -104,6 +104,10 @@ export default {
   full), and fast discs push cars outward (`pull`, default 0.5). Positive angles turn from +x towards +z.
 - Darkness: set `headlights: true` (or `{intensity, distance, angle, color}`) and every vehicle gets a forward
   spotlight (no shadows). Keep the world dark but readable; light pools from lamps/candles help.
+- Head-to-head restarts: a new round lines the cars up where the last one was won. A world with a jump over a hole,
+  or traffic crossing the road, gives `noGrid(track)` returning `[s0, s1]` arc-length spans, and the grid moves on
+  past them (giza, nile and valley do). Start s0 far enough before a jump that a car starting just outside it
+  still clears it.
 - Shortcuts: the engine resets a car that jumps more than `maxShortcut` (default 45) units along the track in one
   go (e.g. across the infield). It also tallies the progress a car makes while it is entirely off the road (2.5
   units past the edge) against the distance it drives there; more than 12 units ahead is a cut (`CUT` in game.js;
