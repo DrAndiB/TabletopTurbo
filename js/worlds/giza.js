@@ -1239,6 +1239,7 @@ export default {
       if (c.state === 'falling' && c.fallKind === 'hole') {
         if (!A.fell.has(k)) {
           A.fell.add(k);
+          if (game.sound && (game.state === 'race' || game.state === 'roundEnd')) game.sound.splash(30, game.panOf(c.x, c.z));
           if (game.particles) {
             game.particles.emit(c.x, -0.8, c.z, { color: 0xd6eef4, n: 18, size: 1.1, life: 0.6, spread: 14, up: 16, grav: 42, alpha: 0.9, grow: 1 });
             game.particles.emit(c.x, -0.8, c.z, { color: 0x6fc0d8, n: 8, size: 1.6, life: 0.5, spread: 8, up: 9, grav: 30, alpha: 0.7, grow: 1.4 });
@@ -1253,7 +1254,7 @@ export default {
     if (pt == null || time <= pt || time - pt > 0.5) return;
     const u1 = camelU(0, time), u0 = camelU(0, pt);
     for (const ub of BELL_U) {
-      if (Math.floor((u1 - ub) / CV.L) > Math.floor((u0 - ub) / CV.L)) game.sound.cue('bell', { x: CAR.x, z: CAR.roadZ, game });
+      if (Math.floor((u1 - ub) / CV.L) > Math.floor((u0 - ub) / CV.L)) game.sound.cue('bell', { x: CAR.x, z: CAR.roadZ, game, tin: true });
     }
   },
 

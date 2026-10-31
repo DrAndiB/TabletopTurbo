@@ -405,8 +405,14 @@ export const CUES = {
       finish([o1, o2, s], [o1, o2, s, bp, sg, ...nodes], t + a + 0.25);
     });
   },
-  // a crossing bell strike
-  bell(A, t, pan, v) { blip(A, t, 2093, 0.2, v * 0.05, pan); blip(A, t, 3136, 0.12, v * 0.022, pan); },
+  // a crossing bell strike (o.tin: a camel's dull tin bell, the clapper swinging twice)
+  bell(A, t, pan, v, o = {}) {
+    if (!o.tin) { blip(A, t, 2093, 0.2, v * 0.05, pan); blip(A, t, 3136, 0.12, v * 0.022, pan); return; }
+    for (const [a, k] of [[0, 1], [0.15, 0.7]]) {
+      blip(A, t + a, 880, 0.16, v * 0.05 * k, pan, 'triangle'); blip(A, t + a, 1295, 0.09, v * 0.024 * k, pan);
+      hitBuf(A, t + a, 'click', v * 0.03 * k, pan, 0.6);
+    }
+  },
   // sluice gate about to move: a heavy metal clank and the ratchet
   clank(A, t, pan, v) {
     const ctx = A.ctx, { g, nodes } = out(A, pan), c = osc(ctx, 'sine', 170), m = osc(ctx, 'sine', 170 * 2.41), mg = ctx.createGain();
