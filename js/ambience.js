@@ -426,6 +426,18 @@ export const CUES = {
     hitBuf(A, t + 0.24, 'clack', v * 0.18, pan, 0.72);
     hitBuf(A, t + 0.37, 'clack', v * 0.13, pan, 0.8);
   },
+  // a stone slab grinding in its slot for o.dur seconds: a low rumble and gritty scraping
+  grind(A, t, pan, v, o = {}) {
+    const ctx = A.ctx, d = o.dur || 1, { g, nodes } = out(A, pan), s = src(A, 'brown', true), bp = filt(ctx, 'bandpass', 240, 1.6), lp = filt(ctx, 'lowpass', 1100, 0.7);
+    const grit = src(A, 'gravel', true), gb = filt(ctx, 'bandpass', 1300, 0.9), gg = ctx.createGain(), r = osc(ctx, 'triangle', 52), rg = ctx.createGain();
+    s.connect(bp); bp.connect(lp); grit.connect(gb); gb.connect(gg); gg.connect(lp); lp.connect(g); r.connect(rg); rg.connect(g);
+    gg.gain.value = 0.5; rg.gain.value = 0.35; s.playbackRate.value = 0.8; grit.playbackRate.value = 0.55;
+    r.frequency.setValueAtTime(52, t); r.frequency.linearRampToValueAtTime(41, t + d);
+    const G = g.gain, a = Math.min(0.3, d * 0.3);
+    G.setValueAtTime(0, t); G.linearRampToValueAtTime(v * 0.22, t + a); G.setValueAtTime(v * 0.22, t + d - 0.12); G.linearRampToValueAtTime(0, t + d + 0.08);
+    s.start(t, Math.random()); grit.start(t, Math.random()); r.start(t);
+    finish([s, grit, r], [s, grit, r, bp, lp, gb, gg, rg, ...nodes], t + d + 0.15);
+  },
   // the escapement: tick and tock on alternate beats
   tick(A, t, pan, v, o = {}) {
     const f = o.alt ? 2600 : 1950;

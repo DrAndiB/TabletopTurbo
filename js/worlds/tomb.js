@@ -1077,7 +1077,7 @@ export default {
     if (!A || !A.doors.length) return;
     const st = game.state, live = st === 'race' || st === 'countdown' || st === 'roundEnd';
     const snd = game.sound, col = A.tmp.col;
-    // ---- doors: the slab, its lamps and floor strips, dust, the clank and the thud
+    // ---- doors: the slab, its lamps and floor strips, dust, the clank, the grinding and the thud
     {
       const hp = A.gemHalo.geometry.attributes.color;
       for (const D of A.doors) {
@@ -1094,9 +1094,9 @@ export default {
         const phase = closed ? 3 : wn > 0 ? 1 : rising ? 2 : 0;
         if (phase !== D.phase) {
           if (live && D.phase !== -1 && game.onScreen(D.x, D.y + 3, D.z, 0.25)) {
-            if (phase === 1) { snd.cue('clank', { x: D.x, z: D.z, game }); if (snd.ctx) snd.tone(70, 1.4, { type: 'triangle', vol: 0.07, slideTo: 52, attack: 0.3, pan: game.panOf(D.x, D.z) }); }
+            if (phase === 1) { snd.cue('clank', { x: D.x, z: D.z, game }); snd.cue('grind', { x: D.x, z: D.z, game, dur: DOOR.Wn + DOOR.D }); }
             if (phase === 3 && snd.ctx) { snd.tone(58, 0.5, { type: 'sine', vol: 0.32, slideTo: 32, pan: game.panOf(D.x, D.z) }); snd.noiseBurst(0.5, { freq: 420, vol: 0.2, pan: game.panOf(D.x, D.z) }); }
-            if (phase === 2 && snd.ctx) snd.noiseBurst(0.9, { freq: 260, q: 3, type: 'bandpass', vol: 0.08, pan: game.panOf(D.x, D.z) });
+            if (phase === 2) snd.cue('grind', { x: D.x, z: D.z, game, dur: DOOR.R, vol: 0.8 });
           }
           if (phase === 3 && D.phase !== -1 && game.particles && game.onScreen(D.x, D.y, D.z, 0.25)) {
             for (const sd of [-1, 1]) game.particles.emit(D.x + D.c * sd * 1.6, D.y + 0.5, D.z + D.sn * sd * 1.6, { color: 0xd8c098, n: 10, size: 2.2, life: 0.9, spread: 8, up: 3, grav: -0.5, grow: 2.2, alpha: 0.45 });
