@@ -1,5 +1,26 @@
 # Tabletop Turbo: roadmap and idea bank
 
+## Version 1.6 (built October 2026): the Pharaoh Cup
+
+Andreas asked for "an egypt cup" (30 October 2026). Four tables from easy to expert, each with a new vehicle or a
+signature hazard, every hazard telegraphed and periodic:
+- **Giza Sandpit** (dune buggy, easy): a child's sandpit on a garden patio sculpted into the Giza plateau. Bucket
+  pyramids, a sand sphinx, a packed-sand ramp that jumps the "Nile" trench (fall in and you restart with a run-up),
+  a dune hump, a toy camel caravan crossing on a string with tin bells first, a mud patch, pushable moulds.
+- **Nile Cruise** (speedboats, medium): a school diorama of the Nile at Aswan. The cataract's white water carries
+  you through two or three lines between granite boulders, a gentle current against you on the way back, toy
+  crocodiles whose eyes surface before they lunge into the outer lane, feluccas tacking across as traffic.
+- **Pharaoh's Tomb** (4x4 trucks, hard): a museum cutaway of a pyramid's chambers, dark with torches and headlights.
+  Up the Grand Gallery to the King's Chamber and down again; three stone doors drop in a green wave you can learn
+  (lamps, dust and a grinding rumble first; queued cars wait), sand pours from cracked ceiling blocks.
+- **Sandstorm Valley** (rally, expert): a sunset diorama of a valley of royal tombs. Up the temple terraces, a
+  colonnade slalom, a cliff ledge, a jump across the wadi; every 21 s a sandstorm sweeps across from the east (a
+  camp horn first) and its crosswind pushes you sideways, then leaves sand drifts on the road.
+- **Dune buggy** (`buggy`): light, quick off the line and sure-footed in sand; it borrows the rally car's recorded
+  engine.
+- Synthesised music in the hijaz scale (oud, qanun, ney, darbuka rhythms) and backgrounds; new cue sounds: the
+  crocodile's snap, the stone doors' grind, the storm's gusts, a camel's tin bell.
+
 ## Version 1.5 (built October 2026): the Mayhem Cup
 
 Andreas asked for "a new challenging cup, 4 tracks, go crazy" (28 October 2026). The hardest cup in the game, each

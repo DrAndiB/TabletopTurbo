@@ -80,7 +80,8 @@ js/input.js         keyboard (4 players), gamepads, touch
 js/audio.js         sound: engines per vehicle, crashes, cues, mixing
 js/samples.js       the recordings in audio/ (engines, music, backgrounds), how they loop and play
 js/music.js         synthesised music, used where a recording is missing or still loading
-js/ambience.js      synthesised backgrounds (same fallback) and cue sounds (train whistles, sluice gate, escapement)
+js/ambience.js      synthesised backgrounds (same fallback) and cue sounds (train whistles, sluice gate, escapement,
+                    crocodiles, stone doors, sandstorm)
 audio/              engine loops, music and background recordings (sources in audio/CREDITS.md)
 js/hud.js, js/fx.js, js/records.js (best laps, ghosts, trophies), js/util.js
 js/worlds/*.js      one file per world; js/worlds/index.js holds the cups and the menu order

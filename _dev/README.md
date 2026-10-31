@@ -122,7 +122,8 @@ The menu theme plays on the title and lobby screens (`startMusic`/`stopMusic` fr
    in seconds.
 3. Optionally add cues. In the world's `tick` or `animate`, call `game.sound.cue(name, { x, z, game })` once when
    something is about to happen. Keep the previous value in the world's state and fire on the transition, as
-   `gingerbread.js` (whistle), `watertable.js` (clank), `toybox.js` (toot) and `watchmaker.js` (tick) do. Cues
+   `gingerbread.js` (whistle), `watertable.js` (clank), `toybox.js` (toot), `watchmaker.js` (tick), `nile.js`
+   (snap), `tomb.js` (grind) and `valley.js` (gust) do. Cues
    are panned and get quieter away from the middle of the view, but never go silent. They only play while racing.
    For new cue sounds, add them to `CUES`.
 
