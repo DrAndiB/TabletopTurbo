@@ -1,7 +1,7 @@
 {
   "name": "tabletop-turbo-app",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Android app build of Tabletop Turbo (Capacitor wrapper around the web game in the repository root)",
   "scripts": {
     "www": "node build-www.mjs",

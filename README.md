@@ -5,7 +5,7 @@ up to four players on one keyboard, plus gamepads and computer drivers.
 
 **Play it:** https://andreasbraun.lu/demos/tabletop-turbo/
 
-- **28 miniature worlds in seven cups**, from easy to expert:
+- **32 miniature worlds in eight cups**, from easy to expert:
   - Crumb Cup: Breakfast Rush, Garden Grand Prix, Gingerbread Village, Toy Box Mayhem
   - Doodle Cup: Homework Hustle, Bath Time Overflow, Corner Pocket, Splash Lagoon Regatta
   - Turbo Cup: Workbench Rally, Quarterly Review, Mars Rover Run, Branch Line Bash
@@ -13,13 +13,14 @@ up to four players on one keyboard, plus gamepads and computer drivers.
   - Grand Duchy Cup (Luxembourg, easy to expert): Crémant Curves, Fouer Frenzy, Grund Prix, Old Town Jigsaw
   - Drift Cup (drift cars, easy to expert): Butter Slide, Switchback Pass, Ten-Pin Drift, Neon Rooftop
   - Mayhem Cup (moving floors, the hardest): Sushi Express, Vinyl Frenzy, Opening Night, Eruption!
-- **Twelve vehicle types:** sports cars, formula racers, rally cars, 4x4 trucks, Mars rovers, speedboats,
-  hovercraft, snowmobiles, monster trucks, luxury SUVs, fairground bumper cars and drift coupés, each with its
-  own recorded engine sound (the drift coupé borrows the sports car's).
+  - Pharaoh Cup (Egypt, easy to expert): Giza Sandpit, Nile Cruise, Pharaoh's Tomb, Sandstorm Valley
+- **Thirteen vehicle types:** sports cars, formula racers, rally cars, 4x4 trucks, Mars rovers, speedboats,
+  hovercraft, snowmobiles, monster trucks, luxury SUVs, fairground bumper cars, drift coupés and dune buggies, each
+  with its own recorded engine sound (the drift coupé borrows the sports car's, the dune buggy the rally car's).
 - **Drifting (Drift Cup):** at speed, tap the brake while steering to kick the tail out; hold the slide through
   the corner to charge sparks (blue, then orange) and steer out of it for a boost.
 - **Music and sound:** an original piece for every world and the menu, with a layer added on the final lap, and
-  recorded background sounds for every world (the Drift and Mayhem Cup tables still use synthesised music and backgrounds).
+  recorded background sounds for every world (the Drift, Mayhem and Pharaoh Cup tables still use synthesised music and backgrounds).
 - **Modes:** head-to-head (the screen follows the leader; drop off its edge and you're out), lap races,
   cup championships with gold/silver/bronze trophies, and time trial against your own ghost car.
 - **Arcade touches:** adjustable catch-up, slipstream, crashes that shove and spin, turbo starts,
