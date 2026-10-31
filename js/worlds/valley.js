@@ -1569,10 +1569,9 @@ export default {
       for (const e of game.cars) { const c = e.car; if (c.state === 'drive' && Math.random() < kc * 0.4) P.emit(c.x, 0.6, c.z, { vx: -30, vz: 10, spread: 5, up: 1.5, grav: 1, color: 0xd8a870, size: 1.2, life: 0.8, alpha: 0.45, grow: 2 }); }
     }
     if (live && game.sound && game.sound.ctx && dt > 0) {
-      if (kc > 0.04) {
-        A.windT -= dt;
-        if (A.windT <= 0) { A.windT = 0.24; game.sound.noiseBurst(0.6, { freq: 320 + 380 * kc + Math.sin(time * 3) * 80, q: 0.7, type: 'bandpass', vol: 0.02 + 0.07 * kc }); }
-      }
+      // overlapping gusts while the storm is over the view, louder the deeper in it
+      A.windT -= dt;
+      if (kc > 0.04 && A.windT <= 0) { A.windT = 2.6; game.sound.cue('gust', { dur: 3.4, vol: 0.45 + 0.55 * kc, pan: 0.2, game }); }
       if (A.lastKc < 0.25 && kc >= 0.25) game.sound.noiseBurst(1.5, { freq: 260, q: 0.5, type: 'bandpass', vol: 0.16 });
     }
     A.lastKc = kc;

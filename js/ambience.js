@@ -444,6 +444,19 @@ export const CUES = {
     s.start(t, Math.random()); grit.start(t, Math.random()); r.start(t);
     finish([s, grit, r], [s, grit, r, bp, lp, gb, gg, rg, ...nodes], t + d + 0.15);
   },
+  // a desert wind gust for o.dur seconds: a hiss of sand, a low roar and a howl sweeping in pitch
+  gust(A, t, pan, v, o = {}) {
+    const ctx = A.ctx, d = o.dur || 3, { g, nodes } = out(A, pan), s = src(A, 'pink', true), bp = filt(ctx, 'bandpass', 500, 0.8);
+    const hs = src(A, 'white', true), hb = filt(ctx, 'highpass', 3500, 0.7), hg = ctx.createGain(), howl = filt(ctx, 'bandpass', 700, 9), hw = ctx.createGain();
+    s.connect(bp); bp.connect(g); s.connect(howl); howl.connect(hw); hw.connect(g); hs.connect(hb); hb.connect(hg); hg.connect(g);
+    hg.gain.value = 0.18; hw.gain.value = 2.2;
+    const B = bp.frequency, H = howl.frequency, G = g.gain;
+    B.setValueAtTime(380, t); B.linearRampToValueAtTime(720, t + d * 0.45); B.linearRampToValueAtTime(420, t + d);
+    H.setValueAtTime(520, t); H.linearRampToValueAtTime(880, t + d * 0.4); H.linearRampToValueAtTime(610, t + d * 0.7); H.linearRampToValueAtTime(760, t + d);
+    G.setValueAtTime(0, t); G.linearRampToValueAtTime(v * 0.19, t + d * 0.25); G.setValueAtTime(v * 0.19, t + d * 0.6); G.linearRampToValueAtTime(0, t + d);
+    s.start(t, Math.random()); hs.start(t, Math.random());
+    finish([s, hs], [s, hs, bp, hb, hg, howl, hw, ...nodes], t + d + 0.05);
+  },
   // the escapement: tick and tock on alternate beats
   tick(A, t, pan, v, o = {}) {
     const f = o.alt ? 2600 : 1950;

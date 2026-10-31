@@ -413,8 +413,8 @@ export class Sound {
   // ---------------------------------------------------------------- cues from the worlds
   // sound.cue(name, {x, z, game}) or {pan, vol}: 'whistle' (steam train), 'toot' (toy train), 'bell'
   // (crossing; {tin}: a camel bell), 'clank' (sluice gate), 'tick' ({alt} for the tock), 'snap' (crocodile),
-  // 'grind' ({dur}, a stone door). With a position the cue is panned and gets quieter away from the middle of the
-  // view, but never silent.
+  // 'grind' ({dur}, a stone door), 'gust' ({dur}, desert wind). With a position the cue is panned and gets
+  // quieter away from the middle of the view, but never silent.
   cue(name, o = {}) {
     const C = CUES[name];
     if (!C || !this.fx()) return;
