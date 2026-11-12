@@ -51,7 +51,8 @@ export default {
 
   async build(K) {
     const { THREE: T, TX, r, track } = K;
-    const { G, P, toy, table, startLine, edges, scatter, sAt, geoOf } = tmTools(K);
+    const TM = tmTools(K);
+    const { G, P, toy, table, startLine, edges, scatter, sAt, geoOf } = TM;
     const L = track.length;
     A = { prevT: null, L, spots: [], rings: [], tent: [], sN0: 0, sN1: 0, haz: [] };
     const paint = K.plastic(0xffffff, 0.5, { vertexColors: true });
@@ -59,13 +60,46 @@ export default {
     const plain = K.plastic(0xffffff, 0.45);
 
     // ---------------- table, the tray, the water ----------------
-    table({ w: 330, d: 250, wood: [0xd9b684, 0x9a7446, 0xf0d8ae], floorA: '#cfd8dc', floorB: '#9fb4bd', top: -7 });
+    table({ w: 404, d: 304, wood: [0xd9b684, 0x9a7446, 0xf0d8ae], floorA: '#cfd8dc', floorB: '#9fb4bd', top: -7 });
     const tray = K.plastic(0x2f8fe0, 0.35);
     K.mesh(new T.BoxGeometry(TRAY.x1 - TRAY.x0 + 8, 1, TRAY.z1 - TRAY.z0 + 8), tray, 0, -6.5, 0, { cast: false });
     for (const [x, z, w, d] of [[0, TRAY.z0 - 2, 300, 4], [0, TRAY.z1 + 2, 300, 4], [TRAY.x0 - 2, 0, 4, 216], [TRAY.x1 + 2, 0, 4, 216]]) K.mesh(new K.RoundedBoxGeometry(w, 9.5, d, 2, 1.2), tray, x, -2.2, z);
     const wt = TX.mottledTextures({ size: 512, a: 0x27a4dc, b: 0x1f96d2, seed: 5, period: 5, speck: 0, bump: 1.6 });
     for (const t of Object.values(wt)) if (t && t.isTexture) t.repeat.set(3.5, 2.6);
-    const water = K.phys({ map: wt.map, normalMap: wt.normalMap, normalScale: new T.Vector2(0.35, 0.35), roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.08 });
+    // the water's colours, painted: deeper and lighter patches, the buoyed channel a shade lighter, shallows and
+    // foam round every island, reefs, the dark pit under the whirlpool, the kraken's ink, glints
+    const REEFS = [];
+    { const rr = K.rng(88); for (let i = 0; i < 60 && REEFS.length < 15; i++) { const x = -134 + rr() * 268, z = -98 + rr() * 196, rad = 7 + rr() * 8; if (!ISLES.some((I) => Math.hypot(I.x - x, I.z - z) < I.r + rad + 4) && Math.hypot(x - POOL.x, z - POOL.z) > 24) REEFS.push({ x, z, rad, sand: i % 4 === 0 }); } }
+    const SEA = { x0: TRAY.x0, z0: TRAY.z0, w: TRAY.x1 - TRAY.x0, d: TRAY.z1 - TRAY.z0, seed: 73 };
+    const print = TM.groundCanvas(SEA, (g, C) => {
+      const cw = g.canvas.width, ch = g.canvas.height, u = C.ppu;
+      const grd = g.createLinearGradient(0, 0, 0, ch); grd.addColorStop(0, '#2aa9de'); grd.addColorStop(1, '#1f93d0'); g.fillStyle = grd; g.fillRect(0, 0, cw, ch);
+      C.mottle(170, ['#2fb0e2', '#1c8ccb', '#259fd8', '#33b6e6'], 6, 18, 0.3);
+      C.mottle(12, ['#1679b8'], 12, 24, 0.3);
+      C.band(W - 4, 7, '#55c6ee', 0.3);
+      for (const q of REEFS) {
+        C.blob(q.x, q.z, q.rad, q.sand ? '#a4e6ee' : '#147ab0', q.sand ? 0.45 : 0.5, 0.5, 1.3, C.rr() * 3);
+        if (!q.sand) C.dots(26, ['#ff7a8a', '#ffb347', '#b46ad8', '#7ad6a0'], 0.3, 0.7, 0.55, q.x, q.z, q.rad * 0.8);
+      }
+      for (const I of ISLES) {
+        const x = C.X(I.x), z = C.Z(I.z), rg = g.createRadialGradient(x, z, I.r * 0.85 * u, x, z, (I.r + 11) * u);
+        rg.addColorStop(0, 'rgba(196,244,240,0.95)'); rg.addColorStop(0.45, 'rgba(120,220,236,0.6)'); rg.addColorStop(1, 'rgba(120,220,236,0)');
+        g.fillStyle = rg; g.beginPath(); g.arc(x, z, (I.r + 11) * u, 0, 7); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = u * 0.7; g.setLineDash([u * 3, u * 2.2]); g.beginPath(); g.arc(x, z, (I.r + 1.2) * u, 0, 7); g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = u * 0.5; g.setLineDash([u * 5, u * 4]); g.beginPath(); g.arc(x, z, (I.r + 4.6) * u, 0.7, 7.7); g.stroke(); g.setLineDash([]);
+      }
+      { const x = C.X(POOL.x), z = C.Z(POOL.z), rg = g.createRadialGradient(x, z, 0, x, z, (POOL.r + 6) * u); rg.addColorStop(0, 'rgba(8,50,96,0.9)'); rg.addColorStop(0.6, 'rgba(18,100,170,0.5)'); rg.addColorStop(1, 'rgba(18,100,170,0)'); g.fillStyle = rg; g.beginPath(); g.arc(x, z, (POOL.r + 6) * u, 0, 7); g.fill(); }
+      C.blob(KRAK.x, KRAK.z, 13, '#124a7a', 0.45, 0.4);
+      // bubbles where the tentacles come up
+      for (const [bx, bz] of [[18, 46], [-12, 44], [-14, 87], [20, 86]]) {
+        const p = track.at(track.nearest(bx, bz).s), sd = (KRAK.x - p.x) * p.nx + (KRAK.z - p.z) * p.nz > 0 ? 1 : -1;
+        for (let k = 0; k < 9; k++) { const q = 1 + k * 1.15; C.dots(4, ['#ffffff', '#d8f4ff'], 0.25, 0.6, 0.55, p.x + p.nx * sd * q, p.z + p.nz * sd * q, 1.3); }
+      }
+      g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(1, u * 0.3); g.globalAlpha = 0.22; g.lineCap = 'round';
+      for (let i = 0; i < 800; i++) { const x = C.rr() * cw, y = C.rr() * ch, l = (1 + C.rr() * 2.4) * u; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - u * 0.5, x + l, y); g.stroke(); }
+      g.globalAlpha = 0.4; g.lineWidth = u * 1.2; g.setLineDash([u * 4, u * 3]); g.strokeRect(u, u, cw - 2 * u, ch - 2 * u); g.setLineDash([]); g.globalAlpha = 1;
+    });
+    const water = K.phys({ map: print.texture(), normalMap: wt.normalMap, normalScale: new T.Vector2(0.35, 0.35), roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.08 });
     K.mesh(new T.PlaneGeometry(TRAY.x1 - TRAY.x0, TRAY.z1 - TRAY.z0), water, 0, 0, 0, { rx: -PI / 2, cast: false });
     A.water = wt.normalMap;
     startLine(34, 0.06, '#d8322a', '#ffffff');
@@ -210,15 +244,10 @@ export default {
 
     // ---------------- more to see: reefs under the water, a wreck, a sea serpent, rowing boats, gulls ----------------
     {
-      const reef = K.std({ color: 0x0f6fae, roughness: 0.3, transparent: true, opacity: 0.45 }), sandbank = K.std({ color: 0x9fe6ee, roughness: 0.3, transparent: true, opacity: 0.4 });
+      // coral heads on the painted reefs, just under the surface
       const coral = [];
-      for (let i = 0; i < 22; i++) {
-        const x = r.range(-136, 136), z = r.range(-100, 100), rad = r.range(7, 15);
-        if (ISLES.some((I) => Math.hypot(I.x - x, I.z - z) < I.r + rad)) continue;
-        K.spill(x, z, rad, i % 3 ? reef : sandbank, { lump: 0.5, stretch: r.range(1, 1.6), angle: r() * 3, y: 0.02, thick: 0.01, n: 24 });
-        if (i % 3) for (let k = 0; k < 7; k++) { const a = r() * 6.28, d = r() * rad * 0.7; coral.push({ x: x + Math.cos(a) * d, y: -0.25, z: z + Math.sin(a) * d, s: r.range(0.5, 1.1), color: r.pick([0xff7a8a, 0xffb347, 0xb46ad8, 0xff5f6d]) }); }
-      }
-      K.instances(G.ico(1), K.std({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.55 }), coral, { colors: true, cast: false });
+      for (const q of REEFS) if (!q.sand) for (let k = 0; k < 6; k++) { const a = r() * 6.28, d = r() * q.rad * 0.7; coral.push({ x: q.x + Math.cos(a) * d, y: -0.3, z: q.z + Math.sin(a) * d, s: r.range(0.5, 1.1), color: r.pick([0xff7a8a, 0xffb347, 0xb46ad8, 0xff5f6d]) }); }
+      K.instances(G.ico(1), K.std({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.6 }), coral, { colors: true, cast: false });
       // the wreck in the north-west corner
       const wx = -128, wz = -92;
       toy([P(G.sph(1, 14), 0x5a3a22, 0, 0.6, 0, { sx: 10, sy: 3.6, sz: 4, rz: 0.22, rx: 0.35 }), P(G.box(13, 0.3, 5.6), 0x8a5a30, 0.4, 2.6, 0.6, { rz: 0.22, rx: 0.35 }), P(G.cyl(0.4, 0.45, 12, 6), 0x8a5a30, -1, 6.5, 2.4, { rz: 0.5, rx: 0.5 }), P(G.box(0.3, 4.5, 6), 0xd8cfb8, -3.2, 8.4, 4.4, { rz: 0.5, rx: 0.5 }), P(G.ico(1), 0x777066, 7, 0.8, -2, { s: 3 }), P(G.ico(1), 0x8a8478, -8, 0.6, 3, { s: 2.4 })], matte, wx, 0, wz, 0.4);
@@ -246,6 +275,72 @@ export default {
       scatter(geoOf([P(G.cone(1.3, 2.8, 3), 0x5a6a78, 0, 1.1, 0, { sz: 0.25, rz: -0.2 })]), matte, 5, [-136, 136, -100, 100], 9, (x, z) => (ISLES.some((I) => Math.hypot(I.x - x, I.z - z) < I.r + 6) ? null : { x, y: 0, z, ry: r() * 6 }));
       scatter(G.tor(2.2, 0.8, PI * 2, 14), plain, 5, [-136, 136, -100, 100], 10, (x, z) => (ISLES.some((I) => Math.hypot(I.x - x, I.z - z) < I.r + 6) || Math.hypot(x - 20, z + 90) < 16 ? null : (K.circle(x, z, 3, 2, { bounce: 0.7 }), { x, y: 0.3, z, rx: PI / 2, color: r.pick([0xe8443a, 0xffe14a, 0xf27aa8, 0x6fc04b]) })));
     }
+    // ================= detail pass: the start, the islands, the crew, the galleon's rigging, gulls and dolphins =================
+    {
+      TM.signBoard(-52, 68.5, 'PIRATE COVE', { w: 26, h: 5.6, y: 6, bg: '#3a2a20', fg: '#ffe9a8', edge: '#f2c230', post: 0x6d4a2b });
+      TM.bunting(35.5, [0xd8322a, 0xffffff, 0x1c1a18, 0xffe14a], { post: 0xd8322a, mat: paint, h: 8 });
+
+      // island tops: grass, bushes, flowers; crabs, starfish and shells on the sand
+      const bush = [], crab = [], star = [], shell = [], grassM = K.std({ color: 0x6fb04a, roughness: 1 });
+      for (const I of ISLES) {
+        K.mesh(K.lathe([[I.r * 0.55, I.h * 0.72], [I.r * 0.42, I.h * 0.92], [I.r * 0.2, I.h * 1.04], [0, I.h * 1.07]], 24), grassM, I.x, 0, I.z, { cast: false });
+        const n = Math.round(I.r / 2.4);
+        for (let i = 0; i < n; i++) { const a = r() * 6.28, d = r.range(0.1, 0.5) * I.r; bush.push({ x: I.x + Math.cos(a) * d, y: I.h * (1 - d / I.r) * 0.95 + 0.4, z: I.z + Math.sin(a) * d, s: r.range(0.8, 1.7), sy: r.range(0.6, 0.9), color: r.pick([0x3f9a4a, 0x55b05a, 0x2f8a3c, 0xf27aa8, 0xffe14a]) }); }
+        for (let i = 0; i < n; i++) {
+          const a = r() * 6.28, d = r.range(0.72, 0.9) * I.r, x = I.x + Math.cos(a) * d, z = I.z + Math.sin(a) * d, y = I.h * (1 - d / I.r) * 0.9 + 0.15;
+          (i % 3 === 0 ? crab : i % 3 === 1 ? star : shell).push({ x, y, z, ry: r() * 6, s: r.range(0.8, 1.2) });
+        }
+      }
+      K.instances(G.sph(1, 7), K.std({ color: 0xffffff, roughness: 1 }), bush, { colors: true });
+      K.instances(geoOf([P(G.sph(0.5, 6), 0xe8443a, 0, 0.25, 0, { sy: 0.5, sx: 1.3 }), P(G.sph(0.22, 4), 0xe8443a, 0.7, 0.3, 0.45), P(G.sph(0.22, 4), 0xe8443a, -0.7, 0.3, 0.45), P(G.sph(0.08, 4), 0x111111, 0.2, 0.5, 0.3), P(G.sph(0.08, 4), 0x111111, -0.2, 0.5, 0.3)]), paint, crab, { cast: false });
+      K.instances(geoOf([0, 1, 2, 3, 4].map((i) => P(G.cone(0.22, 0.9, 4), 0xf59a23, Math.cos(i * 1.257) * 0.45, 0.1, Math.sin(i * 1.257) * 0.45, { rz: -PI / 2, ry: -i * 1.257, sy: 1, sz: 0.5 }))), paint, star, { cast: false });
+      K.instances(geoOf([P(G.cone(0.4, 0.8, 6), 0xf7e8d8, 0, 0.2, 0, { rz: PI / 2, sz: 0.6 }), P(G.sph(0.2, 4), 0xf4b8c8, 0.3, 0.2, 0)]), paint, shell, { cast: false });
+
+      // the crew: peg pirates with striped shirts and black hats
+      const pirate = geoOf([P(G.cyl(0.6, 0.8, 0.8, 8), 0x1c1a18, 0, 0.4, 0), P(G.cyl(0.58, 0.62, 0.7, 8), 0xffffff, 0, 1.15, 0), P(G.cyl(0.56, 0.58, 0.7, 8), 0xffffff, 0, 1.85, 0), P(G.cyl(0.6, 0.6, 0.25, 8), 0x1c1a18, 0, 1.5, 0), P(G.sph(0.6, 8), 0xf2c9a0, 0, 2.7, 0), P(G.cyl(0.95, 0.95, 0.14, 10), 0x1c1a18, 0, 3.1, 0), P(G.sph(0.55, 8), 0x1c1a18, 0, 3.2, 0, { sy: 0.7 })]);
+      const crew = [], I0 = ISLES[0], I1 = ISLES[1], shirts = [0xd8322a, 0x2f6fe0, 0xffe14a, 0x3f9a4a, 0xffffff];
+      const man = (x, y, z) => crew.push({ x, y, z, ry: r() * 6, color: r.pick(shirts) });
+      for (const dz of [-8.5, -3, 2.5, 8]) man(SHIP.x + (dz % 2 ? 1.6 : -1.8), 4.55, SHIP.z + dz);
+      man(SHIP.x, 22.6, SHIP.z + 3); // in the crow's nest
+      for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.4; man(I1.x + 7 + Math.cos(a) * 3.4, I1.h * 0.55, I1.z - 1 + Math.sin(a) * 3.4); }
+      man(I1.x + 4, 1.6, I1.z + I1.r - 1); man(I0.x + 10, 2.3, I0.z + 14); man(I0.x + 2, 2.6, I0.z + 15); man(ISLES[2].x + 2, ISLES[2].h * 0.8, ISLES[2].z + 3); man(ISLES[3].x - 2, ISLES[3].h * 0.8, ISLES[3].z + 2);
+      K.instances(pirate, paint, crew, { colors: true });
+      // their campfire on the west island, the X that marks the spot, a fort with a cannon on the east island
+      toy([...[0, 1, 2, 3, 4, 5].map((i) => P(G.ico(0.5), 0x8a8478, Math.cos(i * 1.047) * 1.4, 0.3, Math.sin(i * 1.047) * 1.4)), P(G.cyl(0.25, 0.25, 2.2, 5), 0x5e3c22, 0, 0.4, 0, { rz: PI / 2 }), P(G.cyl(0.25, 0.25, 2.2, 5), 0x5e3c22, 0, 0.4, 0, { rz: PI / 2, ry: 1.3 })], matte, I1.x + 7, I1.h * 0.55, I1.z - 1);
+      A.fire = K.mesh(G.cone(0.8, 2.2, 6), K.std({ color: 0xffb347, emissive: 0xff6a10, emissiveIntensity: 2.2, roughness: 0.6 }), I1.x + 7, I1.h * 0.55 + 1.3, I1.z - 1, { cast: false });
+      toy([P(G.box(3.4, 0.16, 0.7), 0xd8322a, 0, 0, 0, { ry: 0.785 }), P(G.box(3.4, 0.16, 0.7), 0xd8322a, 0, 0, 0, { ry: -0.785 }), P(G.cyl(0.14, 0.14, 3, 5), 0x7a5230, 2.6, 1.2, 0.6, { rz: 0.5 }), P(G.box(0.9, 1.1, 0.1), 0x9aa0a8, 3.4, 0.2, 0.6, { rz: 0.5 }),
+        ...[0, 1, 2, 3, 4, 5, 6].map((i) => P(G.sph(0.22, 4), 0x5e3c22, 2 + i * 1.5, 0.05 - i * 0.07, 3 + Math.sin(i * 0.9) * 1.6, { sy: 0.4 }))], matte, I1.x - 11, I1.h * 0.42, I1.z + 8);
+      {
+        const fx = I0.x - 13, fz = I0.z + 9, fy = I0.h * 0.35, st = 0x9d968a;
+        toy([P(G.cyl(3.3, 3.7, 7, 12), st, 0, 3.5, 0), ...[0, 1, 2, 3, 4, 5].map((i) => P(G.box(1.3, 1.2, 1), 0x8a8478, Math.cos(i * 1.047) * 3.1, 7.5, Math.sin(i * 1.047) * 3.1, { ry: -i * 1.047 })), P(G.cyl(0.5, 0.6, 4.4, 8), 0x2a2a2a, -2.6, 7.6, 1, { rz: PI / 2 - 0.2 }), P(G.cyl(0.14, 0.14, 5, 4), 0x6d4a2b, 0.6, 9.6, -0.6), P(G.box(2.6, 1.6, 0.08), 0xd8322a, 2, 11.2, -0.6), P(G.box(1.2, 2.2, 0.2), 0x3a2a20, 0, 1.1, 3.6)], matte, fx, fy, fz);
+        K.circle(fx, fz, 3.8, 12);
+      }
+
+      // the galleon: crow's nest, rigging, a stern lantern, a figurehead (ship's bow points north)
+      {
+        const rod = (x1, y1, x2, y2, zz = 0) => P(G.cyl(0.08, 0.08, Math.hypot(x2 - x1, y2 - y1), 4), 0x3a2a20, (x1 + x2) / 2, (y1 + y2) / 2, zz, { rz: Math.atan2(y2 - y1, x2 - x1) - PI / 2 });
+        toy([P(G.cyl(1.5, 1.2, 1.2, 10), 0x8a5a30, -3, 22.2, 0), rod(-3, 24.4, 12.5, 5.6), rod(-3, 24.4, -11, 8.2), rod(4.5, 21.4, 14, 6.4), rod(-3, 20, 4.5, 21.4), rod(-3, 14, -3.01, 4.5, 4.2), rod(-3, 14, -3.01, 4.5, -4.2), rod(4.5, 12, 4.51, 4.5, 4.2), rod(4.5, 12, 4.51, 4.5, -4.2),
+          P(G.sph(0.9, 8), 0xf2c230, 15.6, 4.6, 0, { sx: 1.6 }), P(G.cyl(0.1, 0.1, 2.4, 4), 0x3a2a20, -11.2, 9.4, 0), P(G.tor(1.1, 0.3, PI * 2, 10), 0x4a4a4a, 8, 2.6, 4.7, { ry: 0 }), P(G.cyl(0.25, 0.25, 2.6, 5), 0x4a4a4a, 8, 2.2, 4.75)], matte, SHIP.x, 0, SHIP.z, -PI / 2);
+        A.lantern = K.std({ color: 0xffe89a, emissive: 0xffc24a, emissiveIntensity: 1.6, roughness: 0.5 });
+        K.mesh(G.sph(0.7, 8), A.lantern, SHIP.x, 10.9, SHIP.z + 11.2, { cast: false });
+      }
+
+      // gulls wheeling overhead, two dolphins leaping in the west bay
+      const gull = geoOf([P(G.box(2.6, 0.08, 0.7), 0xffffff, 1.2, 0.25, 0, { rz: 0.28 }), P(G.box(2.6, 0.08, 0.7), 0xffffff, -1.2, 0.25, 0, { rz: -0.28 }), P(G.sph(0.4, 6), 0xffffff, 0, 0, 0.1, { sz: 1.8 }), P(G.cone(0.14, 0.5, 4), 0xf59a23, 0, 0, 1, { rx: PI / 2 })]);
+      A.gulls = [0, 1, 2, 3, 4, 5, 6].map((i) => ({ m: K.add(new T.Mesh(gull, paint)), cx: i < 4 ? SHIP.x + r.range(-8, 8) : I0.x + r.range(-8, 8), cz: i < 4 ? SHIP.z + r.range(-10, 10) : I0.z + r.range(-8, 8), rad: r.range(9, 22), sp: r.range(0.45, 0.8) * (i % 2 ? 1 : -1), ph: r() * 6, y: r.range(17, 24) }));
+      const dol = geoOf([P(G.sph(1, 10), 0x6f8fa8, 0, 0, 0, { sx: 3.2, sy: 0.9, sz: 0.9 }), P(G.sph(1, 8), 0xd8e4ec, 0.2, -0.3, 0, { sx: 2.6, sy: 0.6, sz: 0.7 }), P(G.cone(0.5, 1.4, 4), 0x6f8fa8, -0.3, 1, 0, { rz: 0.5, sz: 0.3 }), P(G.cone(0.8, 1.2, 3), 0x6f8fa8, -3.4, 0, 0, { rz: PI / 2, sx: 0.25 }), P(G.cone(0.4, 1.4, 6), 0x6f8fa8, 3.6, -0.1, 0, { rz: -PI / 2 })]);
+      A.dolphins = [[-95, -42, 0.4, 0], [-90, -36, 0.4, 1.3]].map(([x, z, a, ph]) => ({ m: toy([dol], paint, x, -3, z, a), x, z, a, ph }));
+
+      // left on the table beside the tray: a towel, a bucket and spade, sun cream, flip-flops
+      const ty = -6.95;
+      TM.flat(-150, 134, 76, 30, (g, w, h) => { for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#f27a4a'; g.fillRect(0, i * h / 12, w, h / 12 + 1); } g.fillStyle = '#2f6fe0'; g.fillRect(0, 0, w * 0.04, h); g.fillRect(w * 0.96, 0, w * 0.04, h); }, { y: ty, thick: 0.6, edge: 0xf27a4a, ang: 0.05 });
+      toy([P(G.cyl(11, 8.6, 15, 20), 0xf2c230, 0, 7.5, 0), P(G.cyl(11.6, 11.6, 1, 20), 0xe8443a, 0, 15, 0), P(G.cyl(10, 10, 0.3, 20), 0xe8d49a, 0, 13, 0), P(G.tor(9, 0.4, PI, 16), 0xe8443a, 0, 15, 0)], paint, 178, -7, -70);
+      toy([P(G.cyl(0.9, 0.9, 20, 8), 0x2f6fe0, 0, 1, 0, { rz: PI / 2 }), P(G.rbox(9, 1, 7, 0.4), 0x2f6fe0, 13.5, 0.8, 0), P(G.tor(2.2, 0.8, PI * 2, 12), 0x2f6fe0, -11.5, 1, 0, { rx: PI / 2 })], paint, 176, -7, -30, 0.5);
+      toy([P(G.cyl(4, 4, 15, 14), 0xffa23a, 0, 4, 0, { rz: PI / 2 }), P(G.cyl(2, 2.6, 3, 12), 0xffffff, 9, 4, 0, { rz: -PI / 2 }), P(G.box(8, 0.2, 5), 0xfff3d6, 0, 8, 0)], paint, 176, -7, 60, 1.2);
+      for (const dx of [0, 13]) toy([P(G.rbox(9, 1.2, 20, 0.6), 0x3fb8a8, 0, 0.6, 0), P(G.tor(3, 0.5, PI, 10), 0xffe14a, 0, 1.2, -4, { ry: PI / 2 })], paint, -176 + dx, -7, -60 + dx * 0.3, 0.15 + dx * 0.02);
+      K.instances(G.ico(1), K.std({ color: 0xf7e8d8, roughness: 0.6 }), [[-178, 20], [-171, 28], [-182, 34], [60, -138], [72, -134], [-20, 138]].map(([x, z]) => ({ x, y: -6.4, z, s: r.range(1.2, 2.2), sy: 0.6, ry: r() * 6 })));
+    }
+
   },
 
   aiHazards() { return A ? A.haz : null; },
@@ -288,6 +383,12 @@ export default {
       const hot = i === mod(n, 2) && u < SHIP.fly ? 1 : i === nextI ? warm * (0.55 + 0.45 * Math.sin(time * 14)) : 0;
       R.mat.emissiveIntensity = hot * 1.2; R.mat.opacity = 0.35 + 0.6 * hot; R.ring.scale.setScalar(1 + 0.1 * hot);
     });
+    if (A.gulls) {
+      for (const f of A.gulls) { const a = f.ph + time * f.sp; f.m.position.set(f.cx + Math.cos(a) * f.rad, f.y + Math.sin(time * 0.7 + f.ph), f.cz + Math.sin(a) * f.rad); f.m.rotation.y = -(a + (f.sp > 0 ? 1 : -1) * PI / 2) + PI / 2; f.m.rotation.z = (f.sp > 0 ? 1 : -1) * 0.3; }
+      for (const d of A.dolphins) { const u = ((time * 0.32 + d.ph) % 1), k = u / 0.42; if (k < 1) { d.m.position.set(d.x + Math.cos(d.a) * (k - 0.5) * 12, -1 + 5 * Math.sin(k * PI), d.z + Math.sin(d.a) * (k - 0.5) * 12); d.m.rotation.z = 0.9 * Math.cos(k * PI); } else d.m.position.y = -4; }
+      A.fire.scale.set(1 + 0.15 * Math.sin(time * 11), 1 + 0.25 * Math.sin(time * 8.3), 1 + 0.15 * Math.sin(time * 9.7)); A.fire.rotation.y = time * 3;
+      A.lantern.emissiveIntensity = 1.4 + 0.4 * Math.sin(time * 6);
+    }
     A.serp.forEach((m, i) => { m.position.y = -0.9 + 0.9 * Math.sin(time * 1.6 - i * 0.9); });
     A.serpHead.position.y = 0.4 * Math.sin(time * 1.6 + 0.9); A.serpHead.rotation.z = 0.1 * Math.sin(time * 1.1);
     // tentacles: lean over the lane as they reach in, sink back beside it

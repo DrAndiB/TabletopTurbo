@@ -33,7 +33,7 @@ export default {
   vehicle: 'truck',
   seed: 101,
   track: { points: TRACK, width: W, startS: 40 },
-  bounds: { minX: -150, maxX: 150, minZ: -106, maxZ: 106 },
+  bounds: { minX: -186, maxX: 186, minZ: -136, maxZ: 136 },
   fallOffEdges: true,
   floorY: -76,
   offCourse: 18,
@@ -53,20 +53,45 @@ export default {
 
   async build(K) {
     const { THREE: T, TX, r, track } = K;
-    const { G, P, toy, wedge, table, road, startLine, edges, scatter, sAt, geoOf } = tmTools(K);
+    const TM = tmTools(K);
+    const { G, P, toy, wedge, table, road, startLine, edges, scatter, sAt, geoOf } = TM;
     A = { prevT: null, rex: null, tail: null, bite: null };
     const paint = K.plastic(0xffffff, 0.5, { vertexColors: true });
     const matte = K.std({ color: 0xffffff, roughness: 0.9, vertexColors: true });
     const stone = K.std({ color: 0xffffff, roughness: 0.9 });
 
     // ---------------- table, felt mat, road ----------------
-    table({ w: 304, d: 216, wood: [0xc79a62, 0x8a5a30, 0xe3bd86], floorA: '#d8cdb8', floorB: '#b9c7cf' });
+    table({ w: 380, d: 280, wood: [0xc79a62, 0x8a5a30, 0xe3bd86], floorA: '#d8cdb8', floorB: '#b9c7cf' });
     const felt = TX.feltTextures({ size: 512, color: 0x5d9b4a, seed: 21 });
     for (const t of Object.values(felt)) t.repeat.set(12, 8.5);
-    K.mesh(new T.BoxGeometry(300, 0.3, 212), K.std({ map: felt.map, normalMap: felt.normalMap, roughness: 1 }), 0, -0.15, 0, { cast: false });
-    // darker printed "jungle" patches on the mat
-    const patchMat = K.std({ color: 0x3f7d3a, roughness: 1, transparent: true, opacity: 0.55 });
-    for (let i = 0; i < 16; i++) K.spill(r.range(-140, 140), r.range(-98, 98), r.range(9, 20), patchMat, { lump: 0.5, y: 0.02, thick: 0.01, n: 24 });
+    // the play mat's print: jungle and sand, a dirt shoulder along the road, a stream and a pond, place names
+    const MAT = { x0: -150, z0: -106, w: 300, d: 212, seed: 41 };
+    const print = TM.groundCanvas(MAT, (g, C) => {
+      const cw = g.canvas.width, ch = g.canvas.height;
+      g.fillStyle = '#5f9d4c'; g.fillRect(0, 0, cw, ch);
+      C.mottle(240, ['#55913f', '#69a852', '#4f8a3c', '#74b05b'], 5, 16, 0.35);
+      C.mottle(18, ['#3f7d3a'], 9, 19, 0.5);
+      for (const [x, z, rad] of [[92, 30, 17], [-22, 15, 15], [4, -98, 12], [-104, 6, 17], [120, -80, 31], [40, 34, 9], [-60, -72, 11]]) C.blob(x, z, rad, '#cdb680', 0.55, 0.35);
+      C.band(W + 1, 6, '#c9ad78', 0.8);
+      const stream = [[18, -24], [26, -12], [38, -2], [46, 10], [58, 18]];
+      C.line(stream, 4.4, '#cdb680', 0.8); C.line(stream, 3, '#8fd3e8', 0.95); C.line(stream, 1.5, '#5db9dc', 0.95);
+      C.blob(62, 22, 9.5, '#cdb680', 0.8, 0.25); C.blob(62, 22, 8.2, '#8fd3e8', 0.95, 0.25); C.blob(62, 22, 6.2, '#5db9dc', 0.95, 0.25);
+      g.strokeStyle = '#3f8438'; g.lineWidth = 1; g.globalAlpha = 0.5;
+      for (let i = 0; i < 1500; i++) { const x = C.rr() * cw, y = C.rr() * ch; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (C.rr() - 0.5) * 5, y - 3 - C.rr() * 5); g.stroke(); }
+      g.globalAlpha = 1;
+      C.dots(520, ['#f6e27a', '#ffffff', '#f4a6c0', '#e8e0c8'], 0.18, 0.4, 0.8);
+      C.dots(260, ['#8a8478', '#b5ab98', '#9a948a'], 0.2, 0.55, 0.7);
+      const lab = (t, x, z, sz = 4, ang = 0) => C.text(t, x, z, sz, '#2c6332', { alpha: 0.75, ang, spacing: 0.6 });
+      lab('DINO VALLEY', 0, 97.5, 6.4); lab('T-REX RIDGE', 44, 56); lab('TAR PITS', 30, -38, 3.6, -0.5); lab('MT. KABOOM', 84, -97, 3.8);
+      lab('STEGO MEADOW', -56, -2, 3.4, 0.25); lab('FERN GULLY', -58, -92, 3.6); lab('BONE YARD', -139.5, 30, 3.2, -Math.PI / 2);
+      // a compass rose in the south-west corner
+      g.save(); g.translate(C.X(-136), C.Z(92)); g.strokeStyle = g.fillStyle = '#2c6332'; g.globalAlpha = 0.75; g.lineWidth = 2;
+      g.beginPath(); g.arc(0, 0, 5 * C.ppu, 0, 7); g.stroke();
+      for (let i = 0; i < 4; i++) { g.rotate(Math.PI / 2); g.beginPath(); g.moveTo(0, -6.4 * C.ppu); g.lineTo(1.3 * C.ppu, 0); g.lineTo(-1.3 * C.ppu, 0); g.fill(); }
+      g.font = `${4 * C.ppu}px "Lilita One", sans-serif`; g.textAlign = 'center'; g.fillText('N', 0, -7.4 * C.ppu); g.restore();
+      C.border(1.2, 2.6, '#2f6a35', '#f3e9c8');
+    });
+    K.mesh(TM.groundUV(new T.BoxGeometry(300, 0.3, 212), 0, 0, MAT), K.std({ map: print.texture(), normalMap: felt.normalMap, roughness: 1 }), 0, -0.15, 0, { cast: false });
     road({ a: 0xc49a66, b: 0xa67c4c, seed: 7 });
     startLine(40, 0.08, '#3a2a1c', '#f3ead6');
 
@@ -346,6 +371,101 @@ export default {
       spots.forEach(([x, z, a], i) => { if (K.offRoad(x, z, 6)) { cr.push({ x, y: 0.55, z, ry: a, rz: PI / 2, color: [0xe8443a, 0x2f6fe0, 0xf5d331, 0x9a5cc7, 0xf59a23, 0x6fc04b][i] }); K.capsule(x - Math.cos(a) * 4, z + Math.sin(a) * 4, x + Math.cos(a) * 4, z - Math.sin(a) * 4, 0.6, 1.2); } });
       K.instances(G.cyl(0.55, 0.55, 9, 10), K.plastic(0xffffff, 0.5), cr, { colors: true });
     }
+    // ================= detail pass: start line, more dinosaurs, small life, things left on the table =================
+    {
+      TM.signBoard(-14, 65, 'DINO DASH', { w: 26, h: 5.6, bg: '#8a5a30', fg: '#ffe9a8', edge: '#5e3c22' });
+      TM.bunting(41.5, [0xe8443a, 0xf5d331, 0x2f6fe0, 0x6fc04b, 0xf59a23], { post: 0xf1ead8, mat: paint });
+      // the stretch the stegosaurus's tail sweeps, scuffed into the road
+      const bx = STEG.x + 9.5, bz = STEG.z;
+      K.mesh(new T.RingGeometry(4, STEG.len + 0.8, 28, 1, -(STEG.a0 + STEG.swing + 0.12), 2 * STEG.swing + 0.24), K.std({ color: 0x6a4a2c, roughness: 1, transparent: true, opacity: 0.4, depthWrite: false }), bx, 0.085, bz, { rx: -PI / 2, cast: false });
+
+      // an ankylosaurus in the north-west, two parasaurolophus drinking at the lake
+      const a1 = 0x8a8f4a, a2 = 0x6a6f34;
+      toy([
+        P(G.sph(1, 14), a1, 0, 2.6, 0, { sx: 5.4, sy: 2.2, sz: 3.7 }),
+        ...[-3, -1.5, 0, 1.5, 3].flatMap((x) => [-1.6, 0, 1.6].map((z) => P(G.cone(0.55, 1.2, 5), a2, x, 4.6 - Math.abs(z) * 0.3 - Math.abs(x) * 0.12, z))),
+        ...[[-3, 2.4], [-3, -2.4], [3, 2.4], [3, -2.4]].map(([x, z]) => P(G.cap(0.8, 1), a2, x, 1.1, z)),
+        P(G.cone(1.3, 6.4, 8), a1, -7.6, 2.3, 0, { rz: PI / 2 }), P(G.sph(1.5, 8), a2, -11, 2.2, 0, { sx: 1.2 }),
+        P(G.rbox(3, 2, 2.6, 0.7), a1, 6.2, 2.3, 0), P(G.sph(0.22, 5), 0x111111, 7.2, 3.1, 1), P(G.sph(0.22, 5), 0x111111, 7.2, 3.1, -1),
+      ], paint, -60, 0, -72, 0.3);
+      K.capsule(-66, -73.8, -55, -70.4, 3.6, 5); K.contact(-60, -72, 8, 5, 0.4, 0.3);
+      const para = (c1, c2) => [
+        P(G.sph(1, 12), c1, 0, 5.2, 0, { sx: 4, sy: 2.4, sz: 2 }), P(G.cone(1.4, 7.5, 8), c1, -6.4, 5, 0, { rz: PI / 2 + 0.15 }),
+        P(G.cap(0.85, 3.4), c1, 3.6, 5.2, 0, { rz: -1.25 }), P(G.rbox(3, 1.4, 1.4, 0.5), c1, 6.6, 3.2, 0, { rz: -0.5 }), P(G.cone(0.5, 3.4, 6), c2, 4.6, 5.1, 0, { rz: 1.9 }),
+        P(G.cap(0.8, 2.6), c2, -0.6, 2.2, 1.1), P(G.cap(0.8, 2.6), c2, -0.6, 2.2, -1.1), P(G.cap(0.4, 1.6), c2, 2.4, 2.6, 0.9, { rz: -0.5 }), P(G.cap(0.4, 1.6), c2, 2.4, 2.6, -0.9, { rz: -0.5 }),
+        P(G.sph(0.2, 5), 0x111111, 6.9, 3.6, 0.6), P(G.sph(0.2, 5), 0x111111, 6.9, 3.6, -0.6),
+      ];
+      for (const [x, z, a, sc, c1, c2] of [[-108, -15, 1.45, 1, 0x3fa7a0, 0xf59a23], [-98, -17, 1.75, 0.72, 0x55b8b0, 0xf5b84a]]) {
+        if (!K.offRoad(x, z, 6)) continue;
+        toy(para(c1, c2), paint, x, 0, z, a, { scale: sc }); K.circle(x, z, 3.2 * sc, 8); K.contact(x, z, 6 * sc, 3.4 * sc, 0.4, a);
+      }
+      // hatchlings and broken shells at the nest
+      {
+        const n = track.place(186, -(W / 2 + 4.5)), sh = [];
+        for (const [dx, dz, a] of [[2.6, 2.2, 0.3], [-2.8, 1.6, 2], [0.6, -3.2, 4]]) sh.push(P(G.sph(1.1, 8), 0xf4efd9, n.x + dx, 0.3, n.z + dz, { sy: 0.55, ry: a }), P(G.sph(0.55, 6), 0x8fd06a, n.x + dx, 1.0, n.z + dz), P(G.sph(0.12, 4), 0x111111, n.x + dx + 0.3, 1.2, n.z + dz + 0.42), P(G.sph(0.12, 4), 0x111111, n.x + dx - 0.3, 1.2, n.z + dz + 0.42));
+        toy(sh, paint);
+      }
+      // fallen logs, mushrooms, flowers, tufts of grass
+      const log = geoOf([P(G.cyl(1.15, 1.25, 9, 9), 0x7a5632, 0, 1.15, 0, { rz: PI / 2 }), P(G.cyl(0.95, 0.95, 9.1, 9), 0xd9b98a, 0, 1.15, 0, { rz: PI / 2 }), P(G.cyl(0.5, 0.4, 1.6, 6), 0x7a5632, 1.5, 2.1, 0.5, { rx: 0.5 })]);
+      const logs = [];
+      for (const [x, z, a] of [[-14, -44, 0.4], [72, -8, 1.2], [18, 62, -0.3], [-58, 16, 0.9], [112, 84, 0.1], [-112, -88, -0.4], [50, -98, 0.2], [-140, 60, 1.4]]) {
+        if (!K.offRoad(x, z, 7)) continue;
+        logs.push({ x, y: 0, z, ry: -a }); K.capsule(x - Math.cos(a) * 3.6, z - Math.sin(a) * 3.6, x + Math.cos(a) * 3.6, z + Math.sin(a) * 3.6, 1.2, 2.4); K.contact(x, z, 6, 2.2, 0.4, a);
+      }
+      K.instances(log, matte, logs);
+      const shroom = geoOf([P(G.cyl(0.22, 0.3, 0.9, 6), 0xf3ecd9, 0, 0.45, 0), P(G.sph(0.7, 8), 0xd8423a, 0, 0.95, 0, { sy: 0.6 }), P(G.sph(0.14, 4), 0xffffff, 0.3, 1.28, 0.2), P(G.sph(0.14, 4), 0xffffff, -0.25, 1.3, -0.2)]);
+      scatter(shroom, matte, 46, [-146, 146, -102, 102], 2, (x, z) => ({ x, y: 0, z, ry: r() * 6, s: r.range(0.7, 1.4) }));
+      scatter(G.sph(0.45, 6), stone, 170, [-146, 146, -102, 102], 1.6, (x, z) => ({ x, y: 0.3, z, s: r.range(0.6, 1.1), sy: 0.6, color: r.pick([0xf6e27a, 0xffffff, 0xf4a6c0, 0xff9a5a, 0xc9a0f0]) }), { cast: false });
+      const tuft = geoOf([-0.35, 0, 0.35].map((o, i) => P(G.cone(0.22, 1.5 + i * 0.3, 4), i === 1 ? 0x6fb04a : 0x4f9a3f, o, 0.8, (i - 1) * 0.2, { rz: -o * 0.6 })));
+      scatter(tuft, matte, 300, [-146, 146, -102, 102], 1.2, (x, z) => ({ x, y: 0, z, ry: r() * 6, s: r.range(0.7, 1.5) }), { cast: false });
+
+      // the volcano glows and smokes; dragonflies over the lake
+      A.lavaMat = K.std({ color: 0xff8a2a, emissive: 0xff4a10, emissiveIntensity: 1.4, roughness: 0.4 });
+      K.mesh(G.sph(3.6, 12), A.lavaMat, 120, 22.6, -80, { cast: false });
+      A.puffs = [0, 1, 2, 3].map(() => K.mesh(G.sph(1, 10), K.std({ color: 0xf2efe8, roughness: 1, transparent: true, opacity: 0.8 }), 120, 30, -80, { cast: false }));
+      const fly = geoOf([P(G.cyl(0.09, 0.05, 1.6, 4), 0x2a6fd0, 0, 0, 0, { rz: PI / 2 }), P(G.box(0.5, 0.02, 2.2), 0xcfeeff, 0.3, 0.05, 0), P(G.box(0.4, 0.02, 1.8), 0xcfeeff, -0.2, 0.05, 0)]);
+      A.flies = [0, 1, 2, 3, 4, 5].map((i) => ({ m: K.add(new T.Mesh(fly, paint)), cx: i < 4 ? -104 + r.range(-4, 4) : 62, cz: i < 4 ? 6 + r.range(-6, 6) : 22, rad: r.range(3, 7), sp: r.range(1.2, 2.2) * (i % 2 ? 1 : -1), ph: r() * 6, y: r.range(2, 4.5) }));
+    }
+
+    // ================= what was left lying on the table round the mat =================
+    {
+      const book = TM.flat(-168, -44, 28, 36, (g, w, h) => {
+        g.fillStyle = '#2f8a4a'; g.fillRect(0, 0, w, h); g.fillStyle = '#f6d84a'; g.fillRect(0, 0, w, h * 0.2);
+        g.fillStyle = '#1e5a30'; g.textAlign = 'center'; g.font = `${Math.round(h * 0.085)}px "Lilita One", sans-serif`; g.fillText('MY BIG BOOK OF', w / 2, h * 0.09); g.font = `${Math.round(h * 0.11)}px "Lilita One", sans-serif`; g.fillText('DINOSAURS', w / 2, h * 0.18);
+        g.fillStyle = '#f59a23'; g.beginPath(); g.ellipse(w * 0.5, h * 0.62, w * 0.3, h * 0.12, 0, 0, 7); g.fill();
+        g.beginPath(); g.ellipse(w * 0.78, h * 0.47, w * 0.1, h * 0.05, -0.5, 0, 7); g.fill(); g.fillRect(w * 0.68, h * 0.48, w * 0.08, h * 0.12);
+        g.beginPath(); g.moveTo(w * 0.24, h * 0.6); g.lineTo(w * 0.04, h * 0.7); g.lineTo(w * 0.26, h * 0.68); g.fill();
+        g.fillRect(w * 0.36, h * 0.68, w * 0.07, h * 0.14); g.fillRect(w * 0.58, h * 0.68, w * 0.07, h * 0.14);
+        g.fillStyle = '#d8423a'; for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(w * (0.3 + i * 0.07), h * 0.52); g.lineTo(w * (0.335 + i * 0.07), h * 0.44); g.lineTo(w * (0.37 + i * 0.07), h * 0.52); g.fill(); }
+        g.fillStyle = '#111'; g.beginPath(); g.arc(w * 0.8, h * 0.46, w * 0.012, 0, 7); g.fill();
+      }, { thick: 2.6, ang: 0.12, edge: 0xf3ecd9 });
+      void book; K.box(-168, -44, 14, 18, 0.12, 2.6); K.contact(-168, -44, 16, 20, 0.35, 0.12);
+      // a tub of spare dinosaurs, a cup of juice with a straw
+      toy([P(G.cyl(13, 11, 15, 22), 0xf5c531, 0, 7.5, 0), P(G.cyl(13.6, 13.6, 1.2, 22), 0xf59a23, 0, 15, 0), P(G.cyl(12, 12, 0.3, 22), 0x3a3a3a, 0, 14.8, 0),
+        P(G.cone(1.6, 9, 8), 0x6f9a3a, -4, 17, 2, { rz: 0.5 }), P(G.sph(2.6, 10), 0xd98a2b, 3, 16, -3, { sy: 0.8 }), P(G.cone(1.2, 6, 6), 0x4f8fb0, 5, 18, 4, { rz: -0.6 }), P(G.rbox(4, 2.4, 2.4, 0.7), 0xc9573a, -5, 16.4, -5, { ry: 0.6 })], paint, 169, 0, -52);
+      K.circle(169, -52, 13.6, 20); K.contact(169, -52, 16, 16, 0.4);
+      toy([P(G.cyl(7.6, 6.2, 17, 20), 0xd8ecf5, 0, 8.5, 0), P(G.cyl(7, 7, 0.3, 20), 0xf59a23, 0, 14.5, 0), P(G.cyl(0.6, 0.6, 24, 8), 0xe8443a, 2, 14, 0, { rz: -0.25 }), P(G.cyl(0.62, 0.62, 2, 8), 0xffffff, 3.6, 20.4, 0, { rz: -0.25 })], paint, 169, 0, 46);
+      K.circle(169, 46, 7.8, 20); K.contact(169, 46, 10, 10, 0.4);
+      // crayons and their box, a drawing, a ruler, a magnifying glass
+      TM.flat(-168, 44, 20, 28, (g, w, h) => { g.fillStyle = '#f5c531'; g.fillRect(0, 0, w, h); g.fillStyle = '#2f8a4a'; g.fillRect(0, 0, w, h * 0.24); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = `${Math.round(h * 0.11)}px "Lilita One", sans-serif`; g.fillText('CRAYONS', w / 2, h * 0.16); const cs = ['#e8443a', '#f59a23', '#f5d331', '#6fc04b', '#2f6fe0', '#9a5cc7']; cs.forEach((c, i) => { g.fillStyle = c; g.fillRect(w * (0.08 + i * 0.145), h * 0.34, w * 0.11, h * 0.58); }); }, { thick: 3, ang: -0.2, edge: 0xf5c531 });
+      K.box(-168, 44, 10, 14, -0.2, 3);
+      const cr = [];
+      for (const [x, z, a, c] of [[-166, 76, 0.5, 0xe8443a], [-172, 84, -0.3, 0x2f6fe0], [-160, 10, 1.3, 0x6fc04b], [-174, -96, 0.2, 0xf59a23], [150, 122, 0.1, 0x9a5cc7], [-60, 122, 0.3, 0xf5d331], [172, 100, 1.1, 0xe8443a]]) { cr.push({ x, y: 0.6, z, ry: -a, rz: PI / 2, color: c }); K.capsule(x - Math.cos(a) * 4.5, z - Math.sin(a) * 4.5, x + Math.cos(a) * 4.5, z + Math.sin(a) * 4.5, 0.6, 1.3); }
+      K.instances(G.cyl(0.6, 0.6, 10, 10), K.plastic(0xffffff, 0.5), cr, { colors: true });
+      TM.flat(-40, -121, 44, 26, (g, w, h) => {
+        g.fillStyle = '#fbf8ef'; g.fillRect(0, 0, w, h); g.lineCap = 'round'; g.lineWidth = w * 0.012;
+        g.strokeStyle = '#6fc04b'; g.beginPath(); g.ellipse(w * 0.4, h * 0.55, w * 0.16, h * 0.16, 0, 0, 7); g.stroke();
+        g.beginPath(); g.moveTo(w * 0.54, h * 0.48); g.quadraticCurveTo(w * 0.62, h * 0.2, w * 0.7, h * 0.26); g.stroke(); g.beginPath(); g.arc(w * 0.72, h * 0.28, w * 0.03, 0, 7); g.stroke();
+        g.beginPath(); g.moveTo(w * 0.25, h * 0.6); g.lineTo(w * 0.1, h * 0.74); g.stroke(); for (const x of [0.33, 0.47]) { g.beginPath(); g.moveTo(w * x, h * 0.7); g.lineTo(w * x, h * 0.86); g.stroke(); }
+        g.strokeStyle = '#f5c531'; g.beginPath(); g.arc(w * 0.88, h * 0.2, w * 0.05, 0, 7); g.stroke(); for (let i = 0; i < 8; i++) { const a = i * 0.785; g.beginPath(); g.moveTo(w * 0.88 + Math.cos(a) * w * 0.065, h * 0.2 + Math.sin(a) * w * 0.065); g.lineTo(w * 0.88 + Math.cos(a) * w * 0.09, h * 0.2 + Math.sin(a) * w * 0.09); g.stroke(); }
+        g.strokeStyle = '#2f6fe0'; g.beginPath(); for (let x = 0.04; x < 0.96; x += 0.04) g.lineTo(w * x, h * (0.92 + 0.02 * Math.sin(x * 60))); g.stroke();
+      }, { y: 0.04, ang: 0.06 });
+      TM.flat(40, 123, 86, 6, (g, w, h) => { g.fillStyle = '#e8c88a'; g.fillRect(0, 0, w, h); g.fillStyle = '#5e3c22'; for (let i = 0; i <= 43; i++) g.fillRect(w * (0.01 + i * 0.0228), 0, Math.max(1, w * 0.002), h * (i % 5 ? 0.3 : 0.55)); }, { thick: 0.5, px: 512, edge: 0xe8c88a });
+      toy([P(G.tor(8, 1, PI * 2, 28), 0x3a3a3a, 0, 1, 0, { rx: PI / 2 }), P(G.cyl(1.1, 1.3, 14, 10), 0xd8423a, 13.5, 1.2, 9.5, { rz: PI / 2, ry: -0.62 })], paint, 60, 0, -121);
+      K.mesh(new T.CircleGeometry(7.4, 28), K.phys({ color: 0xcfeeff, roughness: 0.05, transparent: true, opacity: 0.35, clearcoat: 1 }), 60, 1.2, -121, { rx: -PI / 2, cast: false });
+      K.circle(60, -121, 8.6, 2);
+    }
+
   },
 
   aiHazards() { return A ? A.haz : null; },
@@ -373,6 +493,11 @@ export default {
     A.neck.rotation.y = 0.05 * Math.sin(time * 0.7);
     A.btail.rotation.y = 0.3 * Math.sin(time * 1.1);
     // the T-rex's tail balances its lunge; the pterodactyl rocks on its wire
+    if (A.lavaMat) {
+      A.lavaMat.emissiveIntensity = 1.3 + 0.7 * Math.sin(time * 2.3) + 0.3 * Math.sin(time * 7.1);
+      A.puffs.forEach((m, i) => { const k = ((time * 0.16 + i / A.puffs.length) % 1); m.position.set(120 - k * 9 + Math.sin(time * 0.5 + i) * 1.2, 26 + k * 22, -80 - k * 3); m.scale.setScalar(1.6 + k * 4.2); m.material.opacity = 0.8 * (1 - k) * Math.min(1, k * 6); });
+      for (const f of A.flies) { const a = f.ph + time * f.sp; f.m.position.set(f.cx + Math.cos(a) * f.rad, f.y + 0.5 * Math.sin(time * 3 + f.ph), f.cz + Math.sin(a) * f.rad * 0.8); f.m.rotation.y = -(a + (f.sp > 0 ? 1 : -1) * PI / 2); }
+    }
     if (A.ptero) { A.ptero.rotation.z = 0.12 * Math.sin(time * 2.2); A.ptero.rotation.x = 0.08 * Math.sin(time * 1.7); }
   },
 };

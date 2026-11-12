@@ -25,6 +25,20 @@ far behind on others.
   people, a dragon beating its wings, seamless grass. Pirate Cove: a galleon with a deck and bow, reefs, a wreck, a
   sea serpent, rowing boats. Robo Rumble: dark roofs with roof lights, street lamps, an energy core, a giant robot,
   a radar dish.
+- **Done: detail pass over the Time Machine Cup** (Andreas: "add more detail to the new tracks"). Shared builders
+  in `_tm.js` for a painted ground (`groundCanvas`: a canvas over the whole mat with soft bands along the track,
+  blobs, dots, labels, borders), sign boards, bunting, flat pictures and road decals. Dino Dash: a printed play mat
+  (dirt shoulder, stream and pond, place names, compass), a bigger table with a picture book, a tub of dinosaurs, a
+  cup, crayons, a drawing, a ruler and a magnifying glass, an ankylosaurus, two parasaurolophus, hatchlings, logs,
+  mushrooms, flowers, grass, a glowing smoking volcano, dragonflies. Castle Siege: a painted board (farmland,
+  lanes, cobbled courtyard, chequered frame), arrow slits, banners, torches, sentries, a stable, a smithy, a hay
+  cart, a siege camp with a fire, sheep, an orchard, a scarecrow, flags that stir. Pirate Cove: painted water
+  (channel, shallows and foam, reefs, the whirlpool's pit), grass, bushes, crabs and starfish on the islands, a crew
+  of peg pirates, a campfire, a fort, rigging and a crow's nest, gulls, dolphins, beach things beside the tray. Robo
+  Rumble: one painted and one glowing circuit-board canvas with the neon spilling off the road, a start gantry,
+  lane dashes, warning stripes before the lasers and under the guards' arms, roof units and blinking beacons,
+  drones, a monorail, neon adverts, searchlights, a workbench round the mat (kit box, mug, soldering iron,
+  screwdrivers, gears, plans). Dino Dash and Robo Rumble now end at the table edge, not the mat edge. New thumbnails.
 - **Still open:** medal times in time trial; warning markers for hazards outside the view; hazard lists for the
   older cups (doors, trains, trapdoors already have their own driver logic there).
 - **Idea bank from the same brainstorm:** challenges per table, a daily race, unlockable paint jobs, named rivals,

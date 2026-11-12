@@ -111,8 +111,129 @@ export function tmTools(K) {
     }
     return list.length ? K.instances(geo, mat, list, { colors: true, ...opts }) : null;
   }
+  // ---------------- painted ground ----------------
+  // A canvas covering the rectangle R = { x0, z0, w, d } of the table (north at the top), ppu pixels per unit.
+  // paint(g, C) draws on it; C maps world to canvas, strokes soft bands along the track, scatters blobs and text.
+  function groundCanvas(R, paint, ppu = 4) {
+    const c = TX.makeCanvas(Math.round(R.w * ppu), Math.round(R.d * ppu)), g = c.getContext('2d'), rr = K.rng(R.seed || 31);
+    const C = {
+      ppu, rr, X: (x) => (x - R.x0) * ppu, Z: (z) => (z - R.z0) * ppu,
+      trackPath(off = 0) {
+        g.beginPath();
+        for (let s = 0; s <= track.length; s += 2) { const q = off ? track.place(s, off) : track.at(s); if (s) g.lineTo(C.X(q.x), C.Z(q.z)); else g.moveTo(C.X(q.x), C.Z(q.z)); }
+        g.closePath();
+      },
+      // a band along the track: `width` units at full strength, fading out over `soft` more on each side
+      band(width, soft, color, alpha = 1, steps = 6, off = 0) {
+        g.save(); g.lineJoin = g.lineCap = 'round'; g.strokeStyle = color; g.globalAlpha = 1 - Math.pow(1 - alpha, 1 / steps);
+        for (let k = 0; k < steps; k++) { g.lineWidth = (width + 2 * soft * (1 - k / Math.max(1, steps - 1))) * ppu; C.trackPath(off); g.stroke(); }
+        g.restore();
+      },
+      // an irregular blob
+      blob(x, z, rad, color, alpha = 1, lump = 0.3, stretch = 1, ang = 0) {
+        g.save(); g.translate(C.X(x), C.Z(z)); g.rotate(ang); g.scale(stretch, 1); g.globalAlpha = alpha; g.fillStyle = color; g.beginPath();
+        const n = 26, ph = rr() * 6.28;
+        for (let i = 0; i <= n; i++) { const a = (i / n) * 6.283, q = rad * ppu * (1 + lump * 0.5 * (Math.sin(a * 2 + ph) + Math.sin(a * 3 + ph * 2.3))); if (i) g.lineTo(Math.cos(a) * q, Math.sin(a) * q); else g.moveTo(Math.cos(a) * q, Math.sin(a) * q); }
+        g.closePath(); g.fill(); g.restore();
+      },
+      // n blobs spread over the whole rectangle
+      mottle(n, colors, r0, r1, alpha) { for (let i = 0; i < n; i++) C.blob(R.x0 + rr() * R.w, R.z0 + rr() * R.d, r0 + rr() * (r1 - r0), colors[Math.floor(rr() * colors.length)], alpha, 0.4, 1 + rr() * 0.6, rr() * 3.14); },
+      // small dots (flowers, pebbles), anywhere or inside a circle
+      dots(n, colors, r0, r1, alpha = 1, cx = null, cz = 0, rad = 0) {
+        g.save(); g.globalAlpha = alpha;
+        for (let i = 0; i < n; i++) {
+          let x, z;
+          if (cx == null) { x = R.x0 + rr() * R.w; z = R.z0 + rr() * R.d; } else { const a = rr() * 6.28, q = Math.sqrt(rr()) * rad; x = cx + Math.cos(a) * q; z = cz + Math.sin(a) * q; }
+          g.fillStyle = colors[Math.floor(rr() * colors.length)]; g.beginPath(); g.arc(C.X(x), C.Z(z), (r0 + rr() * (r1 - r0)) * ppu, 0, 7); g.fill();
+        }
+        g.restore();
+      },
+      // a printed label, `size` units high
+      text(str, x, z, size, color, { alpha = 0.8, ang = 0, font = '"Lilita One", "Rubik", sans-serif', spacing = 0, weight = '' } = {}) {
+        g.save(); g.translate(C.X(x), C.Z(z)); g.rotate(ang); g.globalAlpha = alpha; g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.font = `${weight} ${Math.round(size * ppu)}px ${font}`; if (spacing && 'letterSpacing' in g) g.letterSpacing = `${spacing * ppu}px`;
+        g.fillText(str, 0, 0); g.restore();
+      },
+      // a line through world points
+      line(pts, width, color, alpha = 1, dash = null) {
+        g.save(); g.globalAlpha = alpha; g.strokeStyle = color; g.lineWidth = width * ppu; g.lineCap = g.lineJoin = 'round'; if (dash) g.setLineDash(dash.map((v) => v * ppu));
+        g.beginPath(); pts.forEach(([x, z], i) => (i ? g.lineTo(C.X(x), C.Z(z)) : g.moveTo(C.X(x), C.Z(z)))); g.stroke(); g.restore();
+      },
+      rect(x, z, w, d, color, alpha = 1, ang = 0) { g.save(); g.translate(C.X(x), C.Z(z)); g.rotate(ang); g.globalAlpha = alpha; g.fillStyle = color; g.fillRect(-w * ppu / 2, -d * ppu / 2, w * ppu, d * ppu); g.restore(); },
+      // a border band just inside the edge, with stitches or chequers
+      border(inset, width, color, stitch = null, cheq = null) {
+        g.save(); g.strokeStyle = color; g.lineWidth = width * ppu; const o = (inset + width / 2) * ppu;
+        g.strokeRect(o, o, c.width - 2 * o, c.height - 2 * o);
+        if (stitch) { g.strokeStyle = stitch; g.lineWidth = Math.max(1, 0.35 * ppu); g.setLineDash([1.6 * ppu, 1.4 * ppu]); g.strokeRect(o, o, c.width - 2 * o, c.height - 2 * o); }
+        if (cheq) {
+          g.fillStyle = cheq; const q = width * ppu, x1 = c.width - inset * ppu - q, z1 = c.height - inset * ppu - q, i0 = inset * ppu;
+          for (let x = i0, k = 0; x < x1 + 1; x += q, k++) if (k % 2) { g.fillRect(x, i0, q, q); g.fillRect(x, z1, q, q); }
+          for (let z = i0, k = 0; z < z1 + 1; z += q, k++) if (k % 2) { g.fillRect(i0, z, q, q); g.fillRect(x1, z, q, q); }
+        }
+        g.restore();
+      },
+    };
+    paint(g, C);
+    return { canvas: c, g, C, texture: (opts = {}) => TX.toTexture(c, { wrap: false, ...opts }) };
+  }
+  // texture coordinates from the position on that rectangle, for a mesh lying on it at (cx, cz)
+  function groundUV(geo, cx, cz, R) {
+    const pos = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + cx - R.x0) / R.w, 1 - (pos.getZ(i) + cz - R.z0) / R.d);
+    return geo;
+  }
+
+  // ---------------- signs, bunting, flat decals ----------------
+  // a board on two posts, standing at (x, z), facing south and leaning back so the camera reads it
+  function signBoard(x, z, text, { w = 24, h = 5, y = 5.5, bg = '#7a5230', fg = '#fff3d6', edge = '#4f3520', post = 0x5e3c22, font = '"Lilita One", sans-serif', glow = 0, sub = '' } = {}) {
+    const c = TX.makeCanvas(512, Math.round(512 * h / w)), g = c.getContext('2d'), H = c.height;
+    g.fillStyle = bg; g.fillRect(0, 0, 512, H); g.strokeStyle = edge; g.lineWidth = 10; g.strokeRect(5, 5, 502, H - 10);
+    g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+    let px = Math.round(H * (sub ? 0.5 : 0.62)); g.font = `${px}px ${font}`;
+    while (g.measureText(text).width > 460 && px > 10) { px -= 2; g.font = `${px}px ${font}`; }
+    g.fillText(text, 256, H * (sub ? 0.4 : 0.54));
+    if (sub) { g.font = `${Math.round(H * 0.2)}px ${font}`; g.fillText(sub, 256, H * 0.8); }
+    const tx = TX.toTexture(c, { wrap: false });
+    const mat = K.std(glow ? { map: tx, emissiveMap: tx, emissive: 0xffffff, emissiveIntensity: glow, roughness: 0.5 } : { map: tx, roughness: 0.8 });
+    const m = K.mesh(new T.BoxGeometry(w, h, 0.4), [K.std({ color: post }), K.std({ color: post }), K.std({ color: post }), K.std({ color: post }), mat, K.std({ color: post })], x, y, z, { rx: -0.42 });
+    const pm = K.std({ color: post, roughness: 0.8 });
+    for (const dx of [-w * 0.36, w * 0.36]) K.mesh(new T.CylinderGeometry(0.4, 0.5, y, 6), pm, x + dx, y / 2, z - 1.2);
+    K.box(x, z - 1, w * 0.4, 0.8, 0, y + 2); K.contact(x, z - 0.5, w * 0.5, 1.6, 0.35);
+    return m;
+  }
+  // a line of pennants across the road at arc length s, on two posts
+  function bunting(s, colors, { h = 8.5, post = 0xe9dfc6, mat = null, n = 11, lat = null } = {}) {
+    const p = track.at(s), half = lat ?? (p.w / 2 + 1.8), parts = [];
+    const a = track.place(s, -half), b = track.place(s, half);
+    for (const q of [a, b]) { parts.push(P(G.cyl(0.35, 0.5, h + 0.6, 8), post, q.x, (h + 0.6) / 2, q.z), P(G.sph(0.6, 8), colors[0], q.x, h + 0.9, q.z)); K.circle(q.x, q.z, 0.7, h); }
+    for (let i = 0; i < n; i++) {
+      const k = (i + 0.5) / n, x = a.x + (b.x - a.x) * k, z = a.z + (b.z - a.z) * k, sag = 1.6 * 4 * k * (1 - k);
+      parts.push(P(G.cone(0.75, 1.7, 3), colors[i % colors.length], x, h - sag - 0.85, z, { rz: PI, sz: 0.12 })); // pennants face the camera, whichever way the line runs
+    }
+    parts.push(P(G.cyl(0.07, 0.07, Math.hypot(b.x - a.x, b.z - a.z), 4), 0x3a3a3a, (a.x + b.x) / 2, h - 0.8, (a.z + b.z) / 2, { rz: PI / 2, ry: -p.angle + PI / 2 }));
+    return toy(parts, mat || K.plastic(0xffffff, 0.5, { vertexColors: true }));
+  }
+  // a flat picture lying on the road or the ground: draw(g, w, h) on a canvas, laid along the track at s
+  function decal(s, lat, len, wid, draw, { y = 0.1, px = 128, glow = 0, alpha = true, opacity = 1 } = {}) {
+    const c = TX.makeCanvas(px, Math.max(16, Math.round(px * len / wid))), g = c.getContext('2d');
+    draw(g, c.width, c.height);
+    const tx = TX.toTexture(c, { wrap: false }), q = track.place(s, lat);
+    const mat = K.std({ map: tx, transparent: alpha, opacity, roughness: 0.8, depthWrite: false, ...(glow ? { emissiveMap: tx, emissive: 0xffffff, emissiveIntensity: glow } : {}) });
+    const m = K.mesh(new T.PlaneGeometry(wid, len), mat, q.x, y, q.z, { cast: false });
+    m.rotation.order = 'YXZ'; m.rotation.y = -q.angle - PI / 2; m.rotation.x = -PI / 2;
+    return m;
+  }
+  // a flat picture lying at (x, z), w by d units, turned by ang; draw(g, W, H) paints it
+  function flat(x, z, w, d, draw, { y = 0.05, ang = 0, px = 256, thick = 0, edge = 0xffffff, glow = 0, rough = 0.8 } = {}) {
+    const c = TX.makeCanvas(px, Math.max(16, Math.round(px * d / w))), g = c.getContext('2d');
+    draw(g, c.width, c.height);
+    const tx = TX.toTexture(c, { wrap: false });
+    const top = K.std({ map: tx, roughness: rough, ...(glow ? { emissiveMap: tx, emissive: 0xffffff, emissiveIntensity: glow } : {}) });
+    if (thick) { const e = K.std({ color: edge, roughness: 0.8 }); return K.mesh(new T.BoxGeometry(w, thick, d), [e, e, top, e, e, e], x, y + thick / 2, z, { ry: -ang }); }
+    return K.mesh(new T.PlaneGeometry(w, d), top, x, y, z, { rx: -PI / 2, rz: -ang, cast: false });
+  }
   const sAt = (x, z) => track.nearest(x, z).s;
-  return { T, G, P, geoOf, toy, wedge, table, road, cutRibbon, startLine, edges, scatter, sAt, PI, TAU };
+  return { T, G, P, geoOf, toy, wedge, table, road, cutRibbon, groundCanvas, groundUV, signBoard, bunting, decal, flat, startLine, edges, scatter, sAt, PI, TAU };
 }
 
 // shove every car within R of (x, z) outwards and spin it (a stomp, a cannonball, a punch)
