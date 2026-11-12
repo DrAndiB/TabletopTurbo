@@ -18,7 +18,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out', 'audio')
 SR = 44100
 VEHICLES = ['sports', 'formula', 'rally', 'truck', 'monster', 'suv', 'rover', 'boat', 'hover', 'snowmobile', 'bumper', 'drifter', 'buggy']
 WORLDS = ['breakfast', 'garden', 'gingerbread', 'toybox', 'desk', 'bathroom', 'pool', 'watertable', 'workshop', 'boardroom',
-          'mars', 'railway', 'pinball', 'chemlab', 'dollhouse', 'watchmaker', 'moselle', 'fouer', 'grund', 'oldtown', 'butter', 'pass', 'bowling', 'rooftop', 'sushi', 'vinyl', 'stage', 'volcano', 'giza', 'nile', 'tomb', 'valley']
+          'mars', 'railway', 'pinball', 'chemlab', 'dollhouse', 'watchmaker', 'moselle', 'fouer', 'grund', 'oldtown', 'butter', 'pass', 'bowling', 'rooftop', 'sushi', 'vinyl', 'stage', 'volcano', 'giza', 'nile', 'tomb', 'valley', 'dino', 'castle', 'pirate', 'robot']
 
 JS = r"""
 async ({ kind, id, sec, sr, music, fx }) => {

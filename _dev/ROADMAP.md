@@ -1,5 +1,25 @@
 # Tabletop Turbo: roadmap and idea bank
 
+## Version 1.7 (built November 2026): the Time Machine Cup
+
+Andreas asked for "four more tracks, surprise me" (12 November 2026). Four toy sets from four ages, easy to expert,
+every hazard telegraphed and periodic. The four worlds share their builders in `js/worlds/_tm.js` (toys merged from
+vertex-coloured parts into one mesh each, the table, the road ribbon, edge markers, blasts).
+- **Dino Dash** (4x4, easy): a prehistoric play set on a felt mat. A toy T-rex rears back, then tips forward and snaps
+  at the lane beside it; a stegosaurus sweeps its tail across the inside of the road; a rib cage to drive through, a
+  dirt hump, a tar pit, eggs to shove about, a brachiosaurus with its neck over the road.
+- **Castle Siege** (rally, medium): a wooden-block castle. Jump the moat off the half-raised drawbridge (fall in and
+  you restart with a run-up), through the gatehouse and the courtyard with its barrels; two jousting knights on
+  wheels charge across the west road (a bell first); a catapult lobs wooden balls at two marks that glow first; mud.
+- **Pirate Cove** (speedboats, hard): a paddling tray with islands. A whirlpool to ride or avoid, rapids in the
+  narrows, a galleon firing at two foam marks, a kraken reaching four tentacles into the lanes in turn, flotsam.
+- **Robo Rumble** (formula, expert): a tin-robot city on a circuit-board mat at night. Boost pads, two laser gates
+  that close one half of the road and then the other (and throw you back), two guard robots slamming an arm across
+  the inside lane (red eyes first), a conveyor belt against you, a ramp over sleeping service robots, coolant.
+- Synthesised music and backgrounds; no new vehicles or cue sounds (snap, bell, clank and tick are reused).
+- Not done yet, worth a review round: CPU drivers do not time the knights, the arms or the lasers (they take the
+  hits); the worlds are plainer than the Pharaoh Cup tables (fewer fine props, simpler ground textures).
+
 ## Version 1.6 (built October 2026): the Pharaoh Cup
 
 Andreas asked for "an egypt cup" (30 October 2026). Four tables from easy to expert, each with a new vehicle or a

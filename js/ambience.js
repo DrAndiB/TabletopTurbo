@@ -314,6 +314,12 @@ const AMBIENT = {
   nile: { bed: [{ n: 'brown', f: ['lowpass', 600, 0.7], g: 0.06, am: [0.23, 0.6], sweep: [0.13, 180] }, { n: 'white', f: ['bandpass', 2400, 1.2], g: 0.006, am: [0.6, 0.7] }], ev: [['splash', 6, 14, 3, 0.018], ['birds', 5, 12, 2, 0.014], ['trill', 12, 24, 7, 0.01]] },
   tomb: { bed: [{ n: 'white', f: ['bandpass', 380, 3], g: 0.035, am: [0.08, 0.8], sweep: [0.04, 160] }, { n: 'brown', f: ['lowpass', 180, 0.7], g: 0.04 }], ev: [['drip', 4, 9, 2, 0.03], ['creak', 10, 22, 6, 0.02]] },
   valley: { bed: [{ n: 'white', f: ['bandpass', 700, 0.8], g: 0.05, am: [0.09, 0.75], sweep: [0.05, 420] }, { n: 'pink', f: ['highpass', 3000, 0.6], g: 0.01, am: [0.2, 0.6] }], ev: [['birds', 12, 25, 6, 0.008]] },
+  // Time Machine Cup: a jungle (birds, insects, the volcano grumbling), a castle on tournament day (birds, bells, a
+  // crowd), a cove (lapping water, gulls, creaking timbers), a robot city at night (a hum, beeps, a radio)
+  dino: { bed: [{ n: 'pink', f: ['bandpass', 2600, 0.6], g: 0.009, am: [0.13, 0.6] }, { n: 'brown', f: ['lowpass', 260, 0.7], g: 0.02, am: [0.07, 0.5] }], ev: [['birds', 3, 8, 1, 0.02], ['trill', 5, 12, 3, 0.014], ['bee', 9, 20, 5, 0.014], ['thunder', 35, 60, 15, 0.03]] },
+  castle: { bed: [{ n: 'pink', f: ['bandpass', 1800, 0.6], g: 0.007, am: [0.11, 0.6] }], ev: [['birds', 4, 10, 2, 0.018], ['coo', 14, 28, 6, 0.012], ['churchbells', 45, 80, 20, 0.018], ['cheer', 22, 45, 10, 0.016]] },
+  pirate: { bed: [{ n: 'brown', f: ['lowpass', 620, 0.7], g: 0.065, am: [0.25, 0.6], sweep: [0.15, 190] }, { n: 'white', f: ['bandpass', 2500, 1.2], g: 0.006, am: [0.55, 0.7] }], ev: [['splash', 6, 14, 3, 0.018], ['birds', 7, 16, 4, 0.012], ['creak', 9, 20, 5, 0.02]] },
+  robot: { bed: [{ n: 'brown', f: ['lowpass', 280, 0.7], g: 0.04, am: [0.15, 0.4] }, { hum: [55, 110], g: 0.006 }], ev: [['beeps', 5, 12, 2, 0.01], ['radio', 16, 30, 8, 0.012], ['ding', 20, 40, 10, 0.008]] },
 };
 export const ambientFor = (id) => AMBIENT[id] || null;
 

@@ -859,6 +859,64 @@ export const PIECES = {
       { id: 'brass', play: 'comp', inst: 'brass', r: 'x.....x.........', voice: 'triad', center: 62, gain: 0.45, pan: -0.2, layer: 'final' },
     ],
   },
+  // Time Machine Cup. The dinosaurs: a stomping jungle march on marimba and xylophone over a tuba; a flute joins on the
+  // final lap
+  dino: {
+    level: 0.861, bpm: 116, key: 'A', scale: 'dorian', form: 'A B A B',
+    sections: { A: ['Am', 'Am', 'D', 'Am', 'G', 'D', 'Em', 'Am'], B: ['C', 'G', 'D', 'Am', 'C', 'G', 'Em', 'Em'] },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'marimba', rh: 'calypso', range: [60, 79], seed: 167, send: 0.2, gain: 1.0 },
+      { id: 'xylo', play: 'comp', inst: 'xylo', r: '..x...x...x...x.', arp: 'updown', span: 2, center: 69, gain: 0.8, pan: 0.35 },
+      { id: 'bass', play: 'bass', inst: 'tuba', ...B.march, center: 40, gain: 0.9 },
+      { id: 'drums', play: 'drums', ...DR.calypso, gain: 0.6 },
+      { id: 'flute', play: 'double', of: 'lead', inst: 'flute', oct: 12, gain: 0.4, pan: -0.25, layer: 'final' },
+    ],
+  },
+  // the castle: a courtly dance on a plucked lute and harpsichord with a tambourine; brass fanfares on the final lap
+  castle: {
+    level: 1.62, bpm: 126, key: 'D', scale: 'dorian', form: 'A B A C',
+    sections: {
+      A: ['Dm', 'C', 'Dm', 'Am', 'Dm', 'C', 'F C', 'Dm'],
+      B: ['F', 'C', 'Dm', 'Am', 'F', 'C', 'G', 'A'],
+      C: ['G', 'Dm', 'C', 'Dm', 'G', 'Dm', 'C A', 'Dm'],
+    },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'nylon', rh: 'baroque', range: [62, 81], seed: 173, send: 0.25, gain: 1.0 },
+      { id: 'harpsi', play: 'comp', inst: 'harpsi', r: 'x.x.x.x.x.x.x.x.', arp: 'updown', span: 2, center: 62, gain: 0.45, pan: 0.3 },
+      { id: 'bass', play: 'bass', inst: 'pizz', ...B.root4, center: 40, gain: 0.8 },
+      { id: 'drums', play: 'drums', ...DR.folk, gain: 0.55 },
+      { id: 'brass', play: 'comp', inst: 'brass', r: 'x.....x.x.......', voice: 'triad', center: 62, gain: 0.5, pan: -0.2, layer: 'final' },
+    ],
+  },
+  // the pirates: a shanty reel on accordion over a squeezebox and an upright bass; the fiddle doubles it on the final lap
+  pirate: {
+    level: 1.365, bpm: 138, key: 'D', scale: 'minor', form: 'A B A B',
+    sections: { A: ['Dm', 'C', 'Dm', 'A', 'Dm', 'C', 'Bb A', 'Dm'], B: ['F', 'C', 'Dm', 'A', 'Bb', 'F', 'Gm A', 'Dm'] },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'accordion', rh: 'reel', range: [60, 77], seed: 179, send: 0.2, gain: 0.9 },
+      { id: 'squeeze', play: 'comp', inst: 'squeeze', r: '..x...x...x...x.', voice: 'triad', center: 62, gain: 0.5, pan: 0.3 },
+      { id: 'bass', play: 'bass', inst: 'upright', ...B.reel, center: 38, gain: 0.7 },
+      { id: 'drums', play: 'drums', ...DR.folkrock, gain: 0.5 },
+      { id: 'fiddle', play: 'double', of: 'lead', inst: 'fiddle', oct: 0, gain: 0.4, pan: -0.25, layer: 'final' },
+    ],
+  },
+  // the robots: a square-wave tune over a plucked synth arpeggio, an eighth-note bass and a four-on-the-floor beat; a
+  // second arpeggio on the final lap
+  robot: {
+    level: 0.794, bpm: 140, key: 'E', scale: 'minor', form: 'A B A C',
+    sections: {
+      A: ['Em', 'C', 'G', 'D', 'Em', 'C', 'Am', 'B'],
+      B: ['C', 'D', 'Em', 'Em', 'C', 'D', 'G', 'B'],
+      C: ['Am', 'Em', 'C', 'D', 'Am', 'Em', 'B', 'B7'],
+    },
+    parts: [
+      { id: 'lead', play: 'melody', inst: 'chipLeadSoft', rh: 'chip', range: [59, 78], seed: 181, send: 0.2, gain: 1.0 },
+      { id: 'arp', play: 'comp', inst: 'synpluck', r: 'x.x.x.x.x.x.x.x.', arp: 'updown', span: 2, center: 59, gain: 0.8, pan: -0.3, send: 0.3 },
+      { id: 'bass', play: 'bass', inst: 'popBass', ...B.pop8, center: 36, gain: 0.45 },
+      { id: 'drums', play: 'drums', ...DR.euro, gain: 0.55 },
+      { id: 'arp2', play: 'comp', inst: 'chipArpSoft', r: '..x...x...x...x.', arp: 'up', span: 1, center: 76, gain: 0.8, pan: 0.35, send: 0.3, layer: 'final' },
+    ],
+  },
 };
 // worlds without a piece of their own (new or renamed worlds) borrow one
 export const pieceFor = (id) => PIECES[id] ? id : 'breakfast';
