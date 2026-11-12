@@ -1387,7 +1387,7 @@ export default {
       for (let i = 0; i <= 300; i++) { const x = 12 + i * 3.333; rg.fillRect(x, 0, 1.4, i % 10 === 0 ? 22 : i % 5 === 0 ? 15 : 9); if (i % 10 === 0) rg.fillText(String(i / 10), x, 42); }
       K.mesh(new T.BoxGeometry(31, 0.4, 3.2), [woodLight, woodLight, K.std({ map: TX.toTexture(rc, { wrap: false }), roughness: 0.6 }), woodLight, woodLight, woodLight], 236, TABLE_Y + 0.2, -60, { ry: PI / 2 - 0.1 });
       AO(236, -60, 2, 16, 0.3, 0.1, TABLE_Y + 0.03);
-      // the label card at the west end: a folded tent card facing the class
+      // the label card at the west end: a folded tent card
       const cc = TX.makeCanvas(512, 256), cg = cc.getContext('2d');
       cg.fillStyle = '#fbf6e8'; cg.fillRect(0, 0, 512, 256);
       cg.strokeStyle = '#c9a227'; cg.lineWidth = 10; cg.strokeRect(10, 10, 492, 236);
@@ -1400,8 +1400,9 @@ export default {
       const face = new T.Mesh(new T.PlaneGeometry(36, 18), K.std({ map: TX.toTexture(cc, { wrap: false }), roughness: 0.8 }));
       face.position.set(0, 8.2, 4.3); face.rotation.x = -0.5; card.add(face);
       const back = new T.Mesh(new T.PlaneGeometry(36, 18), SM(0xf2ead6, 0.85)); back.position.set(0, 8.2, -4.3); back.rotation.x = 0.5 + PI; card.add(back);
-      card.position.set(-238, TABLE_Y, 4); card.rotation.y = PI / 2 + 0.25; K.add(card);
-      AO(-238, 4, 6, 19, 0.35, -(PI / 2 + 0.25), TABLE_Y + 0.03);
+      // it faces the player (it used to face along the table, so the title read sideways)
+      card.position.set(-244, TABLE_Y, 6); card.rotation.y = 0.2; K.add(card);
+      AO(-244, 6, 19, 6, 0.35, -0.2, TABLE_Y + 0.03);
     }
 
     // ---------------- contact shadows: one instanced draw ----------------

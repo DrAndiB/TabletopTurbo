@@ -841,7 +841,7 @@ export default {
       fg.fillStyle = '#c9ccd2'; fg.font = '600 15px Rubik, sans-serif'; fg.fillText('MATH-2  scientific', 18, 32);
       fg.fillStyle = '#111'; fg.fillRect(14, 50, 228, 96);
       fg.fillStyle = '#a9b59a'; fg.fillRect(22, 58, 212, 80);
-      fg.fillStyle = '#1e2418'; fg.font = '40px "Courier New", monospace'; fg.textAlign = 'right'; fg.fillText('3.14159265', 228, 120);
+      fg.fillStyle = '#1e2418'; fg.font = '36px "Courier New", monospace'; fg.textAlign = 'right'; fg.fillText('3.14159265', 228, 119, 200); // all ten digits on the display
       fg.font = '14px monospace'; fg.textAlign = 'left'; fg.fillText('DEG', 28, 74);
       const fm = K.std({ map: TX.toTexture(fc, { wrap: false }), roughness: 0.4 });
       const face = new T.Mesh(new T.PlaneGeometry(W - 0.8, D - 0.8), fm); face.rotation.x = -PI / 2; face.position.y = Hc / 2 + 0.01; grp.add(face);

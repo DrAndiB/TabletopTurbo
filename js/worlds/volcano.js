@@ -928,7 +928,7 @@ export default {
         g.fillStyle = '#ffb030'; for (let i = 0; i < 9; i++) { g.beginPath(); g.arc((i - 4) * 18, -330 - (i % 3) * 30, 26, 0, TAU); g.fill(); }
         g.strokeStyle = '#1d1a18'; g.lineWidth = 5; g.beginPath(); g.moveTo(-420, 260); g.lineTo(420, 260); g.stroke();
         const lab = (txt, x, y, tx, ty) => { g.strokeStyle = '#22324a'; g.lineWidth = 4; g.beginPath(); g.moveTo(x, y); g.lineTo(tx, ty); g.stroke(); note(g, txt, x + (x < 0 ? -10 : 10), y + 10, 34, '#22324a', x < 0 ? 'right' : 'left'); };
-        lab('CRATER', 220, -380, 40, -310); lab('VENT', 230, -60, 30, -60); lab('MAGMA CHAMBER', -150, 470, -90, 360); lab('ASH + LAVA LAYERS', -250, -180, -170, -120);
+        lab('CRATER', 220, -380, 40, -310); lab('VENT', 230, -60, 30, -60); lab('MAGMA CHAMBER', -150, 470, -90, 360); lab('LAVA LAYERS', -250, -180, -170, -120);
         g.restore();
         note(g, 'baking soda + vinegar = CO2 gas + LOTS of foam!', w / 2, 1470, 36, '#c8321a', 'center');
       });
@@ -969,7 +969,7 @@ export default {
       // the project number tent card in front of it
       const tc = tex(canvas(256, 128, (g, w, h) => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h); g.fillStyle = '#2f6fe0'; g.fillRect(0, 0, w, 24); note(g, 'PROJECT', w / 2, 62, 30, '#22324a', 'center'); title(g, '#27', w / 2, 116, 50, '#e0401c'); }), [1, 1], false);
       const tcm = K.std({ map: tc, roughness: 0.8 });
-      for (const sd of [-1, 1]) K.mesh(new T.PlaneGeometry(10, 5), tcm, 46, 2.3, Z0 + 10 + sd * 1.2, { rx: sd * 0.5, ry: sd < 0 ? PI : 0 }).rotation.order = 'YXZ';
+      for (const sd of [-1, 1]) K.mesh(new T.PlaneGeometry(10, 5), tcm, 46, 2.3, Z0 + 10 + sd * 1.2, { rx: -0.5, ry: sd < 0 ? PI : 0 }).rotation.order = 'YXZ';
       AO(46, Z0 + 10, 6, 3, 0.35);
     }
     // ---- a roll of paper towels for the clean-up, behind the north-east straight
@@ -1013,7 +1013,7 @@ export default {
         K.mesh(lathe([[rad - 0.3, 0], [rad, 0.2], [rad, h], [rad + 0.35, h + 0.25], [rad - 0.1, h + 0.1], [rad - 0.15, 0.3], [0.01, 0.3]], 36), glassM, x, 0, z, { cast: false });
         if (liq > 0) K.mesh(cyl(rad - 0.2, rad - 0.2, liq, 30), K.liquid(liqCol, { transparent: true, opacity: 0.85 }), x, 0.3 + liq / 2, z);
         // white graduation marks
-        K.mesh(cyl(rad + 0.02, rad + 0.02, h * 0.8, 30, true), gradMat, x, h * 0.45, z, { cast: false });
+        K.mesh(cyl(rad + 0.02, rad + 0.02, h * 0.8, 30, true), gradMat, x, h * 0.45, z, { ry: -1.3, cast: false }); // scale towards the player
         K.circle(x, z, rad + 0.1, h + 0.3, { solid: true });
         AO(x, z, rad * 1.4, rad * 1.4, 0.3);
       };
@@ -1028,7 +1028,8 @@ export default {
         const handle = K.mesh(new T.TorusGeometry(4.4, 0.8, 10, 24, PI), jug, x - 7.2, 8.4, z, { rz: PI / 2, cast: false });
         handle.rotation.order = 'ZYX';
         const sc = tex(canvas(256, 256, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = '#d42a1a'; g.font = '700 18px Rubik, sans-serif'; for (let i = 1; i <= 8; i++) { const y = h - i * 28; g.fillRect(100, y, i % 2 ? 24 : 40, 3); if (i % 2 === 0) g.fillText(String(i * 125), 146, y + 6); } }), [1, 1], false);
-        K.mesh(cyl(6.3, 6.0, 13, 40, true), K.std({ map: sc, transparent: true, depthWrite: false, side: T.DoubleSide }), x, 7.6, z, { cast: false });
+        // scale towards the player, printed on the outside of the wall (its top half sat inside the plastic) and drawn after it
+        K.mesh(cyl(6.62, 5.9, 13, 40, true), K.std({ map: sc, transparent: true, depthWrite: false, side: T.DoubleSide }), x, 7.6, z, { ry: 2.75, cast: false }).renderOrder = 3;
         K.mesh(cyl(5.9, 5.65, 5.5, 32), K.liquid(0xe63a12, { transparent: true, opacity: 0.9 }), x, 3.2, z);
         K.circle(x, z, 6.7, 17, { solid: true });
         AO(x, z, 9, 9, 0.35);
@@ -1070,7 +1071,8 @@ export default {
       const side = K.std({ color: 0xf2bc20, roughness: 0.75 }), inner = K.std({ color: 0xd8c8a0, roughness: 0.9 });
       const bx = K.mesh(new T.BoxGeometry(12, 17, 6.5), side, x, 8.5, z, { ry: ang });
       K.mesh(new T.PlaneGeometry(11.9, 16.9), front, x + Math.sin(ang) * 3.27, 8.5, z + Math.cos(ang) * 3.27, { ry: ang, cast: false });
-      const flap = K.mesh(new T.BoxGeometry(12, 0.15, 6.4), side, x + Math.sin(ang) * 5.4, 17.6, z + Math.cos(ang) * 5.4, { ry: ang, rx: 1.0 });
+      const flap = K.mesh(new T.BoxGeometry(12, 0.15, 6.4), side, x - Math.sin(ang) * 4.69, 19.85, z - Math.cos(ang) * 4.69, { ry: ang, rx: 1.1 }); // open at the back, clear of the front label
+      flap.rotation.order = 'YXZ';
       K.mesh(new T.BoxGeometry(11.4, 0.3, 6.0), K.std({ color: 0xfbfaf6, roughness: 1 }), x, 16.6, z, { ry: ang, cast: false });
       K.box(x, z, 6, 3.3, -ang, 17, { solid: true });
       AO(x, z, 8, 5, 0.45, -ang);

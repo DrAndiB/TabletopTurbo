@@ -909,7 +909,7 @@ export default {
       mg.fillStyle = '#2b2f36'; mg.font = '700 22px Rubik, Arial'; mg.fillText('AIRFLOW OK', 128, 150); mg.fillStyle = '#2bd24a'; mg.beginPath(); mg.arc(70, 200, 16, 0, TAU); mg.fill(); mg.fillStyle = '#d0d0d0'; mg.beginPath(); mg.arc(186, 200, 16, 0, TAU); mg.fill();
       K.mesh(new T.PlaneGeometry(4.6, 4.6), K.std({ map: TX.toTexture(mc, { wrap: false }), emissive: 0xffffff, emissiveMap: TX.toTexture(mc, { wrap: false }), emissiveIntensity: 0.35 }), x1, 26, zf + 2.05, { cast: false });
       const sc2 = TX.makeCanvas(512, 96), sg2 = sc2.getContext('2d');
-      sg2.fillStyle = '#f2c21a'; sg2.fillRect(0, 0, 512, 96); sg2.fillStyle = '#111'; sg2.font = '700 34px Rubik, Arial'; sg2.textAlign = 'center'; sg2.fillText('FUME CUPBOARD · KEEP SASH LOW', 256, 60);
+      sg2.fillStyle = '#f2c21a'; sg2.fillRect(0, 0, 512, 96); sg2.fillStyle = '#111'; sg2.font = '700 28px Rubik, Arial'; sg2.textAlign = 'center'; sg2.fillText('FUME CUPBOARD · KEEP SASH LOW', 256, 58, 480); // at 34 px the line was wider than the sign
       K.mesh(new T.PlaneGeometry(36, 6.75), K.std({ map: TX.toTexture(sc2, { wrap: false }), roughness: 0.5 }), xc, sashY + 4, zf - 0.45, { cast: false });
       // distillation set-up inside: heating mantle, round-bottom flask, still head, condenser, receiver
       const dx = xc - 18, dz = zf - 22;
@@ -1121,7 +1121,7 @@ export default {
       K.mesh(new T.CylinderGeometry(7, 7, 0.5, 40), metal(0xd0d4da, 0.25), bx, 5.6, bz - 2);
       const dc = TX.makeCanvas(256, 64), dg = dc.getContext('2d'); dg.fillStyle = '#0d1a12'; dg.fillRect(0, 0, 256, 64); dg.fillStyle = '#62ff8a'; dg.font = '700 42px "Courier New", monospace'; dg.textAlign = 'center'; dg.fillText('12.48 g', 128, 47);
       const dtx = TX.toTexture(dc, { wrap: false });
-      K.mesh(new T.PlaneGeometry(9, 2.25), K.std({ map: dtx, emissive: 0xffffff, emissiveMap: dtx, emissiveIntensity: 0.9 }), bx, 5.02, bz + 9.6, { rx: -PI / 2 + 0.1, cast: false });
+      K.mesh(new T.PlaneGeometry(9, 2.25), K.std({ map: dtx, emissive: 0xffffff, emissiveMap: dtx, emissiveIntensity: 0.9 }), bx, 5.17, bz + 9.6, { rx: -PI / 2 + 0.1, cast: false }); // raised: tilted, its lower half sat inside the housing and cut the digits
       K.mesh(new K.RoundedBoxGeometry(6, 0.8, 6, 2, 0.3), K.phys({ color: 0xf4f4f4, roughness: 0.3, transparent: true, opacity: 0.85 }), bx, 6.3, bz - 2, { ry: 0.3 });
       const bc = []; for (let i = 0; i < 30; i++) bc.push({ x: bx + rr.range(-1.8, 1.8), y: 6.8, z: bz - 2 + rr.range(-1.8, 1.8), ry: rr() * TAU, s: rr.range(0.35, 0.6), color: [0x1f7ee6, 0x2a96f2][i % 2] });
       K.instances(new T.OctahedronGeometry(1, 0), K.phys({ color: 0xffffff, roughness: 0.1, clearcoat: 1, emissive: 0x0a3a80, emissiveIntensity: 0.3 }), bc, { colors: true, cast: false });

@@ -477,8 +477,8 @@ export default {
       const bc = TX.labelTexture(512, 96, (g2) => {
         g2.fillStyle = '#b8141f'; g2.fillRect(0, 0, 512, 96);
         g2.fillStyle = '#f2d36b'; g2.fillRect(0, 6, 512, 5); g2.fillRect(0, 85, 512, 5);
-        g2.font = '58px "Lilita One", Impact, sans-serif'; g2.textAlign = 'center'; g2.fillStyle = '#fff6e0';
-        g2.fillText('★ SLEIGH GRAND PRIX ★', 256, 68);
+        g2.font = '46px "Lilita One", Impact, sans-serif'; g2.textAlign = 'center'; g2.fillStyle = '#fff6e0';
+        g2.fillText('★ SLEIGH GRAND PRIX ★', 256, 64, 488); // the whole name on the banner (at 58 px both stars were cut off)
       });
       const bannerMat = K.std({ map: bc, roughness: 0.75, side: T.DoubleSide });
       const pole = (x, z) => {

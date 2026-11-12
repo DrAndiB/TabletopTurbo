@@ -176,6 +176,14 @@ somewhere other than http://localhost:8123/.
 - Lint before every release. It catches undefined names in code paths the frame-less tests never reach:
   `npm i -D eslint@9 globals@15`, then `npx eslint -c _dev/tools/eslint.config.mjs js/*.js js/worlds/*.js`.
 - `shot.py <url> <out.png> [wait] [w h]`: plain screenshot of any page (e.g. `?view=top`).
+- `lettercheck.py <worldId>...`: audit of every lettered surface of a world, from the geometry (no screenshots,
+  about 20 s a world). Per label it reports whether the text faces the player's camera (`AWAY`), is laid on back to
+  front (`MIRROR`), is seen from behind (`BACKSIDE`), stands behind something solid (`HIDDEN`, with what and where),
+  runs upside down or sideways on screen, or was drawn past the edge of its canvas (`CUT`). `squeezed` lines list
+  text the game narrowed itself to keep it on its label. `TT_ALL=1` lists every surface. Expect a few harmless
+  flags: props lying at an angle, cars parked on the start grid, art laid out across two canvases (pinball).
+- `assetshots.py <worldId>...`: close-ups of every lettered or drawn-on object, as contact sheets
+  (`$TT_OUT/assets_<world>.jpg`, 24 objects a sheet). Use it to look at what `lettercheck.py` flags.
 - `audio_render.py [engines] [worlds] [menu] [--only id,...]`: renders the audio offline in headless Chromium
   (OfflineAudioContext). It writes WAVs, `levels.json` and spectrograms (`engines.png`, `worlds.png`) to
   `out/audio/` and flags clipping, NaN and silence. Each vehicle gets an acceleration sweep with a slide and

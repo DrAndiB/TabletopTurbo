@@ -1003,7 +1003,7 @@ export default {
       spots.forEach(([x, z, a], i) => {
         if (dRoad(x, z) < 6) return;
         const [t, bg, ink] = words[i % words.length];
-        const c = canvas(256, 96, (g, w, h) => { g.fillStyle = bg; g.beginPath(); g.roundRect(4, 4, w - 8, h - 8, 18); g.fill(); g.fillStyle = ink; g.font = 'bold 40px "Lilita One", Rubik, sans-serif'; g.textAlign = 'center'; g.fillText(t, w / 2, 62); });
+        const c = canvas(256, 96, (g, w, h) => { g.fillStyle = bg; g.beginPath(); g.roundRect(4, 4, w - 8, h - 8, 18); g.fill(); g.fillStyle = ink; g.font = 'bold 40px "Lilita One", Rubik, sans-serif'; g.textAlign = 'center'; g.fillText(t, w / 2, 62, w - 40); }); // kept inside the sticker
         const m = new T.Mesh(new T.PlaneGeometry(12, 4.5), K.std({ map: tex(c, [1, 1], false), roughness: 0.5, transparent: true })); m.rotation.set(-PI / 2, 0, a); m.position.set(x, 0.025, z); m.renderOrder = 1; K.add(m, { cast: false });
       });
     }

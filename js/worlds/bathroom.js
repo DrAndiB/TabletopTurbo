@@ -663,8 +663,9 @@ export default {
     // start/finish: chequers scribbled in black crayon, grid boxes with numbers, an arrow
     {
       const s0 = 40, p = track.at(s0);
-      const c = crayonCanvas(512, 640, (g) => {
-        // layout: x across the road (512 px = 19.2 units), y along it (640 px = 24 units), top = ahead
+      const c = crayonCanvas(512, 768, (g) => {
+        // layout: x across the road (512 px = 19.2 units), y along it (768 px = 28.8 units), top = ahead.
+        // (At 640 px the sheet ended inside the last grid box: its number 4 was never drawn, the 3 was cut.)
         const U = 512 / 19.2;
         const yLine = 640 - 14 * U; // the line sits 14 units from the bottom edge
         const cell = 1.45 * U;
@@ -685,7 +686,8 @@ export default {
           const col = ['#e5352b', '#2f6fe0', '#e8a400', '#24a84a'][i];
           g.strokeStyle = col; g.lineWidth = 7;
           g.beginPath(); g.moveTo(cx - 1.7 * U, cy - 2.6 * U); g.lineTo(cx - 1.7 * U, cy + 2.4 * U); g.lineTo(cx + 1.7 * U, cy + 2.4 * U); g.lineTo(cx + 1.7 * U, cy - 2.6 * U); g.stroke();
-          g.fillStyle = col; g.fillText(String(i + 1), cx, cy + 3.4 * U);
+          // numbers the right way up for the player (the sheet's top points down the road, to the east)
+          g.fillStyle = col; g.save(); g.translate(cx, cy + 3.4 * U); g.rotate(-PI / 2); g.fillText(String(i + 1), 0, 0); g.restore();
         });
         // arrow ahead of the line
         g.strokeStyle = '#ff8a1f'; g.lineWidth = 10;
@@ -693,9 +695,9 @@ export default {
         g.beginPath(); g.moveTo(9.6 * U, ay + 2.2 * U); g.lineTo(9.6 * U, ay - 2.4 * U); g.stroke();
         g.beginPath(); g.moveTo(9.6 * U - 1.4 * U, ay - 1.0 * U); g.lineTo(9.6 * U, ay - 2.6 * U); g.lineTo(9.6 * U + 1.4 * U, ay - 1.0 * U); g.stroke();
       });
-      const m = flatDecal(decalMat(c), 0, 0, 19.2, 24, 0);
+      const m = flatDecal(decalMat(c), 0, 0, 19.2, 28.8, 0);
       // centre the decal so its line lands at s0; canvas top = ahead (+tangent)
-      const ctr = place(s0 - 2, 0);
+      const ctr = place(s0 - 4.4, 0);
       m.position.set(ctr.x, 0.065, ctr.z);
       m.rotation.order = 'YXZ'; m.rotation.y = -p.angle - PI / 2; m.rotation.x = -PI / 2;
       // FINISH / START words written beside the line, off the road
@@ -1346,7 +1348,7 @@ export default {
       bottle.add(new T.Mesh(K.lathe(prof, 32), K.phys({ color: 0x8be0c8, roughness: 0.2, clearcoat: 0.8 })));
       const lab = new T.Mesh(new T.CylinderGeometry(3.45, 3.45, 8, 32, 1, true), K.std({ map: TX.toTexture(lc, { wrap: true }), roughness: 0.5 })); lab.position.y = 7.5; bottle.add(lab);
       const cap = new T.Mesh(new T.CylinderGeometry(1.8, 1.8, 2.6, 20), K.plastic(0xf6f6f2, 0.3)); cap.position.y = 20.6; bottle.add(cap);
-      bottle.position.set(x, 0, z); bottle.rotation.y = -0.4;
+      bottle.position.set(x, 0, z); bottle.rotation.y = PI + 0.3; // label towards the player (it faced the wall)
       K.add(bottle);
       AO(x, z, 4.6, 4.6, 0.5);
       K.circle(x, z, 3.4, 22);

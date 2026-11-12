@@ -324,7 +324,7 @@ export default {
           g.fillStyle = '#3a3030'; g.font = 'italic 18px Georgia, serif'; g.fillText('Act I - the inn', 20, 236); g.fillText('Act II - the court', 280, 236);
         });
         const m = meshOf(new T.PlaneGeometry(40, 20).rotateX(-PI / 2), K.std({ map: TX.toTexture(sk, { wrap: false }), roughness: 0.9 }));
-        m.position.set(-190, DESK + 0.3, 24); m.rotation.y = 0.15;
+        m.position.set(-190, DESK + 0.34, 24); m.rotation.y = 0.15;
         put(box(41, 0.5, 21), 0x2a2a3a, { x: -190, y: DESK + 0.05, z: 24, ry: 0.15 }, M.matte, false);
       }
       for (let k = 0; k < 3; k++) put(cyl(0.45, 0.45, 17, 6).rotateZ(PI / 2), [0x2a4ab0, 0xf2c020, 0x1a1a1a][k], { x: -184 + k * 1.2, y: DESK + 0.45, z: 52 + k * 1.6, ry: 0.3 + k * 0.4 }, M.paint);
@@ -1015,7 +1015,7 @@ export default {
       // the trap room sign
       {
         const sc = canvas(256, 128, (g) => { g.fillStyle = '#1a0a0c'; g.fillRect(0, 0, 256, 128); g.strokeStyle = '#d8ac52'; g.lineWidth = 6; g.strokeRect(6, 6, 244, 116); g.fillStyle = '#f2d890'; g.textAlign = 'center'; g.font = '700 40px Georgia, serif'; g.fillText('TRAP ROOM', 128, 58); g.font = 'italic 24px Georgia, serif'; g.fillText('mind your step', 128, 96); });
-        const q = track.place(hz.trapA - 16, 11.5);
+        const q = track.place(hz.trapA - 16, -12.5); // on the audience side: north of the road it stood inside the house curtain
         const f = frame(q.x, 0, q.z, 0);
         f(cyl(0.2, 0.2, 7, 8), 0xc8a050, { y: 3.5 }, M.gold);
         f(box(6.4, 3.2, 0.3), 0x1a0a0c, { y: 7.6 }, M.matte);
@@ -1271,8 +1271,8 @@ export default {
       {
         const rc = canvas(1024, 64, (g) => {
           g.fillStyle = '#d8dade'; g.fillRect(0, 0, 1024, 64); g.fillStyle = '#1a1a1a';
-          for (let i = 0; i <= 300; i++) { const x = 12 + i * 3.33, h = i % 10 === 0 ? 26 : i % 5 === 0 ? 18 : 10; g.fillRect(x, 0, 1.4, h); }
-          g.font = '700 16px Rubik, sans-serif'; for (let i = 0; i <= 30; i++) g.fillText(String(i), 8 + i * 33.3, 44);
+          for (let i = 0; i <= 300; i++) { const x = 12 + i * 3.3, h = i % 10 === 0 ? 26 : i % 5 === 0 ? 18 : 10; g.fillRect(x, 0, 1.4, h); }
+          g.font = '700 16px Rubik, sans-serif'; for (let i = 0; i <= 30; i++) g.fillText(String(i), 8 + i * 33, 44); // 3.3 px a millimetre: the 30 stays on the rule
           g.font = '700 18px Rubik, sans-serif'; g.fillText('1:25', 960, 58);
         });
         const rm = K.std({ map: tex(rc, [1, 1], false), metalness: 0.4, roughness: 0.35 });

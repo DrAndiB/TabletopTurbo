@@ -534,10 +534,14 @@ export default {
       if (sign) {
         const sc = canvas(512, 128, (g, cw, chh) => {
           g.fillStyle = '#1f3b2a'; g.fillRect(0, 0, cw, chh); g.strokeStyle = '#d8b25e'; g.lineWidth = 6; g.strokeRect(8, 8, cw - 16, chh - 16);
-          g.fillStyle = '#e9cf8a'; g.font = '700 46px Georgia, serif'; g.textAlign = 'center'; g.fillText(sign[0], cw / 2, 62);
-          g.font = 'italic 28px Georgia, serif'; g.fillText(sign[1], cw / 2, 100);
+          // sized to the board with whatever serif the device has (at a fixed size the name ran over both ends)
+          g.fillStyle = '#e9cf8a'; g.textAlign = 'center';
+          let fs = 46; g.font = `700 ${fs}px Georgia, serif`; fs = Math.min(fs, (fs * (cw - 56)) / g.measureText(sign[0]).width);
+          g.font = `700 ${fs}px Georgia, serif`; g.fillText(sign[0], cw / 2, 62);
+          g.font = `italic ${Math.min(28, fs * 0.7)}px Georgia, serif`; g.fillText(sign[1], cw / 2, 100);
         });
-        part(grp, new T.PlaneGeometry(w * 0.7, w * 0.175), K.std({ map: tex(sc), roughness: 0.6 }), 0, h - 1.2, front * (d / 2 + 0.06), 0, front > 0 ? 0 : PI, 0);
+        // low on the wall, beside the door: any higher and the eaves hide it from the player
+        part(grp, new T.PlaneGeometry(w * 0.6, w * 0.15), K.std({ map: tex(sc), roughness: 0.6 }), w * (v % 2 ? -0.13 : 0.13), 3.2, front * (d / 2 + 0.06), 0, front > 0 ? 0 : PI, 0);
       }
       grp.position.set(cx, 0, cz); grp.rotation.y = -ang;
       K.add(grp);
@@ -869,9 +873,13 @@ export default {
           for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(110,70,35,${0.08 + rr() * 0.12})`; g.fillRect(x0 + rr() * 60, 0, 1, h); }
           g.fillStyle = '#6b6b6b'; for (const y of [30, h - 30]) { g.beginPath(); g.arc(x0 + 30, y, 3, 0, TAU); g.fill(); }
         }
-        g.save(); g.translate(w / 2, h / 2); g.rotate(-PI / 2);
-        g.fillStyle = 'rgba(60,25,20,0.78)'; g.font = '700 58px Georgia, serif'; g.textAlign = 'center'; g.fillText('VROUMBIERG', 0, -14);
-        g.font = 'italic 34px Georgia, serif'; g.fillText('Crémant · Moselle', 0, 34);
+        // branded across the slats, the right way up for the player (the lid lies with this end of the canvas to the
+        // south); the size follows the font the device really has, so the name always fits the lid
+        g.save(); g.translate(w / 2, h / 2); g.rotate(PI);
+        g.fillStyle = 'rgba(60,25,20,0.78)'; g.textAlign = 'center';
+        let fs = 34; g.font = `700 ${fs}px Georgia, serif`; fs = Math.min(fs, (fs * 208) / g.measureText('VROUMBIERG').width);
+        g.font = `700 ${fs}px Georgia, serif`; g.fillText('VROUMBIERG', 0, -6);
+        g.font = `italic ${fs * 0.64}px Georgia, serif`; g.fillText('Crémant · Moselle', 0, fs * 0.8);
         g.restore();
       });
       const lidTop = K.std({ map: tex(lidC), roughness: 0.75 });
@@ -1299,11 +1307,13 @@ export default {
       for (const sd of [-1, 1]) part(grp, new T.BoxGeometry(th, Hc, Dc), crPlain, sd * (Wc / 2 - th / 2), Hc / 2, 0);
       const wool = TX.mottledTextures({ size: 128, a: 0xe2c690, b: 0xb8945a, seed: 29, period: 32, bump: 8, speck: 0.4 });
       part(grp, new T.BoxGeometry(Wc - 2 * th, 0.6, Dc - 2 * th), K.std({ map: wool.map, normalMap: wool.normalMap, roughness: 0.95 }), 0, 5.6, 0);
-      for (let k = 0; k < 3; k++) {
+      // two bottles, head to foot, small enough to lie inside the crate: three at full size stuck out through the
+      // front panel and covered its lettering
+      for (let k = 0; k < 2; k++) {
         const b = new T.Group();
         part(b, K.lathe(SHAPES.cremant.prof, 28), bottleGlass.cremant);
         part(b, K.lathe([[2.75, 23.4], [2.0, 24.6], [1.68, 26], [1.58, 28.5], [1.78, 29], [1.78, 30.3], [1.5, 30.7], [0.01, 30.8]], 20), gold);
-        b.rotation.z = k % 2 ? PI / 2 : -PI / 2; b.position.set(k % 2 ? 14 : -14, 4.9, -4.5 + k * 4.5); b.scale.setScalar(0.92);
+        b.rotation.z = k % 2 ? PI / 2 : -PI / 2; b.position.set(k % 2 ? 11 : -11, 6.3, -3.3 + k * 6.6); b.scale.setScalar(0.72);
         grp.add(b);
       }
       grp.position.set(cx, 0, cz); grp.rotation.y = -ang; K.add(grp);

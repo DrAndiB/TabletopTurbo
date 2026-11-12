@@ -730,15 +730,18 @@ export default {
       }
       // a spilled crayon box with a drawing south of Main Street
       const drawing = (x, z, ang, kind) => {
-        const c = label(256, 360, (g) => {
-          g.fillStyle = '#fbf8f0'; g.fillRect(0, 0, 256, 360);
+        // landscape sheets, top edge away from the player, so the lettering reads upright
+        const c = label(360, 256, (g) => {
+          g.fillStyle = '#fbf8f0'; g.fillRect(0, 0, 360, 256);
+          const [fk, fx, fy] = [[0.8, 78, -17], [0.9, 65, -66], [0.9, 65, -48]][kind];
+          g.translate(fx, fy); g.scale(fk, fk);
           const scrib = (col, pts, w = 6) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); pts.forEach(([a, b], i) => (i ? g.lineTo(a + r.range(-2, 2), b + r.range(-2, 2)) : g.moveTo(a, b))); g.stroke(); };
           if (kind === 0) { // house, sun and family
             scrib('#e8443a', [[50, 220], [50, 140], [128, 80], [206, 140], [206, 220], [50, 220]]);
             scrib('#2f86d6', [[110, 220], [110, 175], [145, 175], [145, 220]]);
             scrib('#f2c12c', [[200, 50], [230, 50], [230, 75], [200, 75], [200, 50]], 10);
             for (let i = 0; i < 8; i++) { const a = i * PI / 4; scrib('#f2c12c', [[215 + Math.cos(a) * 22, 62 + Math.sin(a) * 22], [215 + Math.cos(a) * 34, 62 + Math.sin(a) * 34]], 4); }
-            scrib('#3daa52', [[0, 300], [60, 290], [130, 305], [256, 295]], 10);
+            scrib('#3daa52', [[-90, 297], [0, 300], [60, 290], [130, 305], [256, 295], [345, 301]], 10);
             scrib('#1d1d1d', [[60, 330], [60, 280]], 4); scrib('#1d1d1d', [[180, 330], [180, 270]], 4);
           } else if (kind === 1) { // monster truck
             scrib('#e8443a', [[40, 170], [210, 170], [210, 120], [150, 120], [130, 90], [70, 90], [60, 120], [40, 120], [40, 170]], 8);
@@ -753,11 +756,11 @@ export default {
             g.fillStyle = '#8a4fc0'; g.font = 'bold 34px "Lilita One", sans-serif'; g.fillText('MITTENS', 50, 320);
           }
         });
-        const pg = new T.PlaneGeometry(21, 29.7); pg.rotateX(-PI / 2);
+        const pg = new T.PlaneGeometry(29.7, 21); pg.rotateX(-PI / 2);
         const m = M(pg, K.std({ map: TX.toTexture(c, { wrap: false }), roughness: 0.9 }), x, 0.06 + gy(x, z) + (kind * 0.01), z, { ry: ang });
         K.add(m, { cast: false }); keep.add(m);
       };
-      drawing(-58, 87, 1.35, 1); drawing(-28, 88, 1.75, 0); drawing(28, 90, 1.55, 2);
+      drawing(-58, 87, -0.22, 1); drawing(-28, 88, 0.18, 0); drawing(28, 90, -0.02, 2);
       for (let i = 0; i < 12; i++) { const x = r.range(-70, 40), z = r.range(76, 96); addCrayon(x, z, r() * 6, crayonCols[i % 8], false); }
       for (let i = 0; i < 10; i++) { let x, z; do { x = r.range(-150, 150); z = r.range(-60, 90); } while (!K.offRoad(x, z, 3)); addCrayon(x, z, r() * 6, crayonCols[(i * 3) % 8], false); }
       // crayon box

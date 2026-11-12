@@ -1208,9 +1208,9 @@ export default {
       f(box(26, 11, 0.3), 0x7a2a3a, { y: 21, z: -7.4, rx: -0.12 }, mCloth); // lining
       f(rbox(10, 2.6, 8, 1.2), 0x6a1a2a, { x: -6, y: 14.8, z: 1 }, mCloth);
       f(rbox(8, 2.2, 7, 1), 0x2a3a5a, { x: 5, y: 14.6, z: 2, ry: 0.3 }, mCloth);
-      const lbl = canvas(128, 80, (g) => { g.fillStyle = '#d8c89a'; g.fillRect(0, 0, 128, 80); g.strokeStyle = '#6a2a1a'; g.lineWidth = 4; g.strokeRect(4, 4, 120, 72); g.fillStyle = '#6a2a1a'; g.font = '700 18px Georgia'; g.textAlign = 'center'; g.fillText('TRANSYLVANIA', 64, 34); g.font = '14px Georgia'; g.fillText('via Lower Wobbling', 64, 58); });
-      const lm = new T.Mesh(new T.PlaneGeometry(6, 3.8), K.std({ map: tex(lbl, [1, 1], false), roughness: 0.8 }));
-      const [lx, lz] = f.pt(-8, 8.1); lm.position.set(lx, 6, lz); lm.rotation.y = ang; K.group.add(lm); keep.push(lm);
+      const lbl = canvas(128, 80, (g) => { g.fillStyle = '#d8c89a'; g.fillRect(0, 0, 128, 80); g.strokeStyle = '#6a2a1a'; g.lineWidth = 4; g.strokeRect(4, 4, 120, 72); g.fillStyle = '#6a2a1a'; g.font = '700 18px Georgia'; g.textAlign = 'center'; g.fillText('TRANSYLVANIA', 64, 34, 106); g.font = '14px Georgia'; g.fillText('via Lower Wobbling', 64, 58); });
+      const lm = new T.Mesh(new T.PlaneGeometry(5.6, 3.55), K.std({ map: tex(lbl, [1, 1], false), roughness: 0.8 }));
+      const [lx, lz] = f.pt(-8.75, 8.1); lm.position.set(lx, 6, lz); lm.rotation.y = ang; K.group.add(lm); keep.push(lm); // clear of the strap to its right, which hid the end of both lines
       // feather boa trailing out over the edge (bumpy tube)
       const curve = new T.CatmullRomCurve3([new T.Vector3(0, 14.2, 3), new T.Vector3(6, 14.5, 6), new T.Vector3(10, 10, 8.4), new T.Vector3(12, 3, 9.4), new T.Vector3(16, 0.8, 12), new T.Vector3(22, 0.8, 11)]);
       f(new T.TubeGeometry(curve, 40, 0.9, 7, false), 0x5a1a6a, {}, mCloth);

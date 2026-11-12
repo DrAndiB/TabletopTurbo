@@ -1052,14 +1052,15 @@ export default {
       for (const x of [-5.6, -2.0, 4.6]) win(x, 2.3, hd, 0);
       for (const x of [-5.6, -2.0, 2.0, 5.6]) win(x, 6.8, hd + 0.05, 0);
       for (const z of [-3, 1.5]) { win(hw + 0.05, 6.8, z, PI / 2); win(-hw - 0.05, 6.8, z, -PI / 2); win(hw, 2.3, z, PI / 2); }
-      // door with a stone arch, a wooden sign board above it
+      // door with a stone arch
       const fd = frame(cx + 1.4, 0, cz + hd, 0);
       fd(new T.BoxGeometry(1.8, 2.8, 0.2), 0x5a3a22, { y: 1.4, z: 0.05 }, woodMat);
       fd(new T.TorusGeometry(1.15, 0.22, 6, 12, PI), 0xd8d0c4, { y: 2.8, z: 0.12 }, vc);
-      const board = K.mesh(new T.PlaneGeometry(6.4, 1.1), labelMat(512, 88, (g) => {
+      // the name board hangs on the balcony rail (over the door it sat under the balcony, out of the player's sight)
+      const board = K.mesh(new T.PlaneGeometry(6.4, 0.96), labelMat(512, 88, (g) => {
         g.fillStyle = '#4a2e1a'; g.fillRect(0, 0, 512, 88); g.strokeStyle = '#d8b878'; g.lineWidth = 4; g.strokeRect(5, 5, 502, 78);
         g.fillStyle = '#f2dcae'; g.textAlign = 'center'; g.font = '700 50px Georgia, serif'; g.fillText('Gasthof Kehre', 256, 62);
-      }), cx, 3.75, cz + hd + 0.08, { cast: false });
+      }), cx, 5.2, cz + hd + 1.83, { cast: false });
       void board;
       // the balcony across the gable, with geraniums in flower boxes
       const fb = frame(cx, 0, cz + hd, 0);
@@ -1600,7 +1601,7 @@ export default {
         const bx = -128, bz = 128, fb = frame(bx, MY, bz, 0.12);
         fb(new T.BoxGeometry(22, 3.2, 10), 0xd8cfb8, { y: 1.6 }, vc);
         fb(new T.BoxGeometry(21, 0.2, 9), 0x6a5a40, { y: 3.0 }, vc);
-        const lid = K.mesh(new T.PlaneGeometry(22, 3.2), labelMat(512, 74, (g) => { g.fillStyle = '#2e4a2e'; g.fillRect(0, 0, 512, 74); g.fillStyle = '#f4eedc'; g.font = '700 40px Rubik, Arial'; g.textAlign = 'center'; g.fillText('ALPINE PINES  1:100  ·  24 pcs', 256, 52); }), bx + Math.sin(0.12) * 5.02, MY + 1.6, bz + Math.cos(0.12) * 5.02, { ry: 0.12, cast: false });
+        const lid = K.mesh(new T.PlaneGeometry(22, 3.2), labelMat(512, 74, (g) => { g.fillStyle = '#2e4a2e'; g.fillRect(0, 0, 512, 74); g.fillStyle = '#f4eedc'; g.font = '700 33px Rubik, Arial'; g.textAlign = 'center'; g.fillText('ALPINE PINES  1:100  ·  24 pcs', 256, 50, 484); /* at 40 px both ends were cut off */ }), bx + Math.sin(0.12) * 5.02, MY + 1.6, bz + Math.cos(0.12) * 5.02, { ry: 0.12, cast: false });
         void lid;
         const spare = [];
         for (let k = 0; k < 6; k++) spare.push({ x: bx - 8 + k * 3.1, y: MY + 2.3, z: bz - 1.2 + (k % 2) * 2.4, rz: PI / 2, ry: 0.12, sx: 15, sy: 15, sz: 15, color: r.pick([0x2c4a2c, 0x34522f]) });
@@ -1617,7 +1618,7 @@ export default {
       const bottle = K.lathe([[2.2, 0], [2.4, 0.4], [2.4, 7.2], [1.9, 8.2], [0.9, 8.8], [0.9, 9.4]], 32);
       prop(bottle, 0xf4f2ea, { x: -194, y: MY, z: 76 }, vcSatin);
       prop(new T.ConeGeometry(0.85, 2.4, 20), 0x2a6aa8, { x: -194, y: MY + 10.6, z: 76 }, vcSatin);
-      K.mesh(new T.CylinderGeometry(2.42, 2.42, 3.6, 32, 1, true), labelMat(256, 64, (g2) => { g2.fillStyle = '#2a6aa8'; g2.fillRect(0, 0, 256, 64); g2.fillStyle = '#fff'; g2.font = '700 24px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('SCENIC GLUE', 128, 32); g2.font = '16px Rubik, Arial'; g2.fillText('dries matt', 128, 54); }), -194, MY + 3.9, 76, { ry: 0.5 });
+      K.mesh(new T.CylinderGeometry(2.42, 2.42, 3.6, 32, 1, true), labelMat(256, 64, (g2) => { g2.fillStyle = '#2a6aa8'; g2.fillRect(0, 0, 256, 64); g2.fillStyle = '#fff'; g2.font = '700 24px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('SCENIC GLUE', 128, 32); g2.font = '16px Rubik, Arial'; g2.fillText('dries matt', 128, 54); }), -194, MY + 3.9, 76, { ry: PI + 0.08 }); // label to the player
       AO(-194, 76, 3.2, 3.2, 0.45, 0, MY - 0.05);
       const jar = K.lathe([[2.9, 0], [3.1, 0.3], [3.1, 7.5], [3.3, 7.8], [3.0, 7.9], [2.85, 7.6], [2.85, 0.5], [0, 0.4]], 32);
       K.mesh(jar, K.glass(0xeef4f6, 0.22), -192, MY, -60, { cast: false });
@@ -1627,7 +1628,7 @@ export default {
       }
       AO(-192, -60, 3.8, 3.8, 0.45, 0, MY - 0.05);
       // a steel rule along the east edge
-      const rule = TX.labelTexture(1024, 64, (g2) => { g2.fillStyle = '#cfd3d8'; g2.fillRect(0, 0, 1024, 64); g2.fillStyle = '#1a1a1a'; for (let i = 0; i <= 300; i++) { const x = 8 + i * 3.36; g2.fillRect(x, 0, 1.2, i % 10 ? (i % 5 ? 12 : 18) : 26); if (i % 10 === 0) { g2.font = '12px Rubik, Arial'; g2.fillText(String(i / 10), x + 2, 42); } } });
+      const rule = TX.labelTexture(1024, 64, (g2) => { g2.fillStyle = '#cfd3d8'; g2.fillRect(0, 0, 1024, 64); g2.fillStyle = '#1a1a1a'; for (let i = 0; i <= 300; i++) { const x = 8 + i * 3.3; g2.fillRect(x, 0, 1.2, i % 10 ? (i % 5 ? 12 : 18) : 26); if (i % 10 === 0) { g2.font = '12px Rubik, Arial'; g2.fillText(String(i / 10), x + 2, 42); } } });
       prop(new T.BoxGeometry(31, 0.12, 2.6), 0xd8dade, { x: 192, y: MY + 0.06, z: 40, ry: PI / 2 - 0.08 }, vcMetal);
       K.mesh(new T.PlaneGeometry(31, 2.6), K.std({ map: rule, roughness: 0.35, metalness: 0.6 }), 192, MY + 0.125, 40, { rx: -PI / 2, cast: false }).rotation.set(-PI / 2, 0, PI / 2 - 0.08);
       AO(192, 40, 1.8, 16, 0.3, -0.08, MY - 0.05);

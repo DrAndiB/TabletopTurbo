@@ -492,12 +492,12 @@ export default {
         g.fillStyle = '#efe2c4'; g.fillRect(0, 0, w, h);
         menu.forEach((s, i) => {
           const x0 = (i * w) / menu.length; g.fillStyle = i % 2 ? '#f6ecd6' : '#e8d8b6'; g.fillRect(x0 + 2, 2, w / menu.length - 4, h - 4);
-          g.fillStyle = '#3a1e10'; g.font = '700 22px Rubik, sans-serif'; g.textAlign = 'center'; g.fillText(s, x0 + w / menu.length / 2, 40);
+          g.fillStyle = '#3a1e10'; g.font = '700 17px Rubik, sans-serif'; g.textAlign = 'center'; g.fillText(s, x0 + w / menu.length / 2, 39, w / menu.length - 12); // each dish inside its own plaque
         });
       });
       const plaque = K.std({ map: tex(mc, [1, 1], false), roughness: 0.7 });
       for (const [x0, x1] of [[BOUNDS.minX + 8, hx0 - 10], [hx1 + 10, BOUNDS.maxX - 6]]) {
-        K.mesh(new T.PlaneGeometry(x1 - x0, 4.2), plaque, (x0 + x1) / 2, 14.5, wz + 6.05, { cast: false });
+        K.mesh(new T.PlaneGeometry(x1 - x0, 4.2), plaque, (x0 + x1) / 2, 10.8, wz + 6.05, { cast: false }); // low enough to be read under the wall's cap
       }
     }
 
@@ -888,7 +888,7 @@ export default {
       const lab = canvas(256, 128, (g, w, h) => { g.fillStyle = '#f4ecd8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#8a1a14'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16); g.fillStyle = '#1a1410'; g.font = '34px "Lilita One", sans-serif'; g.textAlign = 'center'; g.fillText('KAWA', w / 2, 62); g.font = '700 16px Rubik, sans-serif'; g.fillText('RICE WINE · 1800', w / 2, 96); });
       const bx = 56, bz = -103;
       K.mesh(lathe([[5, 0], [5.4, 0.5], [5.4, 22], [4.6, 26], [2.2, 31], [1.8, 37], [2.0, 38.5], [0.01, 38.5]], 32), K.phys({ color: 0x3a1c0c, roughness: 0.06, clearcoat: 1, transparent: true, opacity: 0.92 }), bx, 0, bz);
-      K.mesh(cyl(5.45, 5.45, 9, 32, true), K.std({ map: tex(lab, [1, 1], false), roughness: 0.7 }), bx, 12, bz, { ry: -0.5 });
+      K.mesh(cyl(5.45, 5.45, 9, 32, true), K.std({ map: tex(lab, [1, 1], false), roughness: 0.7 }), bx, 12, bz, { ry: PI - 0.35 }); // label to the player (it faced the wall)
       K.mesh(cyl(2.05, 2.05, 2, 16), K.std({ color: 0xd8b27a, roughness: 0.6 }), bx, 38.6, bz);
       AO(bx, bz, 6.5, 6.5, 0.5);
       K.circle(bx, bz, 5.5, 39);
@@ -1028,7 +1028,7 @@ export default {
       // a folded menu card (A-frame)
       const mcv = canvas(256, 192, (g, w, h) => { g.fillStyle = '#f6ecd6'; g.fillRect(0, 0, w, h); g.fillStyle = '#d8342c'; g.fillRect(0, 0, w, 40); g.fillStyle = '#fff'; g.font = '26px "Lilita One", sans-serif'; g.textAlign = 'center'; g.fillText("TODAY'S FISH", w / 2, 30); g.fillStyle = '#3a2412'; g.font = '700 18px Rubik, sans-serif'; ['Salmon belly', 'Golden eye', 'Sweet prawn', 'Sea bream'].forEach((s, i) => g.fillText(s, w / 2, 76 + i * 30)); });
       const mm = K.std({ map: tex(mcv, [1, 1], false), roughness: 0.8, side: T.DoubleSide });
-      for (const s of [-1, 1]) { const m = K.mesh(new T.PlaneGeometry(10, 7.5), mm, -14 , 3.6, 6 + s * 1.2, { cast: true }); m.rotation.order = 'YXZ'; m.rotation.y = s > 0 ? 0 : PI; m.rotation.x = -0.32 * s; }
+      for (const s of [-1, 1]) { const m = K.mesh(new T.PlaneGeometry(10, 7.5), mm, -14 , 3.6, 6 + s * 1.2, { cast: true }); m.rotation.order = 'YXZ'; m.rotation.y = s > 0 ? 0 : PI; m.rotation.x = -0.32; } // both panels lean in to the ridge (the far one leaned out and showed its back, lettering mirrored)
       AO(-14, 6, 6, 3, 0.35);
       K.box(-14, 6, 5, 2, 0, 7.5);
       gari(42, -16); soyDish(54, -24); teacup(40, -2, 0.85);

@@ -137,6 +137,11 @@ export default {
   lines, masking tape, highlighter, pebbles...). A start/finish line at `startS`.
 - 2–3 hazards (slick/sticky/slow/holes) and at least one special feature (ramp jump, pushable objects, platform...).
 - Generic, original designs only: no real brand names, logos or characters. Made-up labels are fine.
+- Lettering is read by a player looking from the south, 62 degrees up. A label wrapped round an upright bottle
+  shows the middle of its canvas to the north: turn it by `PI`. On a wall, keep signs clear of eaves, balconies and
+  caps above them (a point 1 unit below an overhang needs the overhang to stick out less than 0.5). Both panels of
+  a tent card take the same `rotation.x`. Give `fillText` a width (fourth argument) when a line nearly fills its
+  label; fonts other than Lilita One and Rubik differ from device to device. Run `lettercheck.py` on the world.
 - Below the table edges show a floor far below (y ≈ −76) so falling off looks right (see breakfast.js).
 
 ## Performance budget

@@ -1082,7 +1082,7 @@ export default {
       const plain = K.std({ color: 0xeee5d2, roughness: 0.92, side: T.DoubleSide });
       const bag = new T.Group();
       const body = new T.Mesh(new K.RoundedBoxGeometry(20, 14, 9, 4, 2.2), [plain, plain, plain, plain, bagMat, plain]);
-      body.rotation.x = -PI / 2; // printed face up
+      body.rotation.x = -PI / 2; body.rotation.z = PI; // printed face up, turned so the name is not upside down for the player
       body.position.y = 4.5; bag.add(body);
       // crumpled open end
       for (let i = 0; i < 6; i++) {

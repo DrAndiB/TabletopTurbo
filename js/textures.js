@@ -8,7 +8,46 @@ export function setMaxAnisotropy(a) { maxAniso = a; }
 export function makeCanvas(w, h = w) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
+  fitText(c);
   return c;
+}
+
+// Lettering must not run off its label. Labels are laid out for the fonts the game ships, but Georgia, Arial and
+// Impact are whatever the device has, and a wider stand-in pushed the ends of a line past the edge of its canvas,
+// where it was simply cut ("RANSYLVANI"). Text drawn on these canvases is therefore squeezed to the room it has, when
+// it would overshoot by a little. A line that is mostly outside (art laid out across two canvases) is left alone.
+export const fitted = []; // what was squeezed, for the tools
+function fitText(c) {
+  const get = c.getContext;
+  c.getContext = function (kind, ...rest) {
+    const g = get.call(this, kind, ...rest);
+    if (kind !== '2d' || !g || g.__fit) return g;
+    g.__fit = true;
+    const room = (s, x, y) => {
+      const m = g.getTransform(), sc = Math.hypot(m.a, m.b);
+      if (sc < 1e-6) return undefined;
+      const wpx = g.measureText(s).width * sc, dx = m.a / sc, dy = m.b / sc;
+      const px = m.a * x + m.c * y + m.e, py = m.b * x + m.d * y + m.f, W = c.width, H = c.height;
+      if (px < 0 || px > W || py < 0 || py > H) return undefined;
+      const pad = Math.max(3, Math.min(W, H) * 0.015);
+      // how far the line can run forwards and backwards from its anchor before it meets an edge
+      const reach = (ux, uy) => Math.min(Math.abs(ux) < 1e-4 ? Infinity : ((ux > 0 ? W - pad : pad) - px) / ux, Math.abs(uy) < 1e-4 ? Infinity : ((uy > 0 ? H - pad : pad) - py) / uy);
+      const fw = Math.max(0, reach(dx, dy)), bw = Math.max(0, reach(-dx, -dy));
+      const al = g.textAlign, rtl = g.direction === 'rtl';
+      const can = al === 'center' ? 2 * Math.min(fw, bw) : (al === 'right' || (al === 'end' && !rtl) || (al === 'start' && rtl)) ? bw : fw;
+      if (can >= wpx - 0.5 || can < wpx * 0.62) return undefined;
+      if (fitted.length < 200) fitted.push({ text: String(s), over: Math.round(wpx - can), width: Math.round(wpx) });
+      return can / sc;
+    };
+    for (const fn of ['fillText', 'strokeText']) {
+      const draw = g[fn].bind(g);
+      g[fn] = (s, x, y, max) => {
+        if (max === undefined) max = room(String(s), x, y);
+        return max === undefined ? draw(s, x, y) : draw(s, x, y, max);
+      };
+    }
+    return g;
+  };
 }
 
 export function toTexture(canvas, { repeat = [1, 1], srgb = true, wrap = true, aniso = true, flipY = true } = {}) {

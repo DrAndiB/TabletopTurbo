@@ -869,8 +869,8 @@ export default {
         const c = TX.makeCanvas(512, 64), g = c.getContext('2d');
         g.clearRect(0, 0, 512, 64);
         g.font = `600 40px Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillStyle = 'rgba(25,16,4,0.85)'; g.fillText(text, 257, 34);
-        g.fillStyle = '#f2c46a'; g.fillText(text, 256, 32);
+        g.fillStyle = 'rgba(25,16,4,0.85)'; g.fillText(text, 257, 34, 500); // the longer engravings ran past the ends of their plate
+        g.fillStyle = '#f2c46a'; g.fillText(text, 256, 32, 500);
         const m = new T.Mesh(new T.PlaneGeometry(w * size, w * size / 8), K.std({ map: TX.toTexture(c, { wrap: false }), transparent: true, depthWrite: false, metalness: 0.6, roughness: 0.3, envMap: ENV, polygonOffset: true, polygonOffsetFactor: -2 }));
         m.rotation.x = -PI / 2; m.rotation.z = -ang; m.position.set(x, H + 0.05, z);
         m.renderOrder = 2;

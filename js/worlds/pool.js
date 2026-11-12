@@ -901,7 +901,7 @@ export default {
         lg.fillStyle = '#8c1d1d'; lg.font = '58px "Lilita One", Impact, sans-serif'; lg.textAlign = 'center'; lg.textBaseline = 'middle';
         lg.fillText('OLD 8', 128, 54); lg.fillText('OLD 8', 384, 54);
         lg.fillStyle = '#1b1b1b'; lg.font = '700 20px Rubik, sans-serif'; lg.fillText('RAIL ALE · 5.2%', 128, 96); lg.fillText('RAIL ALE · 5.2%', 384, 96);
-        K.mesh(new T.CylinderGeometry(3.16, 3.16, 6.2, 36, 1, true), K.std({ map: TX.toTexture(lc, { wrap: false }), roughness: 0.6 }), x, RAIL_Y + 7.4, z, { ry: 0.6 });
+        K.mesh(new T.CylinderGeometry(3.16, 3.16, 6.2, 36, 1, true), K.std({ map: TX.toTexture(lc, { wrap: false }), roughness: 0.6 }), x, RAIL_Y + 7.4, z, { ry: PI / 2 + 0.15 }); // one of the two prints squarely to the player
         const foil = K.metal(0xc9a24a, 0.3);
         K.mesh(new T.CylinderGeometry(1.36, 1.5, 1.6, 24, 1, true), foil, x, RAIL_Y + 19.6, z);
         K.mesh(new T.CylinderGeometry(1.55, 1.55, 0.55, 21), foil, x, RAIL_Y + 23.4, z);

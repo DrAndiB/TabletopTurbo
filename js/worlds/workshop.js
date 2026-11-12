@@ -1625,7 +1625,7 @@ export default {
       glg.fillStyle = '#f4d24a'; glg.fillRect(0, 0, 256, 96); glg.fillStyle = '#7a3a12'; glg.fillRect(0, 0, 256, 18); glg.fillRect(0, 80, 256, 16);
       glg.fillStyle = '#5a2a0a'; glg.font = '700 30px "Lilita One", sans-serif'; glg.textAlign = 'center'; glg.fillText('WOOD GLUE', 128, 60);
       const gl = new T.Mesh(new T.CylinderGeometry(3.22, 3.22, 5.5, 28, 1, true), K.std({ map: TX.toTexture(glc, { wrap: false }), roughness: 0.4 })); gl.position.y = 5; gb.add(gl);
-      gb.position.set(gx, 0, gz); K.add(gb);
+      gb.position.set(gx, 0, gz); gb.rotation.y = PI - 0.25; K.add(gb); // label to the player (it faced the wall)
       K.circle(gx, gz, 3.3, 12);
       AO(gx, gz, 4, 4, 0.55);
       decal(8, gx + 5, gz - 4, 6, 6, 0.4);

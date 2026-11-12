@@ -1965,7 +1965,7 @@ export default {
       const bottle = K.lathe([[2.2, 0], [2.4, 0.4], [2.4, 7.2], [1.9, 8.2], [0.9, 8.8], [0.9, 9.4]], 32);
       prop(bottle, 0xf4f2ea, { x: -150, y: MY, z: 112 }, vcSatin);
       prop(new T.ConeGeometry(0.85, 2.4, 20), 0xe86a1a, { x: -150, y: MY + 10.6, z: 112 }, vcSatin);
-      K.mesh(new T.CylinderGeometry(2.42, 2.42, 3.6, 32, 1, true), K.std({ map: TX.labelTexture(256, 64, (g2) => { g2.fillStyle = '#2a6aa8'; g2.fillRect(0, 0, 256, 64); g2.fillStyle = '#fff'; g2.font = '700 26px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('WOOD & PVA', 128, 32); g2.font = '16px Rubik, Arial'; g2.fillText('dries clear', 128, 54); }), roughness: 0.5 }), -150, MY + 3.9, 112, { ry: 0.5 });
+      K.mesh(new T.CylinderGeometry(2.42, 2.42, 3.6, 32, 1, true), K.std({ map: TX.labelTexture(256, 64, (g2) => { g2.fillStyle = '#2a6aa8'; g2.fillRect(0, 0, 256, 64); g2.fillStyle = '#fff'; g2.font = '700 26px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('WOOD & PVA', 128, 32); g2.font = '16px Rubik, Arial'; g2.fillText('dries clear', 128, 54); }), roughness: 0.5 }), -150, MY + 3.9, 112, { ry: PI + 0.08 }); // label to the player
       AO(-150, 112, 3.2, 3.2, 0.45, 0, MY - 0.05);
       // open glue pots with a brush standing in them (front left and by the east edge)
       const potLabel = K.std({ map: TX.labelTexture(256, 64, (g2) => { g2.fillStyle = '#f4f2ea'; g2.fillRect(0, 0, 256, 64); g2.fillStyle = '#c8302e'; g2.fillRect(0, 0, 256, 12); g2.fillRect(0, 52, 256, 12); g2.fillStyle = '#2a2a2a'; g2.font = '700 22px Rubik, Arial'; g2.textAlign = 'center'; g2.fillText('HOBBY GLUE', 64, 40); g2.fillText('HOBBY GLUE', 192, 40); }), roughness: 0.45 });
@@ -1988,7 +1988,7 @@ export default {
       }
       AO(-186, -36, 3.8, 3.8, 0.45, 0, MY - 0.05);
       // a steel rule along the east edge and a box of static grass flock
-      const rule = TX.labelTexture(1024, 64, (g2) => { g2.fillStyle = '#cfd3d8'; g2.fillRect(0, 0, 1024, 64); g2.fillStyle = '#1a1a1a'; for (let i = 0; i <= 300; i++) { const x = 8 + i * 3.36; g2.fillRect(x, 0, 1.2, i % 10 ? (i % 5 ? 12 : 18) : 26); if (i % 10 === 0) { g2.font = '12px Rubik, Arial'; g2.fillText(String(i / 10), x + 2, 42); } } });
+      const rule = TX.labelTexture(1024, 64, (g2) => { g2.fillStyle = '#cfd3d8'; g2.fillRect(0, 0, 1024, 64); g2.fillStyle = '#1a1a1a'; for (let i = 0; i <= 300; i++) { const x = 8 + i * 3.3; g2.fillRect(x, 0, 1.2, i % 10 ? (i % 5 ? 12 : 18) : 26); if (i % 10 === 0) { g2.font = '12px Rubik, Arial'; g2.fillText(String(i / 10), x + 2, 42); } } });
       prop(new T.BoxGeometry(31, 0.12, 2.6), 0xd8dade, { x: 178, y: MY + 0.06, z: -18, ry: PI / 2 - 0.08 }, vcMetal);
       K.mesh(new T.PlaneGeometry(31, 2.6), K.std({ map: rule, roughness: 0.35, metalness: 0.6 }), 178, MY + 0.125, -18, { rx: -PI / 2, cast: false }).rotation.set(-PI / 2, 0, PI / 2 - 0.08);
       AO(178, -18, 1.8, 16, 0.3, -0.08, MY - 0.05);

@@ -1457,7 +1457,13 @@ export default {
       AO(-44, 92.6, 8, 0.8, 0.35, -0.06, FY);
       // tube of model glue
       const tube = new T.Group();
-      const tb = new T.Mesh(K.lathe([[0.01, 0], [0.9, 0.1], [0.95, 5.5], [0.25, 7.0], [0.01, 7.0]], 20), K.std({ map: (() => { const cc = TX.makeCanvas(256, 64), gg = cc.getContext('2d'); gg.fillStyle = '#e9e4da'; gg.fillRect(0, 0, 256, 64); gg.fillStyle = '#d22f26'; gg.fillRect(0, 16, 256, 30); gg.fillStyle = '#fff'; gg.font = '700 22px Rubik, Arial'; gg.fillText('MODEL CEMENT', 20, 39); return TX.toTexture(cc, { wrap: false }); })(), metalness: 0.4, roughness: 0.35 }));
+      const tb = new T.Mesh(K.lathe([[0.01, 0], [0.9, 0.1], [0.95, 5.5], [0.25, 7.0], [0.01, 7.0]], 20), K.std({ map: (() => {
+        // across: round the tube; down: nozzle to crimp, the straight body being the third quarter. The name runs along the body on the side that lies uppermost
+        const cc = TX.makeCanvas(128, 512), gg = cc.getContext('2d'); gg.fillStyle = '#e9e4da'; gg.fillRect(0, 0, 128, 512); gg.fillStyle = '#d22f26'; gg.fillRect(0, 262, 128, 116);
+        gg.translate(106, 320); gg.rotate(-PI / 2); gg.fillStyle = '#fff'; gg.textAlign = 'center'; gg.textBaseline = 'middle';
+        let fs = 15; gg.font = `700 ${fs}px Rubik, Arial`; fs = Math.min(fs, (fs * 106) / gg.measureText('MODEL CEMENT').width); gg.font = `700 ${fs}px Rubik, Arial`; gg.fillText('MODEL CEMENT', 0, 0);
+        return TX.toTexture(cc, { wrap: false });
+      })(), metalness: 0.4, roughness: 0.35 }));
       tb.rotation.z = -PI / 2; tube.add(tb);
       const flat = new T.Mesh(new T.BoxGeometry(0.3, 0.2, 2.0), K.std({ color: 0xd8d4cc, metalness: 0.6, roughness: 0.4 })); flat.position.x = 0.1; tube.add(flat);
       const capT = new T.Mesh(new T.CylinderGeometry(0.4, 0.45, 1.4, 14), K.plastic(0xd22f26, 0.3)); capT.rotation.z = PI / 2; capT.position.x = 7.6; tube.add(capT);

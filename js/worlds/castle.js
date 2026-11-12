@@ -324,7 +324,10 @@ export default {
         if (Math.abs(z - TILT.z) < 6 && x < TILT.x1 + 6) return null;
         if (Math.hypot(x - CAT.x, z - CAT.z) < 26) return null;
         const t = { x, y: 0, z, ry: r() * 6, s: r.range(0.85, 1.35) };
-        ts.push(t); K.circle(x, z, 1.1, 6);
+        ts.push(t);
+        // no tree in front of the start sign (it stays in the count, so the rest of the wood is unchanged)
+        if (Math.abs(x + 28) < 17 && z > 64 && z < 73) { t.s = 0.001; return t; }
+        K.circle(x, z, 1.1, 6);
         return t;
       });
       // flowers and stones
@@ -399,7 +402,7 @@ export default {
       }
       // banners that stir in the wind
       A.flags = [];
-      for (const [x, z, c] of [[-100, -11, 0xd8423a], [-100, 11, 0x2f62b8], [-40, 68, 0xf2c230], [WALL.x0 - 6, WALL.z1 + 4, 0xc8423a], [WALL.x1 + 6, WALL.z1 + 4, 0x2f62b8]]) {
+      for (const [x, z, c] of [[-100, -11, 0xd8423a], [-100, 11, 0x2f62b8], [-40, 60.5, 0xf2c230] /* behind the start sign: in front of it the flag hung over the C */, [WALL.x0 - 6, WALL.z1 + 4, 0xc8423a], [WALL.x1 + 6, WALL.z1 + 4, 0x2f62b8]]) {
         if (!K.offRoad(x, z, 2.5)) continue;
         K.mesh(G.cyl(0.2, 0.28, 11, 6), K.std({ color: 0x7a5230 }), x, 5.5, z); K.circle(x, z, 0.5, 8);
         A.flags.push(toy([P(G.box(4.4, 2.6, 0.08), c, 2.3, 0, 0), P(G.cyl(0.6, 0.6, 0.1, 8), 0xf2c230, 2.2, 0, 0.06, { rx: PI / 2 })], paint, x, 9.4, z, 0));

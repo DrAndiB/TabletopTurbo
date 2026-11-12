@@ -39,6 +39,18 @@ far behind on others.
   lane dashes, warning stripes before the lasers and under the guards' arms, roof units and blinking beacons,
   drones, a monorail, neon adverts, searchlights, a workbench round the mat (kit box, mug, soldering iron,
   screwdrivers, gears, plans). Dino Dash and Robo Rumble now end at the table edge, not the mat edge. New thumbnails.
+- **Done: lettering pass over all 36 tables** (Andreas: "check the individual assets", a wine crate with badly
+  placed lettering). Two new tools did the looking: `lettercheck.py` works out from the geometry whether each piece
+  of lettering faces the player, is mirrored, upside down, hidden behind something or drawn past the edge of its
+  canvas; `assetshots.py` photographs every lettered object close up. Found and fixed, among others: Crémant Curves
+  (bottles through the crate's front panel, the lid's name sideways and cut, the winery sign under the eaves and too
+  wide for its board), labels turned to the wall (shampoo, sake, three glue bottles, ale), signs nobody could see
+  (the stage's trap room sign inside the curtain, the inn's name under its balcony, the sushi wall menu under the
+  wall's cap, trees and a flag in front of the Castle Siege sign), a mirrored menu card, tent cards leaning the wrong
+  way, a sideways title card and sideways drawings, an upside-down flour bag, a start grid whose slot 4 had no
+  number, a calculator missing its first digit, cut-off names on stickers, signs, boxes and rulers. textures.js now
+  squeezes any label text that would overshoot its canvas (`fitText`), because Georgia, Arial and Impact are
+  whatever the device has.
 - **Still open:** medal times in time trial; warning markers for hazards outside the view; hazard lists for the
   older cups (doors, trains, trapdoors already have their own driver logic there).
 - **Idea bank from the same brainstorm:** challenges per table, a daily race, unlockable paint jobs, named rivals,
