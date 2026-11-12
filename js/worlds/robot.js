@@ -60,7 +60,7 @@ export default {
     const { THREE: T, TX, r, track } = K;
     const { G, P, toy, wedge, table, road, cutRibbon, startLine, scatter, sAt, geoOf } = tmTools(K);
     const L = track.length;
-    A = { prevT: null, L, gates: [], bots: [], pads: [], blink: [], sR: 0 };
+    A = { prevT: null, L, gates: [], bots: [], pads: [], blink: [], sR: 0, haz: [] };
     const paint = K.plastic(0xffffff, 0.4, { vertexColors: true });
     const tin = K.std({ color: 0xffffff, roughness: 0.35, metalness: 0.55, vertexColors: true });
     const glow = (c, k = 1.6) => K.std({ color: c, emissive: c, emissiveIntensity: k, roughness: 0.5 });
@@ -136,6 +136,8 @@ export default {
           beam.scale.y = W / 2 + 1;
           const col = K.box(mid.x, mid.z, W / 4 + 0.3, 0.45, p.angle + PI / 2, 0, { kick: 26, bounce: 0.6 });
           gate.half.push({ beam, mat, col });
+          const hi = gate.half.length - 1;
+          A.haz.push({ s, lo: side < 0 ? -99 : -0.8, hi: side < 0 ? 0.8 : 99, busy: (t) => laser(gate, hi, t) === 2 });
         }
         toy(posts, tin);
         A.gates.push(gate);
@@ -168,6 +170,8 @@ export default {
         B.ang = ang;
         K.mover({ type: 'capsule', r: 1.2, h: 6 }, (t) => { const a = ang(t); return { x1: B.x, z1: B.z, x2: B.x + Math.cos(a) * (ARM.len - 0.6), z2: B.z + Math.sin(a) * (ARM.len - 0.6) }; });
         A.bots.push(B);
+        const tip = W / 2 + 0.8 - ARM.len - 1.6;
+        A.haz.push(side > 0 ? { s, lo: tip, hi: 99, busy: (t) => swing(B, t) > 0.08 } : { s, lo: -99, hi: -tip, busy: (t) => swing(B, t) > 0.08 });
       });
     }
 
@@ -200,17 +204,44 @@ export default {
       for (let y = 0; y < 10; y++) for (let x = 0; x < 4; x++) { const on = rr() < 0.6, col = on ? ['#ffe89a', '#7fe8ff', '#ff9ad8'][Math.floor(rr() * 3)] : '#12141a'; g.fillStyle = col; g.fillRect(6 + x * 14, 6 + y * 12, 9, 7); if (on) { ge.fillStyle = col; ge.fillRect(6 + x * 14, 6 + y * 12, 9, 7); } }
       const bm = K.std({ map: TX.toTexture(wc), emissiveMap: TX.toTexture(ec), emissive: 0xffffff, emissiveIntensity: 1.3, roughness: 0.5, metalness: 0.3 });
       const blocks = [], tops = [];
-      for (let i = 0, tries = 0; i < 30 && tries < 900; tries++) {
+      for (let i = 0, tries = 0; i < 40 && tries < 1600; tries++) {
         const x = r.range(-142, 142), z = r.range(-100, 98), w = r.range(5, 8), h = r.range(7, 19);
-        if (!K.offRoad(x, z, w + 4) || !K.offRoad(x, z - h * 0.3, w + 1) || !K.offRoad(x, z - h * 0.58, 3) || blocks.some((b) => Math.hypot(b.x - x, b.z - z) < 13)) continue;
-        if (A.bots.some((b) => Math.hypot(b.x - x, b.z - z) < 16) || Math.hypot(x, z + 92) < 16 || Math.hypot(x - 80, z - 48) < 14) continue;
+        if (!K.offRoad(x, z, w + 4) || !K.offRoad(x, z - h * 0.3, w + 1) || !K.offRoad(x, z - h * 0.58, 3) || blocks.some((b) => Math.hypot(b.x - x, b.z - z) < 11)) continue;
+        if (A.bots.some((b) => Math.hypot(b.x - x, b.z - z) < 16) || Math.hypot(x, z + 92) < 16 || Math.hypot(x - 80, z - 48) < 14 || Math.hypot(x + 96, z - 52) < 14 || Math.hypot(x + 132, z + 92) < 14 || Math.hypot(x - 134, z - 92) < 14) continue;
         blocks.push({ x, y: h / 2, z, sx: w, sy: h, sz: w, color: r.pick([0xffffff, 0xcfe0ff, 0xffd8f0]) });
-        tops.push({ x, y: h + 0.3, z, sx: w + 0.6, sy: 0.6, sz: w + 0.6, color: r.pick([CY, MG, YL]) });
+        tops.push({ x, y: h + 0.5, z, sx: w * 0.4, sy: 1, sz: w * 0.4, color: r.pick([CY, MG, YL]), w, h });
         K.box(x, z, w / 2, w / 2, 0, h + 3); K.contact(x, z, w * 0.9, w * 0.9, 0.5);
         i++;
       }
       K.instances(G.box(1, 1, 1), bm, blocks, { colors: true });
-      for (const c of [CY, MG, YL]) { const l = tops.filter((t) => t.color === c); if (l.length) K.instances(G.box(1, 1, 1), glow(c, 1.3), l, { cast: false }); }
+      // dark roofs with a parapet, a small lit roof light in one of three colours
+      K.instances(G.box(1, 1, 1), K.std({ color: 0x2a2f3a, roughness: 0.8 }), tops.map((t) => ({ x: t.x, y: t.h + 0.15, z: t.z, sx: t.w + 0.5, sy: 0.3, sz: t.w + 0.5 })), { cast: false });
+      for (const c of [CY, MG, YL]) { const l = tops.filter((t) => t.color === c); if (l.length) K.instances(G.box(1, 1, 1), glow(c, 1.1), l, { cast: false }); }
+      // street lamps along the outside of the road
+      const lamps = [], heads = [];
+      for (let s = 12; s < L; s += 34) { const sd = Math.floor(s / 34) % 2 ? 1 : -1, q = track.place(s, sd * (W / 2 + 2.6)); lamps.push({ x: q.x, y: 2.2, z: q.z }); heads.push({ x: q.x, y: 4.6, z: q.z }); }
+      K.instances(G.cyl(0.18, 0.25, 4.4, 5), K.metal(0x596274, 0.5), lamps);
+      K.instances(G.sph(0.55, 8), glow(0xeaf4ff, 1.8), heads, { cast: false });
+      // the energy core in the south-west pocket: a pulsing sphere inside turning rings
+      {
+        const x = -96, z = 52;
+        toy([P(G.cyl(6, 6.6, 1, 16), 0x3a4050, 0, 0.5, 0), ...[0, 1, 2].map((i) => P(G.cyl(0.5, 0.7, 9, 6), 0x8a94a8, Math.cos(i * 2.094) * 5, 4.5, Math.sin(i * 2.094) * 5, { rz: Math.cos(i * 2.094) * 0.25, rx: -Math.sin(i * 2.094) * 0.25 }))], tin, x, 0, z);
+        A.coreMat = glow(CY, 2); K.mesh(G.sph(2.6, 14), A.coreMat, x, 7.4, z, { cast: false });
+        A.rings = [0, 1].map((i) => K.mesh(G.tor(4 + i * 0.9, 0.22, PI * 2, 24), glow(i ? MG : YL, 1.4), x, 7.4, z, { cast: false }));
+        K.circle(x, z, 6.4, 12); K.contact(x, z, 8, 8, 0.5);
+      }
+      // the giant robot in the north-west corner, a radar dish turning in the south-east
+      {
+        const x = -132, z = -92, c1 = 0x4f8fd0, c2 = 0xc8d0dc;
+        toy([P(G.rbox(9, 10, 6.5, 0.8), c1, 0, 13, 0), P(G.rbox(6, 5, 5, 0.8), c2, 0, 21, 0), P(G.rbox(3, 8, 3.4, 0.6), c2, -2.6, 4, 0), P(G.rbox(3, 8, 3.4, 0.6), c2, 2.6, 4, 0), P(G.rbox(2.4, 9, 2.8, 0.6), c2, -6, 13, 0), P(G.rbox(2.4, 9, 2.8, 0.6), c2, 6, 13, 0), P(G.cyl(0.2, 0.2, 4, 5), c2, 0, 25.5, 0), P(G.sph(0.7, 8), RD, 0, 27.6, 0), P(G.box(5, 3, 0.3), 0x15171c, 0, 13.6, 3.3), P(G.box(4, 0.8, 0.3), 0x15171c, 0, 19.8, 2.55)], tin, x, 0, z);
+        for (const d of [-1.5, 1.5]) K.mesh(G.sph(0.8, 8), glow(YL, 2), x + d, 21.8, z + 2.6, { cast: false });
+        for (let i = 0; i < 3; i++) K.mesh(G.box(0.9, 0.9, 0.2), glow([CY, MG, YL][i], 1.6), x - 1.4 + i * 1.4, 13.6, z + 3.5, { cast: false });
+        K.box(x, z, 5.5, 3.5, 0, 30); K.contact(x, z, 9, 6, 0.5);
+        const rx = 134, rz = 92;
+        toy([P(G.cyl(3, 3.6, 1.2, 12), 0x3a4050, 0, 0.6, 0), P(G.cyl(0.7, 0.9, 7, 8), 0x8a94a8, 0, 4.5, 0)], tin, rx, 0, rz);
+        A.dish = toy([P(K.lathe([[0.3, 0], [3, 0.6], [5, 1.8], [5.6, 2.8]], 20), 0xe8eef6, 0, 0, 0, { rx: PI / 2 - 0.5 }), P(G.cyl(0.12, 0.12, 4, 5), 0x8a94a8, 0, 1, 1.8, { rx: PI / 2 - 0.5 }), P(G.sph(0.45, 6), RD, 0, 2, 3.5)], tin, rx, 8.4, rz);
+        K.circle(rx, rz, 3.6, 10); K.contact(rx, rz, 5, 5, 0.5);
+      }
       // small tin robots standing about
       const mini = geoOf([P(G.rbox(2.4, 2.8, 1.8, 0.3), 0xffffff, 0, 2.6, 0), P(G.rbox(1.8, 1.5, 1.6, 0.3), 0xc8d0dc, 0, 4.8, 0), P(G.cyl(0.08, 0.08, 1, 4), 0xc8d0dc, 0, 6, 0), P(G.box(0.7, 1.4, 0.8), 0x3a4050, 0, 0.7, 0.55), P(G.box(0.7, 1.4, 0.8), 0x3a4050, 0, 0.7, -0.55), P(G.box(0.6, 2, 0.5), 0xc8d0dc, 0, 2.8, 1.25), P(G.box(0.6, 2, 0.5), 0xc8d0dc, 0, 2.8, -1.25), P(G.box(0.1, 0.5, 1.1), 0x15171c, 0.92, 4.9, 0)]);
       scatter(mini, tin, 34, [-144, 144, -100, 100], 3, (x, z) => (blocks.some((b) => Math.hypot(b.x - x, b.z - z) < 8) ? null : { x, y: 0, z, ry: r() * 6, s: r.range(0.8, 1.2), color: r.pick([0x4f8fd0, 0xd8423a, 0xf2c230, 0x6fc04b, 0xb46ad8]) }));
@@ -239,6 +270,8 @@ export default {
       scatter(bat, tin, 12, [-144, 144, -100, 100], 5, (x, z) => (blocks.some((b) => Math.hypot(b.x - x, b.z - z) < 9) ? null : { x, y: 1.1, z, ry: r() * 6, color: r.pick([0x25e6ff, 0xff3fb4, 0x6fc04b, 0xf59a23]) }));
     }
   },
+
+  aiHazards() { return A ? A.haz : null; },
 
   tick(dt, time, game) {
     if (!A || !A.gates.length) return;
@@ -273,6 +306,9 @@ export default {
     }
     A.pads.forEach((p, i) => { p.mat.emissiveIntensity = 1.1 + 0.7 * Math.sin(time * 9 - i); });
     A.belt.offset.y = (time * 2.2) % 1;
+    A.coreMat.emissiveIntensity = 1.6 + 1.2 * Math.sin(time * 3.2);
+    A.rings.forEach((m, i) => { m.rotation.x = time * (0.9 + i * 0.5); m.rotation.y = time * (0.6 - i * 1.1); });
+    A.dish.rotation.y = time * 0.7;
     A.blink.forEach((m, i) => { m.emissiveIntensity = mod(Math.floor(time * 6) - i, 8) < 2 ? 2.4 : 0.15; });
     void clamp;
   },

@@ -7,7 +7,12 @@ import { Game, ordinal } from './game.js';
 import { Hud } from './hud.js';
 import { WORLDS, CUPS, worldById, cupById, cupWorlds } from './worlds/index.js';
 import { PLAYER_COLORS } from './util.js';
-import { formatTime, loadBest, loadTrophies, awardTrophy, MEDALS } from './records.js';
+import { formatTime, loadBest, loadTrophies, awardTrophy, MEDALS, loadStars } from './records.js';
+
+// career stars as text: three places, filled for the ones won
+const starStr = (n) => '★'.repeat(n) + '☆'.repeat(3 - n);
+const starTotal = () => { const s = loadStars(); return WORLDS.reduce((a, w) => a + (s[w.id] || 0), 0); };
+const starNote = (st) => (st ? `${starStr(st.n)}${st.improved ? ' new best' : st.best > st.n ? ` (your best: ${starStr(st.best)})` : ''}` : '');
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -196,8 +201,10 @@ function worldTile(w, num) {
   const b = document.createElement('button');
   b.className = 'world-card' + (settings.world === w.id && !champMode ? ' selected' : '');
   const best = loadBest(w.id);
+  const stars = loadStars()[w.id] || 0;
+  const starTag = `<span class="wstars${stars ? '' : ' none'}" title="Your best race result here: 3 stars for a win, 2 for second, 1 for third">${starStr(stars)}</span>`;
   const bestTag = best ? `<span class="wbest" title="Your best time-trial lap"><span class="wbl">Best </span>${formatTime(best.t)}</span>` : '';
-  b.innerHTML = `<span class="thumb" style="background-image:url(img/${w.id}.jpg)">${num ? `<span class="wnum">${num}</span>` : ''}</span><span class="wname">${w.name}${bestTag}</span><span class="wblurb">${w.blurb}</span>`;
+  b.innerHTML = `<span class="thumb" style="background-image:url(img/${w.id}.jpg)">${num ? `<span class="wnum">${num}</span>` : ''}${starTag}</span><span class="wname">${w.name}${bestTag}</span><span class="wblurb">${w.blurb}</span>`;
   if (champMode) b.setAttribute('aria-disabled', 'true');
   b.title = `${w.name}: ${w.blurb}`;
   b.onclick = () => { if (settings.mode === 'champ') return; sound.click(); settings.world = w.id; saveSettings(); renderLobby(); };
@@ -262,13 +269,13 @@ function renderLobby() {
     const count = champIds(cup.id).length;
     const medal = medalOf(trophies, cup.id);
     const soon = cup.worlds && count < cup.worlds.length ? ' More tables coming soon.' : '';
-    $('#worlds-h').innerHTML = '1 · Pick a cup <span class="sub">top three wins a trophy</span>';
+    $('#worlds-h').innerHTML = `1 · Pick a cup <span class="sub">top three wins a trophy</span><span class="star-total">★ ${starTotal()}/${WORLDS.length * 3}</span>`;
     $('#world-blurb').innerHTML = `<b>${cup.name}</b> · ${cup.blurb}. ${count === 1 ? '1 race.' : `${count} races, in this order.`}${soon}`
       + (medal ? ` Your best: <span class="medal-word m-${medal}">${MEDAL_NAME[medal]}</span>` : '');
   } else {
     // the tiles only show names: describe the selected table underneath
     const sel = WORLDS.find((w) => w.id === settings.world) || WORLDS[0];
-    $('#worlds-h').innerHTML = '1 · Pick a table';
+    $('#worlds-h').innerHTML = `1 · Pick a table<span class="star-total">★ ${starTotal()}/${WORLDS.length * 3}</span>`;
     $('#world-blurb').innerHTML = `<b>${sel.name}</b> · ${sel.blurb}`;
   }
   // players
@@ -482,7 +489,7 @@ function showStandings() {
   const w = worldById(champ.ids[champ.index]);
   const next = worldById(champ.ids[champ.index + 1]);
   $('#standings-kicker').textContent = `${cupInfo(champ.cup).name} · race ${champ.index + 1} of ${champ.ids.length}`;
-  $('#standings-sub').textContent = `after ${w.name}`;
+  $('#standings-sub').textContent = `after ${w.name}${game.stars ? ' · ' + starNote(game.stars) : ''}`;
   const list = $('#standings-list');
   list.innerHTML = '';
   champTable().forEach((r, i) => {
@@ -583,6 +590,7 @@ game.onMatchEnd = ({ winner, standings, mode }) => {
       list.appendChild(li);
     });
     $('#results-title').textContent = winner ? `${winner.name} wins!` : 'Finished';
+    const rs = $('#results-stars'); if (rs) { rs.textContent = mode === 'race' && game.stars ? starNote(game.stars) : ''; rs.hidden = !rs.textContent; }
     $('#results-title').style.setProperty('--pc', winner ? winner.color.hex : '#fff');
     hud.visible(false);
     showScreen('results');

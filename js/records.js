@@ -118,8 +118,27 @@ const PACE_KEY = 'tabletop-turbo.pace.v1';
 function paces() {
   try { const r = JSON.parse(localStorage.getItem(PACE_KEY) || 'null'); return r && typeof r === 'object' ? r : {}; } catch (e) { return {}; }
 }
-export function loadPace(worldId) { const v = paces()[worldId]; return typeof v === 'number' && isFinite(v) ? v : 0; }
+export function loadPace(worldId, seed = 0) {
+  const all = paces(), v = all[worldId];
+  if (typeof v === 'number' && isFinite(v)) return v;
+  // a table never raced: start from a share of the average level reached on the others
+  const known = Object.values(all).filter((x) => typeof x === 'number' && isFinite(x));
+  return known.length ? Math.round(seed * known.reduce((a, b) => a + b, 0) / known.length * 100) / 100 : 0;
+}
 export function savePace(worldId, level) {
   const all = paces(); all[worldId] = Math.round(level * 100) / 100;
   try { localStorage.setItem(PACE_KEY, JSON.stringify(all)); return true; } catch (e) { return false; }
+}
+
+// Career stars: the best result per table in a race or championship race with one human driver and at least two
+// rivals (3 = won, 2 = second, 1 = third; against Easy drivers at most 1), in one localStorage entry { <worldId>: n }.
+const STAR_KEY = 'tabletop-turbo.stars.v1';
+export function loadStars() {
+  try { const r = JSON.parse(localStorage.getItem(STAR_KEY) || 'null'); return r && typeof r === 'object' ? r : {}; } catch (e) { return {}; }
+}
+// returns { n, best, improved }
+export function awardStars(worldId, n) {
+  const all = loadStars(), before = all[worldId] || 0;
+  if (n > before) { all[worldId] = n; try { localStorage.setItem(STAR_KEY, JSON.stringify(all)); } catch (e) { /* storage unavailable */ } }
+  return { n, best: Math.max(before, n), improved: n > before };
 }

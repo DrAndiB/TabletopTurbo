@@ -80,12 +80,12 @@ export default {
     {
       const s = 118, len = 6, h = 1.15, p = track.at(s);
       K.ramp(p.x, p.z, p.angle, len, W + 1, h, 0);
-      const m = K.mesh(wedge(len, h, 2.2, W + 1.5), K.std({ color: 0xa67c4c, roughness: 1 }), p.x, 0.02, p.z);
+      const m = K.mesh(wedge(len, h, 2.2, W + 1.5), K.std({ color: 0x8f673a, roughness: 1 }), p.x, 0.02, p.z);
       m.rotation.y = -p.angle;
       // two half-buried logs hold the hump's lip
       for (const side of [-1, 1]) {
         const q = track.place(s + len / 2 + 0.6, side * (W / 2 + 2.2));
-        K.mesh(G.cyl(1.2, 1.3, 5, 10), K.std({ color: 0x6d4a2b, roughness: 0.95 }), q.x, 0.9, q.z, { rx: PI / 2, ry: -q.angle + PI / 2 });
+        K.mesh(G.cyl(1.25, 1.5, 2.6, 10), K.std({ color: 0x6d4a2b, roughness: 0.95 }), q.x, 1.3, q.z);
         K.circle(q.x, q.z, 1.6, 2.4); K.contact(q.x, q.z, 3, 2, 0.35);
       }
     }
@@ -169,6 +169,8 @@ export default {
       K.contact(rx, rz, 8, 6, 0.45, ang);
       K.circle(rx, rz, 4.4, 14);
       A.rex = { tip, jw, x: b.x, z: b.z };
+      // computer drivers keep out of the jaws' reach while they come down
+      A.haz = [{ s: sB, lo: side * 3.6 - 5.2, hi: side * 3.6 + 5.2, busy: (t) => { const u = rexU(t); return u > 1.2 && u < 2.45; } }];
       A.bite = K.circle(b.x, b.z, 2.8, 0);
       // the scuffed target where the jaws come down
       K.mesh(new T.RingGeometry(REX.R - 0.9, REX.R - 0.3, 36), K.std({ color: 0x7a2a1c, roughness: 1, transparent: true, opacity: 0.6 }), b.x, 0.09, b.z, { rx: -PI / 2, cast: false });
@@ -191,8 +193,7 @@ export default {
         P(G.sph(0.3, 6), 0x111111, -13.6, 2.9, 1.0), P(G.sph(0.3, 6), 0x111111, -13.6, 2.9, -1.0),
         ...[0, 1, 2, 3, 4, 5, 6].map((i) => P(G.cone(1.7, 3.6 - Math.abs(i - 3) * 0.55, 4), pl, -6.6 + i * 2.2, 9.9 - Math.abs(i - 3) * 0.55, (i % 2 ? 0.6 : -0.6), { sz: 0.3 })),
       ];
-      const ry = PI; // head to the west, tail to the road
-      toy(body, paint, STEG.x, 0, STEG.z, ry);
+      toy(body, paint, STEG.x, 0, STEG.z, 0); // head to the west (local -x), the tail towards the road
       K.contact(STEG.x, STEG.z, 12, 6, 0.45);
       K.capsule(STEG.x - 13, STEG.z, STEG.x + 8, STEG.z, 4, 10);
       const tail = [
@@ -210,21 +211,24 @@ export default {
       const parts = [
         P(G.sph(1, 16), b1, 0, 10.5, 0, { sx: 5.2, sy: 4.6, sz: 8 }),
         ...[[-3, -5], [3, -5], [-3, 5], [3, 5]].map(([xx, zz]) => P(G.cap(1.5, 6), b2, xx, 4.4, zz)),
-        P(G.cone(2.4, 12, 10), b1, 0, 8.4, -12, { rx: -PI / 2 - 0.25 }),
       ];
-      // the neck: an arc from the shoulders up and over the road, the head on the far side
-      const N = 9;
+      // the neck: an arc from the shoulders up and over the road, the head on the far side; its own mesh, hinged
+      // at the shoulders, so it can sway and dip to the tree
+      const N = 15, neck = [], SH = { y: 12.5, z: 6 };
       for (let i = 0; i <= N; i++) {
-        const k = i / N, zz = 6 + k * 21, yy = 12.5 + Math.sin(k * PI * 0.82) * 9.5 - k * 2.5;
-        parts.push(P(G.sph(1, 10), i % 2 ? b1 : b2, 0, yy, zz, { sx: 2.3 - k * 0.9, sy: 2.3 - k * 0.9, sz: 2.2 }));
+        const k = i / N, zz = k * 21, yy = Math.sin(k * PI * 0.82) * 9.5 - k * 2.5;
+        neck.push(P(G.sph(1, 10), i % 2 ? b1 : b2, 0, yy, zz, { sx: 2.3 - k * 0.9, sy: 2.3 - k * 0.9, sz: 2.2 }));
       }
-      parts.push(P(G.rbox(2.6, 2.2, 4.4, 0.8), b1, 0, 14.6, 29.4), P(G.sph(0.3, 6), 0x111111, 1.25, 15.2, 29.8), P(G.sph(0.3, 6), 0x111111, -1.25, 15.2, 29.8));
+      neck.push(P(G.rbox(3.4, 2.6, 5.4, 1), b1, 0, 2.3, 23.6), P(G.sph(0.5, 6), 0xffffff, 1.3, 3.5, 24.6), P(G.sph(0.5, 6), 0xffffff, -1.3, 3.5, 24.6), P(G.sph(0.26, 6), 0x111111, 1.4, 3.8, 24.9), P(G.sph(0.26, 6), 0x111111, -1.4, 3.8, 24.9), P(G.rbox(2.6, 0.5, 3, 0.2), b2, 0, 0.9, 24.4));
       toy(parts, paint, x, 0, z, 0);
+      A.neck = toy(neck, paint, x, SH.y, z + SH.z, 0);
+      // its tail swishes too
+      A.btail = toy([P(G.cone(2.2, 11, 10), b1, 0, 0, -5.5, { rx: -PI / 2 - 0.2 })], paint, x, 9, z - 7, 0);
       K.contact(x, z, 7, 10, 0.45);
       K.box(x, z, 5, 7.5, 0, 9);
       // the tree it is eating, south of the road
-      toy([P(G.cyl(1, 1.5, 11, 8), 0x7a5632, 0, 5.5, 0), P(G.sph(4.6, 10), 0x2f8f3c, 0, 13, 0, { sy: 0.7 }), P(G.sph(3.2, 10), 0x49b050, 1.5, 15, 1, { sy: 0.7 })], matte, x + 2, 0, z + 31.5);
-      K.circle(x + 2, z + 31.5, 1.6, 12); K.contact(x + 2, z + 31.5, 4, 4, 0.4);
+      toy([P(G.cyl(1, 1.5, 11, 8), 0x7a5632, 0, 5.5, 0), P(G.sph(4.6, 10), 0x2f8f3c, 0, 13, 0, { sy: 0.7 }), P(G.sph(3.2, 10), 0x49b050, 1.5, 15, 1, { sy: 0.7 })], matte, x + 4, 0, z + 36.5, 0, { scale: 0.8 });
+      K.circle(x + 4, z + 36.5, 1.4, 10); K.contact(x + 4, z + 36.5, 3.4, 3.4, 0.4);
     }
 
     // ---------------- the rib cage over the west straight ----------------
@@ -237,6 +241,11 @@ export default {
       }
       const pa = track.at(s0 - 10), pb = track.at(s0 + 10), R0 = (W / 2 + 2.6) * 0.92;
       ribs.push(P(G.cyl(0.8, 0.8, 21, 8), 0xe9dfc6, (pa.x + pb.x) / 2, R0, (pa.z + pb.z) / 2, { rz: PI / 2, ry: -track.at(s0).angle }));
+      // the rest of the skeleton: the skull on the west side of the road, tail vertebrae on the east
+      const pc = track.at(s0), ax = Math.cos(pc.angle), az = Math.sin(pc.angle);
+      for (let i = 0; i < 4; i++) { const d = -(W / 2 + 4 + i * 2); ribs.push(P(G.sph(0.9 - i * 0.12, 6), 0xe9dfc6, pc.x + pc.nx * d, 0.7, pc.z + pc.nz * d)); }
+      const hd = W / 2 + 6.5;
+      ribs.push(P(G.rbox(5.4, 2.6, 3.4, 0.9), 0xf3ecd9, pc.x + pc.nx * hd, 1.3, pc.z + pc.nz * hd, { ry: -pc.angle + PI / 2 }), P(G.sph(0.7, 6), 0x2a2620, pc.x + pc.nx * hd + ax * 1.3, 2.3, pc.z + pc.nz * hd + az * 1.3), P(G.sph(0.7, 6), 0x2a2620, pc.x + pc.nx * hd - ax * 1.3, 2.3, pc.z + pc.nz * hd - az * 1.3));
       toy(ribs, matte);
     }
 
@@ -266,19 +275,19 @@ export default {
         P(G.cone(1.6, 6, 8), t1, -6.4, 3.2, 0, { rz: PI / 2 + 0.2 }),
         P(G.rbox(3.4, 2.6, 2.8, 0.8), t1, 6, 3, 0), P(G.cyl(3.4, 3.4, 0.6, 14), t2, 4.6, 4.4, 0, { rz: PI / 2 - 0.5 }),
         P(G.cone(0.4, 2.6, 6), 0xf7f1e0, 6.8, 5, 1, { rz: -0.9 }), P(G.cone(0.4, 2.6, 6), 0xf7f1e0, 6.8, 5, -1, { rz: -0.9 }), P(G.cone(0.4, 1.3, 6), 0xf7f1e0, 7.9, 3.4, 0, { rz: -0.9 }),
-      ], paint, -100, 0, 21, -1.2);
-      K.circle(-100, 21, 5, 6); K.contact(-100, 21, 7, 5, 0.4, -1.2);
+      ], paint, -95, 0, 27, -1.95);
+      K.circle(-95, 27, 5, 6); K.contact(-95, 27, 7, 5, 0.4, -1.95);
     }
 
     // ---------------- a pterodactyl on a wire stand (east infield) ----------------
     {
       const x = 46, z = 34, pc = 0x8f5fb8;
-      toy([
-        P(G.cyl(3, 3.4, 0.8, 16), 0x3a3a3a, 0, 0.4, 0), P(G.cyl(0.18, 0.18, 12, 6), 0xb8b8b8, 0, 6.5, 0),
-        P(G.sph(1, 10), pc, 0, 13, 0, { sx: 2.6, sy: 1, sz: 1.1 }),
-        P(G.cone(0.7, 4.6, 6), pc, 3.6, 13.3, 0, { rz: -PI / 2 }), P(G.cone(0.5, 3, 5), 0xe07a2a, 0.6, 13.9, 0, { rz: PI / 2 + 0.5 }),
-        P(G.cone(3.2, 9, 3), 0xb48ad6, -0.3, 13, 4.6, { rx: PI / 2, sx: 1, sz: 0.12 }), P(G.cone(3.2, 9, 3), 0xb48ad6, -0.3, 13, -4.6, { rx: -PI / 2, sx: 1, sz: 0.12 }),
-      ], paint, x, 0, z, 0.5);
+      toy([P(G.cyl(3, 3.4, 0.8, 16), 0x3a3a3a, 0, 0.4, 0), P(G.cyl(0.18, 0.18, 12, 6), 0xb8b8b8, 0, 6.5, 0)], paint, x, 0, z, 0.5);
+      A.ptero = toy([
+        P(G.sph(1, 10), pc, 0, 0, 0, { sx: 2.6, sy: 1, sz: 1.1 }),
+        P(G.cone(0.7, 4.6, 6), pc, 3.6, 0.3, 0, { rz: -PI / 2 }), P(G.cone(0.5, 3, 5), 0xe07a2a, 0.6, 0.9, 0, { rz: PI / 2 + 0.5 }),
+        P(G.cone(3.2, 9, 3), 0xb48ad6, -0.3, 0, 4.6, { rx: PI / 2, sx: 1, sz: 0.12 }), P(G.cone(3.2, 9, 3), 0xb48ad6, -0.3, 0, -4.6, { rx: -PI / 2, sx: 1, sz: 0.12 }),
+      ], paint, x, 13, z, 0.5);
       K.circle(x, z, 3.4, 2); K.contact(x, z, 4.5, 4.5, 0.4);
     }
 
@@ -296,6 +305,40 @@ export default {
       }
     }
 
+    // ---------------- more life on the mat: raptors, boulders, footprints, reeds, a lava stream ----------------
+    {
+      const rp = (c1, c2) => [P(G.sph(1, 10), c1, 0, 2.6, 0, { sx: 2.4, sy: 1.1, sz: 1 }), P(G.cone(0.8, 4.4, 6), c1, -3.6, 2.9, 0, { rz: PI / 2 + 0.15 }), P(G.cap(0.5, 1.4), c1, 2, 3.8, 0, { rz: -0.7 }), P(G.rbox(2, 1, 0.9, 0.3), c2, 3.2, 4.7, 0), P(G.cap(0.35, 1.5), c2, 0.2, 1, 0.6), P(G.cap(0.35, 1.5), c2, 0.2, 1, -0.6), P(G.sph(0.16, 5), 0x111111, 3.5, 5, 0.45), P(G.sph(0.16, 5), 0x111111, 3.5, 5, -0.45)];
+      const rg = geoOf(rp(0xc9573a, 0xe8b23a));
+      const pack = [];
+      for (const [x, z, a] of [[30, 6, 0.4], [37, 12, 0.2], [26, 15, 0.7], [-54, 62, -0.3], [-46, 66, -0.1], [-100, -30, 1.2], [70, 52, -2.6], [78, 46, -2.4]]) if (K.offRoad(x, z, 4)) { pack.push({ x, y: 0, z, ry: -a, s: r.range(0.9, 1.15) }); K.circle(x, z, 1.6, 4); K.contact(x, z, 3, 2, 0.35, a); }
+      K.instances(rg, paint, pack);
+      // boulders you cannot drive through
+      const big = [];
+      for (let i = 0, t = 0; i < 9 && t < 300; t++) {
+        const x = r.range(-140, 140), z = r.range(-98, 98);
+        if (!K.offRoad(x, z, 7) || !K.offRoad(x, z - 4, 3) || big.some((b) => Math.hypot(b.x - x, b.z - z) < 30)) continue;
+        const sz = r.range(2.6, 4.2); big.push({ x, y: sz * 0.45, z, ry: r() * 6, rx: r() * 0.5, s: sz, sy: sz * 0.7, color: r.pick(stoneCols) });
+        K.circle(x, z, sz * 0.9, sz * 1.4); K.contact(x, z, sz * 1.4, sz * 1.4, 0.4); i++;
+      }
+      K.instances(G.ico(1), stone, big, { colors: true });
+      // three-toed footprints wandering across the mat
+      const print = geoOf([P(G.box(0.5, 0.02, 1.5), 0x3f7d3a, 0.9, 0, 0, { ry: 0 }), P(G.box(1.6, 0.02, 0.45), 0x3f7d3a, 0.2, 0, 0.55, { ry: -0.5 }), P(G.box(1.6, 0.02, 0.45), 0x3f7d3a, 0.2, 0, -0.55, { ry: 0.5 }), P(G.box(1.7, 0.02, 0.45), 0x3f7d3a, 0.3, 0, 0)]);
+      const prints = [];
+      for (const [x0, z0, a0, n] of [[-60, -90, 0.5, 16], [20, -30, 2.4, 14], [130, 60, 2.9, 14], [-140, 80, -0.6, 10]]) {
+        let x = x0, z = z0, a = a0;
+        for (let i = 0; i < n; i++) { a += r.range(-0.25, 0.25); x += Math.cos(a) * 4.6; z += Math.sin(a) * 4.6; if (Math.abs(x) < 146 && Math.abs(z) < 102 && K.offRoad(x, z, 1)) prints.push({ x: x - Math.sin(a) * (i % 2 ? 1.3 : -1.3), y: 0.04, z: z + Math.cos(a) * (i % 2 ? 1.3 : -1.3), ry: -a, s: 1.25 }); }
+      }
+      K.instances(print, matte, prints, { cast: false });
+      // reeds round the lake
+      const reeds = [];
+      for (let i = 0; i < 34; i++) { const a = r() * 6.28, d = r.range(10.5, 14); const x = -104 + Math.cos(a) * d * 0.85, z = 6 + Math.sin(a) * d * 1.2; if (K.offRoad(x, z, 1.5)) reeds.push({ x, y: 1.6, z, rz: r.range(-0.2, 0.2), rx: r.range(-0.2, 0.2), sy: r.range(0.7, 1.3), color: r.pick([0x4f9a3f, 0x6fb04a, 0x3f8a3a]) }); }
+      K.instances(G.cyl(0.14, 0.2, 3.2, 5), stone, reeds, { colors: true });
+      // lava running down from the volcano into a pool
+      const lava = K.std({ color: 0xff6a1f, emissive: 0xff3a08, emissiveIntensity: 0.9, roughness: 0.35 });
+      for (const [x, z, rad, st, an] of [[100, -68, 4.2, 2.2, 0.5], [93, -62, 5.5, 1.2, 0.3]]) K.spill(x, z, rad, lava, { lump: 0.35, stretch: st, angle: an, y: 0.1, thick: 0.12 });
+      K.surface('slow', { x: 93, z: -62, r: 5 });
+    }
+
     // ---------------- crayons and a toy magnifying glass left on the mat ----------------
     {
       const cr = [];
@@ -304,6 +347,8 @@ export default {
       K.instances(G.cyl(0.55, 0.55, 9, 10), K.plastic(0xffffff, 0.5), cr, { colors: true });
     }
   },
+
+  aiHazards() { return A ? A.haz : null; },
 
   tick(dt, time, game) {
     if (!A || !A.bite) return;
@@ -322,5 +367,12 @@ export default {
     A.rex.tip.rotation.z = p.pitch;
     A.rex.jw.rotation.z = -p.jaw * 0.55;
     A.tail.rotation.y = -tailA(time);
+    // the brachiosaurus chews, sways and now and then dips its head to the tree; its tail swishes
+    const dip = Math.max(0, Math.sin(time * 0.45)) ** 6;
+    A.neck.rotation.x = 0.03 * Math.sin(time * 1.3) + 0.13 * dip + 0.012 * Math.sin(time * 9) * dip;
+    A.neck.rotation.y = 0.05 * Math.sin(time * 0.7);
+    A.btail.rotation.y = 0.3 * Math.sin(time * 1.1);
+    // the T-rex's tail balances its lunge; the pterodactyl rocks on its wire
+    if (A.ptero) { A.ptero.rotation.z = 0.12 * Math.sin(time * 2.2); A.ptero.rotation.x = 0.08 * Math.sin(time * 1.7); }
   },
 };

@@ -114,6 +114,7 @@ body[data-screen="none"] #corner:hover { opacity: 1; }
 .opt-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .opt-row[hidden] { display: none; }
 .opt-row > span { font-weight: 700; }
+.opt-row > .seg { margin-left: auto; }
 .opt-help { font-size: 13px; color: var(--ink-2); margin: -2px 0 2px; }
 .seg { display: inline-flex; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; background: #fff; }
 .seg button { border: 0; background: transparent; padding: 6px 13px; font-weight: 700; font-size: 14px; }
@@ -421,3 +422,10 @@ html:not(.in-app) .app-only { display: none !important; }
   #flash { top: 142px; }
   .flash-item { font-size: 22px; padding: 0 10px; text-align: center; }
 }
+
+/* career stars: on a table's thumbnail, the total beside the heading, a line on the results */
+.world-card .thumb { position: relative; }
+.wstars { position: absolute; right: 3px; bottom: 3px; padding: 0 5px; border-radius: 999px; background: rgba(27, 22, 18, .82); color: var(--yellow); font-size: 12px; line-height: 16px; letter-spacing: 1px; }
+.wstars.none { color: rgba(255, 255, 255, .55); }
+.star-total { float: right; font-family: var(--body); font-size: 14px; font-weight: 800; background: var(--ink); color: var(--yellow); border-radius: 999px; padding: 2px 10px; }
+.star-line { text-align: center; font-weight: 800; font-size: 18px; margin: 6px 0 0; color: var(--ink); letter-spacing: 1px; }

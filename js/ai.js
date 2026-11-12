@@ -93,6 +93,7 @@ export class AIDriver {
     }
     this.avoid += (shift - this.avoid) * (1 - Math.exp(-(shift !== 0 ? 6 : 1.5) * dt));
     off = clamp(off + this.avoid, -half - 1.5, half + 1.5);
+    if (opts.lat != null) off = opts.lat; // the game steers it past a timed hazard (Game.aiDodge)
 
     const tgt = tr.place(s + look, off);
     const want = Math.atan2(tgt.z - car.z, tgt.x - car.x);
@@ -126,6 +127,7 @@ export class AIDriver {
     const pace = Math.min(1, opts.paceMul ?? 1);
     const vCurve = kmax > 1e-4 ? pace * Math.min(Math.sqrt((sp.latGrip * 0.82 * sk.corner) / kmax), (sp.turnRate * 0.78 * sk.corner) / kmax) : 999;
     let vTarget = Math.min(sp.maxSpeed * sk.speed * (opts.speedMul ?? 1), vCurve);
+    if (opts.vCap != null) vTarget = Math.min(vTarget, opts.vCap);
     if (Math.abs(diff) > 0.9) vTarget = Math.min(vTarget, 14);
     if (car.surface === 'slick') vTarget = Math.min(vTarget, 22);
 

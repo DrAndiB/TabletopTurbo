@@ -53,7 +53,7 @@ export default {
     const { THREE: T, TX, r, track } = K;
     const { G, P, toy, table, startLine, edges, scatter, sAt, geoOf } = tmTools(K);
     const L = track.length;
-    A = { prevT: null, L, spots: [], rings: [], tent: [], sN0: 0, sN1: 0 };
+    A = { prevT: null, L, spots: [], rings: [], tent: [], sN0: 0, sN1: 0, haz: [] };
     const paint = K.plastic(0xffffff, 0.5, { vertexColors: true });
     const matte = K.std({ color: 0xffffff, roughness: 0.9, vertexColors: true });
     const plain = K.plastic(0xffffff, 0.45);
@@ -163,8 +163,8 @@ export default {
     {
       const hull = 0x6d4526, trim = 0xf2c230, sail = 0xf5ecd6;
       const parts = [
-        P(G.sph(1, 16), hull, 0, 1.6, 0, { sx: 13, sy: 4.4, sz: 4.6 }), P(G.box(20, 2.2, 8.4), hull, 0, 3.2, 0), P(G.box(20.4, 0.5, 8.8), trim, 0, 4.4, 0),
-        P(G.box(6, 3.4, 8.4), hull, -8, 5.8, 0), P(G.box(6.4, 0.5, 8.8), trim, -8, 7.6, 0), P(G.box(4, 2, 8), hull, 9, 5.2, 0),
+        P(G.sph(1, 16), hull, 0, 1.6, 0, { sx: 13, sy: 4.4, sz: 4.6 }), P(G.box(20, 2.2, 8.4), hull, 0, 3.2, 0), P(G.box(19.6, 0.3, 8), 0xc79a62, 0, 4.4, 0), P(G.box(20.4, 0.9, 0.4), trim, 0, 4.6, 4.3), P(G.box(20.4, 0.9, 0.4), trim, 0, 4.6, -4.3), P(G.cone(4.3, 7, 4), hull, 12.6, 3.3, 0, { rz: -PI / 2, sx: 0.55 }),
+        P(G.box(6, 3.4, 8.4), hull, -8, 5.8, 0), P(G.box(6, 0.3, 8.4), 0xc79a62, -8, 7.6, 0), P(G.box(0.4, 1, 8.8), trim, -11, 8, 0), P(G.box(4, 2, 8), hull, 9, 5.2, 0),
         P(G.cyl(0.3, 0.3, 9, 5), 0x8a5a30, 12, 6.4, 0, { rz: -PI / 2 + 0.35 }),
         ...[[-3, 20], [4.5, 17]].flatMap(([x, h]) => [P(G.cyl(0.45, 0.5, h, 8), 0x8a5a30, x, 4.4 + h / 2, 0), P(G.box(0.3, h * 0.42, 10), sail, x + 0.9, 4.4 + h * 0.62, 0, { rz: 0.06 }), P(G.box(0.3, h * 0.22, 7), sail, x + 0.8, 4.4 + h * 0.96, 0), P(G.box(0.4, 0.4, 10.6), 0x8a5a30, x, 4.4 + h * 0.84, 0)]),
         P(G.box(3.6, 2.4, 0.1), 0x1c1a18, -1.2, 25.6, 0), P(G.sph(0.5, 6), 0xf1ead8, -1.2, 25.8, 0.1),
@@ -172,6 +172,7 @@ export default {
       ];
       const sA = sAt(-124, -24), sB = sAt(-123, 8);
       for (const [s, lat] of [[sA, -3.4], [sB, 3.4]]) { const q = track.place(s, lat); A.spots.push({ x: q.x, z: q.z, s }); }
+      [[sA, -3.4], [sB, 3.4]].forEach(([s, lat], i) => A.haz.push({ s, lo: lat - 6, hi: lat + 6, busy: (t) => { const u = shipU(t); return mod(shipShot(t), 2) === i && u > SHIP.fly - 0.35 && u < SHIP.fly + 0.15; } }));
       // broadside towards the marks: the ship's +z side faces west
       toy(parts, paint, SHIP.x, 0, SHIP.z, -PI / 2);
       K.box(SHIP.x, SHIP.z, 4.6, 12.5, 0, 12); K.contact(SHIP.x, SHIP.z, 7, 14, 0.25);
@@ -202,8 +203,37 @@ export default {
         void sg;
         const m = K.add(new T.Mesh(tg, paint));
         const T0 = { ...b, m }; A.tent.push(T0);
+        A.haz.push(side > 0 ? { s, lo: b.inn - 2.4, hi: 99, busy: (t) => reach(k, t) > 0.25 } : { s, lo: -99, hi: -(b.inn - 2.4), busy: (t) => reach(k, t) > 0.25 });
         T0.mv = K.mover({ type: 'circle', r: 1.9, h: 9 }, (t) => { const q = b.out + (b.inn - b.out) * reach(k, t); return { x: b.x + b.nx * q, z: b.z + b.nz * q, angle: 0 }; });
       });
+    }
+
+    // ---------------- more to see: reefs under the water, a wreck, a sea serpent, rowing boats, gulls ----------------
+    {
+      const reef = K.std({ color: 0x0f6fae, roughness: 0.3, transparent: true, opacity: 0.45 }), sandbank = K.std({ color: 0x9fe6ee, roughness: 0.3, transparent: true, opacity: 0.4 });
+      const coral = [];
+      for (let i = 0; i < 22; i++) {
+        const x = r.range(-136, 136), z = r.range(-100, 100), rad = r.range(7, 15);
+        if (ISLES.some((I) => Math.hypot(I.x - x, I.z - z) < I.r + rad)) continue;
+        K.spill(x, z, rad, i % 3 ? reef : sandbank, { lump: 0.5, stretch: r.range(1, 1.6), angle: r() * 3, y: 0.02, thick: 0.01, n: 24 });
+        if (i % 3) for (let k = 0; k < 7; k++) { const a = r() * 6.28, d = r() * rad * 0.7; coral.push({ x: x + Math.cos(a) * d, y: -0.25, z: z + Math.sin(a) * d, s: r.range(0.5, 1.1), color: r.pick([0xff7a8a, 0xffb347, 0xb46ad8, 0xff5f6d]) }); }
+      }
+      K.instances(G.ico(1), K.std({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.55 }), coral, { colors: true, cast: false });
+      // the wreck in the north-west corner
+      const wx = -128, wz = -92;
+      toy([P(G.sph(1, 14), 0x5a3a22, 0, 0.6, 0, { sx: 10, sy: 3.6, sz: 4, rz: 0.22, rx: 0.35 }), P(G.box(13, 0.3, 5.6), 0x8a5a30, 0.4, 2.6, 0.6, { rz: 0.22, rx: 0.35 }), P(G.cyl(0.4, 0.45, 12, 6), 0x8a5a30, -1, 6.5, 2.4, { rz: 0.5, rx: 0.5 }), P(G.box(0.3, 4.5, 6), 0xd8cfb8, -3.2, 8.4, 4.4, { rz: 0.5, rx: 0.5 }), P(G.ico(1), 0x777066, 7, 0.8, -2, { s: 3 }), P(G.ico(1), 0x8a8478, -8, 0.6, 3, { s: 2.4 })], matte, wx, 0, wz, 0.4);
+      K.circle(wx, wz, 8.5, 10);
+      // the sea serpent in the south-east: humps that rise and fall
+      A.serp = [];
+      const sx0 = 86, sz0 = 94, sc = 0x2fa86a;
+      for (let i = 0; i < 4; i++) { const m = toy([P(G.tor(2.6 - i * 0.3, 0.95 - i * 0.12, PI, 12), i % 2 ? 0x3fc07a : sc, 0, 0, 0)], paint, sx0 + i * 5.6, 0, sz0, 0); A.serp.push(m); }
+      A.serpHead = toy([P(G.cap(1, 3.4), sc, 0, 2.2, 0), P(G.rbox(3, 1.6, 1.8, 0.5), sc, -1.2, 4.6, 0), P(G.sph(0.3, 5), 0xffe14a, -1.8, 5.1, 0.8), P(G.sph(0.3, 5), 0xffe14a, -1.8, 5.1, -0.8), P(G.cone(0.5, 1.6, 4), 0xff7a3a, 0.2, 5.6, 0)], paint, sx0 - 5, 0, sz0, 0);
+      K.capsule(sx0 - 5, sz0, sx0 + 18, sz0, 2.4, 5);
+      // rowing boats moored off the islands, a gull on each
+      const boat = geoOf([P(G.sph(1, 10), 0xc8423a, 0, 0.5, 0, { sx: 3.2, sy: 1.1, sz: 1.5 }), P(G.box(4.4, 0.25, 2), 0xe2c08a, 0, 1.05, 0), P(G.box(0.5, 0.3, 2.2), 0x8a5a30, 0.6, 1.25, 0), P(G.sph(0.5, 6), 0xffffff, -1.2, 1.7, 0, { sx: 1.4 }), P(G.sph(0.3, 5), 0xffffff, -0.6, 2.1, 0), P(G.cone(0.12, 0.5, 4), 0xf59a23, -0.2, 2.1, 0, { rz: -PI / 2 })]);
+      const boats = [];
+      for (const [x, z] of [[-48, 50], [96, 30], [-14, 10], [-44, -52], [112, -84], [50, -6]]) if (K.offRoad(x, z, 4) && !ISLES.some((I) => Math.hypot(I.x - x, I.z - z) < I.r)) { boats.push({ x, y: 0, z, ry: r() * 6, color: r.pick([0xffffff, 0xffd0d0, 0xd0e8ff]) }); K.circle(x, z, 2.6, 3, { bounce: 0.6 }); }
+      K.instances(boat, paint, boats, { colors: true });
     }
 
     // ---------------- flotsam: barrels and crates to shove about, lilos, a shark fin ----------------
@@ -217,6 +247,8 @@ export default {
       scatter(G.tor(2.2, 0.8, PI * 2, 14), plain, 5, [-136, 136, -100, 100], 10, (x, z) => (ISLES.some((I) => Math.hypot(I.x - x, I.z - z) < I.r + 6) || Math.hypot(x - 20, z + 90) < 16 ? null : (K.circle(x, z, 3, 2, { bounce: 0.7 }), { x, y: 0.3, z, rx: PI / 2, color: r.pick([0xe8443a, 0xffe14a, 0xf27aa8, 0x6fc04b]) })));
     }
   },
+
+  aiHazards() { return A ? A.haz : null; },
 
   tick(dt, time, game) {
     if (!A || !A.spots.length) return;
@@ -256,6 +288,8 @@ export default {
       const hot = i === mod(n, 2) && u < SHIP.fly ? 1 : i === nextI ? warm * (0.55 + 0.45 * Math.sin(time * 14)) : 0;
       R.mat.emissiveIntensity = hot * 1.2; R.mat.opacity = 0.35 + 0.6 * hot; R.ring.scale.setScalar(1 + 0.1 * hot);
     });
+    A.serp.forEach((m, i) => { m.position.y = -0.9 + 0.9 * Math.sin(time * 1.6 - i * 0.9); });
+    A.serpHead.position.y = 0.4 * Math.sin(time * 1.6 + 0.9); A.serpHead.rotation.z = 0.1 * Math.sin(time * 1.1);
     // tentacles: lean over the lane as they reach in, sink back beside it
     for (const t of A.tent) {
       const e = reach(t.k, time), q = t.out + (t.inn - t.out) * e;

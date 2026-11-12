@@ -72,7 +72,12 @@ export default {
     const grassT = TX.mottledTextures({ size: 512, a: 0x7fb24e, b: 0x6a9c40, seed: 17, period: 9, bump: 1.2 });
     for (const t of Object.values(grassT)) if (t && t.isTexture) t.repeat.set(9, 6.5);
     const grass = K.std({ map: grassT.map, normalMap: grassT.normalMap, roughness: 1 });
-    const slab = (x0, x1, z0, z1) => K.mesh(new T.BoxGeometry(x1 - x0, 3, z1 - z0), grass, (x0 + x1) / 2, -1.5, (z0 + z1) / 2, { cast: false });
+    // the four slabs share one grass pattern: texture coordinates from the board position, so no seams show
+    const slab = (x0, x1, z0, z1) => {
+      const g = new T.BoxGeometry(x1 - x0, 3, z1 - z0), pos = g.attributes.position, uv = g.attributes.uv, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + cx + 150) / 300, (pos.getZ(i) + cz + 106) / 212);
+      return K.mesh(g, grass, cx, -1.5, cz, { cast: false });
+    };
     slab(-150, 150, -106, MOAT.z0); slab(-150, 150, MOAT.z1, 106); slab(-150, MOAT.x0, MOAT.z0, MOAT.z1); slab(MOAT.x1, 150, MOAT.z0, MOAT.z1);
     K.mesh(new T.PlaneGeometry(MOAT.x1 - MOAT.x0, MOAT.z1 - MOAT.z0), K.phys({ color: 0x2f7fc0, roughness: 0.06, clearcoat: 1 }), 0, MOAT.y, (MOAT.z0 + MOAT.z1) / 2, { rx: -PI / 2, cast: false });
     K.mesh(new T.BoxGeometry(MOAT.x1 - MOAT.x0 + 2, 0.4, MOAT.z1 - MOAT.z0 + 2), K.std({ color: 0x1f4f80, roughness: 0.9 }), 0, -3.2, (MOAT.z0 + MOAT.z1) / 2, { cast: false });
@@ -215,6 +220,10 @@ export default {
       ];
       const sA = sAt(129, 20), sB = sAt(121, -14);
       for (const [s, lat] of [[sA, 2.6], [sB, -2.6]]) { const q = track.place(s, lat); A.spots.push({ x: q.x, z: q.z }); }
+      // computer drivers wait for the knights and steer round the mark the next ball is flying to
+      const sK = sAt(-121, TILT.z);
+      A.haz = [{ s: sK, lo: -99, hi: 99, busy: (t) => { const u = mod(t - TILT.phase, TILT.period); return u > 0.4 && u < 1.55; } },
+        ...[[sA, 2.6], [sB, -2.6]].map(([s, lat], i) => ({ s, lo: lat - 5.4, hi: lat + 5.4, busy: (t) => { const u = catU(t); return mod(catShot(t), 2) === i && u > CAT.fly - 0.35 && u < CAT.fly + 0.15; } }))];
       const aim = Math.atan2((A.spots[0].z + A.spots[1].z) / 2 - CAT.z, (A.spots[0].x + A.spots[1].x) / 2 - CAT.x);
       toy(frame, wood, CAT.x, 0, CAT.z, aim);
       const arm = new T.Mesh(geoOf([P(G.box(10, 0.7, 0.9), 0xb07a45, -2.6, 0, 0), P(G.cyl(1.5, 1.1, 1, 10), 0x5e3c22, -7.4, 0.5, 0), P(G.box(2, 2, 2), 0x6a6a6a, 2.6, -0.9, 0)]), wood);
@@ -231,6 +240,40 @@ export default {
         const dot = K.mesh(new T.CircleGeometry(1.2, 20), mat, sp.x, 0.1, sp.z, { rx: -PI / 2, cast: false });
         A.rings.push({ ring, dot, mat });
       }
+    }
+
+    // ---------------- the countryside: a windmill, wheat fields, peg-doll people, a dragon on its rock ----------------
+    {
+      // windmill (west), its sails turning
+      const wx = -54, wz = -20;
+      toy([P(G.cyl(3.2, 4.4, 13, 10), 0xf2e6c8, 0, 6.5, 0), P(G.cone(4, 4, 10), 0xc8423a, 0, 15, 0), P(G.box(1.6, 3, 0.3), 0x7a5230, 0, 1.5, 4.3), P(G.cyl(0.4, 0.4, 2.4, 6), 0x5e3c22, 0, 12, 4, { rx: PI / 2 })], paint, wx, 0, wz);
+      K.circle(wx, wz, 4.4, 18); K.contact(wx, wz, 6.5, 6.5, 0.45);
+      const sails = [];
+      for (let i = 0; i < 4; i++) sails.push(P(G.box(0.5, 9, 0.2), 0x7a5230, Math.sin(i * PI / 2) * 4.5, Math.cos(i * PI / 2) * 4.5, 0, { rz: -i * PI / 2 }), P(G.box(2.4, 7, 0.1), 0xfaf5ea, Math.sin(i * PI / 2) * 5 + Math.cos(i * PI / 2) * 1.3, Math.cos(i * PI / 2) * 5 - Math.sin(i * PI / 2) * 1.3, 0, { rz: -i * PI / 2 }));
+      A.sails = toy(sails, paint, wx, 12, wz + 5.3);
+      // wheat fields, ploughed in stripes
+      const fc = TX.makeCanvas(128), fg = fc.getContext('2d');
+      for (let i = 0; i < 16; i++) { fg.fillStyle = i % 2 ? '#e2c04a' : '#cfa832'; fg.fillRect(0, i * 8, 128, 8); }
+      const ft = TX.toTexture(fc, { repeat: [1, 2] }), fm = K.std({ map: ft, roughness: 1 });
+      for (const [x, z, w, d, a] of [[42, 72, 34, 20, 0.08], [74, 90, 26, 14, -0.1], [-64, 96, 30, 12, 0.05], [118, -92, 30, 14, 0.3], [-136, -90, 18, 22, 0.1], [-76, -24, 16, 12, 0.2]]) {
+        if (!K.offRoad(x, z, Math.max(w, d) * 0.55 + 2)) continue;
+        K.mesh(new T.BoxGeometry(w, 0.9, d), fm, x, 0.45, z, { ry: a });
+        K.surface('slow', { poly: [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([px, pz]) => [x + px * Math.cos(a) + pz * Math.sin(a), z - px * Math.sin(a) + pz * Math.cos(a)]) });
+      }
+      // peg-doll people: at the tilt yard, in the courtyard, in the village
+      const peg = geoOf([P(G.cyl(0.55, 0.8, 2.2, 8), 0xffffff, 0, 1.1, 0), P(G.sph(0.62, 8), 0xf2c9a0, 0, 2.7, 0)]);
+      const folk = [];
+      const stand = (x, z) => { if (K.offRoad(x, z, 2.5)) folk.push({ x, y: 0, z, color: r.pick([0xd8423a, 0x2f62b8, 0xf2c230, 0x3f9a4a, 0x8a4fd8, 0xfaf5ea, 0x8a5a30]) }); };
+      for (let i = 0; i < 9; i++) { stand(TILT.x1 + 4 + i * 2.2, TILT.z - 7 - (i % 2) * 2); stand(TILT.x1 + 5 + i * 2.2, TILT.z + 7 + (i % 2) * 2); }
+      for (const [x, z] of [[-24, 22], [-18, 12], [20, 26], [26, 14], [-26, -14], [-10, -34], [10, -36], [26, -30], [-24, 2], [14, 24]]) folk.push({ x, y: 0.02, z, color: r.pick([0xd8423a, 0x2f62b8, 0xf2c230, 0x3f9a4a, 0x8a4fd8]) });
+      for (let i = 0; i < 26; i++) stand(r.range(-140, 140), r.range(-100, 100));
+      K.instances(peg, paint, folk.filter((f) => !(f.z > MOAT.z0 - 2 && f.z < MOAT.z1 + 2 && Math.abs(f.x) < 48)), { colors: true });
+      // the dragon on its rock (south-east), wings beating
+      const dx = 120, dz = 86, g1 = 0x3f9a4a, g2 = 0x2c7a3a;
+      toy([P(G.ico(1), 0x8a8478, 0, 2.4, 0, { sx: 9, sy: 3.4, sz: 7 }), P(G.sph(1, 12), g1, 0, 7, 0, { sx: 4.6, sy: 2.6, sz: 2.6 }), P(G.cone(1.6, 8, 8), g1, -6.5, 6.4, 0, { rz: PI / 2 + 0.25 }), P(G.cap(1, 3), g1, 4.2, 9, 0, { rz: -0.7 }), P(G.rbox(3.4, 1.8, 2, 0.5), g1, 6.4, 10.6, 0), P(G.cone(0.35, 1.4, 5), 0xf2c230, 5.4, 12, 0.6), P(G.cone(0.35, 1.4, 5), 0xf2c230, 5.4, 12, -0.6), P(G.sph(0.25, 5), 0xd8423a, 7.2, 11.1, 0.8), P(G.sph(0.25, 5), 0xd8423a, 7.2, 11.1, -0.8),
+        ...[-2, 0, 2].map((x) => P(G.cone(0.6, 1.5, 4), g2, x, 9.8, 0)), P(G.cap(0.7, 1.6), g2, 2, 4.6, 1.6), P(G.cap(0.7, 1.6), g2, 2, 4.6, -1.6), P(G.cap(0.7, 1.6), g2, -2.4, 4.6, 1.6), P(G.cap(0.7, 1.6), g2, -2.4, 4.6, -1.6)], paint, dx, 0, dz, -2.5);
+      K.circle(dx, dz, 7.5, 12); K.contact(dx, dz, 10, 8, 0.4);
+      A.wings = [1, -1].map((sg) => { const m = toy([P(G.cone(4, 9, 3), 0xd8423a, 0, 0, sg * 4.5, { rx: sg * PI / 2, sz: 0.1 })], paint, dx, 9, dz, -2.5); m.userData.sg = sg; return m; });
     }
 
     // ---------------- mud on the north road ----------------
@@ -264,6 +307,8 @@ export default {
       scatter(G.sph(0.4, 6), plain, 120, [-146, 146, -102, 102], 2, (x, z) => ((x > WALL.x0 && x < WALL.x1 && z > WALL.z0 && z < MOAT.z1) ? null : { x, y: 0.25, z, s: r.range(0.7, 1.3), sy: 0.6, color: r.pick([0xffffff, 0xf2c230, 0xe86aa0, 0xd8423a, 0x9a948a, 0xb5ab98]) }), { cast: false });
     }
   },
+
+  aiHazards() { return A ? A.haz : null; },
 
   tick(dt, time, game) {
     if (!A || !A.spots.length) return;
@@ -304,5 +349,7 @@ export default {
       R.mat.emissiveIntensity = hot * 1.6; R.mat.opacity = 0.45 + 0.5 * hot;
       R.ring.scale.setScalar(1 + 0.08 * hot);
     });
+    A.sails.rotation.z = time * 0.9;
+    for (const w of A.wings) w.rotation.x = w.userData.sg * (0.35 + 0.3 * Math.sin(time * 2.4));
   },
 };

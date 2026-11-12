@@ -8,7 +8,7 @@ import { AIDriver } from './ai.js';
 import { makeKit } from './kit.js';
 import { SkidMarks, Particles } from './fx.js';
 import { PLAYER_COLORS, clamp, damp, smoothstep } from './util.js';
-import { loadBest, saveBest, clearBest, encodeGhost, decodeGhost, GHOST_HZ, formatTime, loadPace, savePace } from './records.js';
+import { loadBest, saveBest, clearBest, encodeGhost, decodeGhost, GHOST_HZ, formatTime, loadPace, savePace, awardStars } from './records.js';
 
 const STEP = 1 / 120;
 const GHOST_OPACITY = 0.45;
@@ -18,10 +18,13 @@ const CAM_LEAD = 0.22;
 // min..max track units), the share of the screen the car and that stretch must fit in, and how far the view may
 // widen for it (phone held flat, held upright).
 const SOLO_CAM = { secs: 1.05, min: 16, max: 48, inner: 0.64, widen: 1.3, widenUp: 1.5, trail: 0.8 };
-// "Matched" computer drivers (one human, races and championships): Normal drivers whose pace on each table follows
-// the player's results there. A level is `step` of top speed; after a race the level moves by how far from winning
-// by `aim` seconds the player finished (`perSec` levels per second, at most `maxMove`, `place` more per place lost).
-export const MATCH = { step: 0.015, max: 10, aim: 1, perSec: 1 / 3, maxMove: 2, place: 0.3 };
+// "Matched" computer drivers (one human, races and championships): drivers that corner like Hard ones and whose
+// pace on each table follows the player's results there. Level 0 has a Normal driver's top speed, a level is `step`
+// of it. After a race the level moves by how far from winning by `aim` seconds the player finished (`perSec` levels
+// per second, at most `maxMove`, `place` more per place lost). A table never raced starts at `seed` of the average
+// level of the tables that have been. During a race, drivers behind the player get up to `push` more speed, growing
+// with the gap (full at `pushFull` track units), so a lead has to be defended.
+export const MATCH = { step: 0.015, min: -10, max: 14, aim: 1, perSec: 0.6, maxMove: 4, place: 0.3, seed: 0.8, base: 0.9 / 0.985, push: 0.1, pushFull: 70 };
 
 // Catch-up (rubber-banding). Humans behind the leader get more top speed (and a bit more pull),
 // growing with the gap; CPU cars ahead of the best-placed human ease off (straights and corners);
@@ -135,12 +138,14 @@ export class Game {
     this.mode = mode;
     this.pointsToWin = pointsToWin;
     this.laps = laps;
+    this.skillSetting = skill;
+    this.stars = null;
     // 'auto' = Matched: Normal drivers, their pace on this table set from the player's results here
     this.matched = skill === 'auto' && mode === 'race' && drivers.filter((d) => d.type !== 'cpu').length === 1;
-    if (skill === 'auto') skill = 'normal';
+    if (skill === 'auto') skill = this.matched ? 'hard' : 'normal';
     this.skill = skill;
-    this.paceLevel = this.matched ? loadPace(this.def.id) : 0;
-    this.paceMul = 1 + MATCH.step * this.paceLevel;
+    this.paceLevel = this.matched ? loadPace(this.def.id, MATCH.seed) : 0;
+    this.paceMul = this.matched ? MATCH.base * (1 + MATCH.step * this.paceLevel) : 1;
     this.catchup = CATCHUP[catchup] ? catchup : 'off';
     if (mode === 'tt') drivers = drivers.slice(0, 1);
     const vtype = this.def.vehicle || 'sports';
@@ -305,7 +310,7 @@ export class Game {
         if (!e.cooldown) e.cooldown = e.ai || new AIDriver(c, this.track, this.physics, 'easy', 90 + e.colorIndex);
         e.cooldown.update(dt, allCars, { speedMul: 0.7 });
       } else if (e.ai) {
-        e.ai.update(dt, allCars, { speedMul: e.cu * this.boostTop(c), paceMul: e.cu });
+        e.ai.update(dt, allCars, { speedMul: e.cu * this.boostTop(c), paceMul: e.cu, ...this.aiDodge(e) });
       } else {
         const ctl = this.input.read(e.driver);
         c.throttle = ctl.throttle; c.brake = ctl.brake; c.steer = ctl.steer;
@@ -401,6 +406,28 @@ export class Game {
     }
   }
 
+  // Timed hazards a world lists in aiHazards() (a stretch of road [lo, hi] across, at arc length s, busy(t) while
+  // it would hit a car): a computer driver that would arrive while one is busy steers for the free side, or slows
+  // to arrive later when there is none (and counts as waiting, not stuck).
+  aiDodge(e) {
+    const list = this.def.aiHazards && this.def.aiHazards();
+    if (!list || !list.length) return null;
+    const c = e.car, tr = this.track, L = tr.length, v = Math.max(c.fwdSpeed, 12), t = this.time;
+    const half = tr.w[e.trackI] / 2 - c.spec.r - 0.4;
+    let out = null;
+    for (const h of list) {
+      const d = (((h.s - e.trackS) % L) + L) % L;
+      if (d > 46 || d < 1.5) continue;
+      const ta = d / v;
+      if (!(h.busy(t + ta) || h.busy(t + ta + 0.3) || h.busy(t + Math.max(0, ta - 0.2)))) continue;
+      const left = h.lo - 1.3 + half, right = half - h.hi - 1.3;
+      out = out || {};
+      if (Math.max(left, right) >= 0.5) out.lat = right >= left ? (h.hi + 1.3 + half) / 2 : (h.lo - 1.3 - half) / 2;
+      else { out.vCap = Math.min(out.vCap ?? Infinity, Math.sqrt(2 * 40 * Math.max(0, d - 7))); e.holdT = 0.25; }
+    }
+    return out;
+  }
+
   // ---------- arcade layer ----------
   updateCatchUp(dt) {
     const lvl = this.mode === 'tt' || this.state === 'attract' ? null : CATCHUP[this.catchup];
@@ -422,7 +449,10 @@ export class Game {
           else t = 1 + lvl.cpuPush * smoothstep(full * 0.7, full * 1.8, leadP - e.progress);
         }
       }
-      if (!e.human) t *= this.paceMul || 1;
+      if (!e.human) {
+        t *= this.paceMul || 1;
+        if (this.matched && humans && !e.out && !e.finished && this.state !== 'countdown') t *= 1 + MATCH.push * smoothstep(8, MATCH.pushFull, bestH - e.progress);
+      }
       e.cuTarget = t;
       e.cu += (t - e.cu) * k;
     }
@@ -834,7 +864,7 @@ export class Game {
     const other = standings[i === 0 ? 1 : 0];
     const m = i === 0 ? (other.finished ? other.finishTime - me.finishTime : 8) : -(me.finished ? me.finishTime - other.finishTime : 10);
     const move = clamp((m - MATCH.aim) * MATCH.perSec, -MATCH.maxMove, MATCH.maxMove) - MATCH.place * Math.max(0, i - 1);
-    this.paceLevel = clamp(this.paceLevel + move, -MATCH.max, MATCH.max);
+    this.paceLevel = clamp(this.paceLevel + move, MATCH.min, MATCH.max);
     savePace(this.def.id, this.paceLevel);
   }
 
@@ -848,6 +878,11 @@ export class Game {
       : [...this.finishOrder];
     this.hud.message('', null);
     if (this.matched) this.learnPace(standings);
+    // career stars for the one human driver of a race against at least two rivals
+    if (this.mode === 'race' && standings.length >= 3 && standings.filter((e) => e.human).length === 1) {
+      const i = standings.findIndex((e) => e.human), n = Math.max(0, 3 - i);
+      this.stars = awardStars(this.def.id, this.skillSetting === 'easy' ? Math.min(n, 1) : n);
+    }
     if (this.onMatchEnd) this.onMatchEnd({ winner, standings, mode: this.mode });
   }
 

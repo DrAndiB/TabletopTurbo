@@ -9,11 +9,24 @@ far behind on others.
   road about a second ahead, compensates the camera's trailing lag, and widens by up to 1.5x upright (1.3x flat).
   Measured with a CPU at the wheel on four tables: the road 0.9 s ahead is on screen 95-100 % of the time (before:
   6-26 %). Head-to-head and shared-screen races are unchanged.
-- **Done: Matched computer drivers** (`MATCH` in game.js, levels in records.js). A fourth CPU setting and the new
-  default: Normal drivers whose top-speed level per table moves after every race towards the player winning by 1 s.
-  Only with one human, in races and championships. An existing saved setting (Normal) is kept, so it has to be picked.
-- **Next, agreed in the brainstorm:** hazard-aware CPU drivers (knights, robot arms, lasers); career with stars per
-  table and medal times in time trial; warning markers for hazards outside the view.
+- **Done: Matched computer drivers** (`MATCH` in game.js, levels in records.js). A fourth setting for the rivals and
+  the new default: drivers that corner like Hard ones, whose top-speed level per table moves after every race
+  towards the player winning by 1 s (up to 4 levels of 1.5 % a race). A table never raced starts from the average of
+  the others; during a race, drivers behind the player get up to 10 % more speed. Only with one human, in races and
+  championships. First version (Normal drivers, 2 levels a race) was far too slow for Andreas: reworked the same day.
+- **Done: hazard-aware computer drivers** (`aiDodge` in game.js, `aiHazards()` per world): they steer for the free
+  side of a timed hazard or slow down to arrive after it. Listed so far on the Time Machine Cup tables only (T-rex,
+  knights, catapult, cannon, tentacles, lasers, robot arms); on Robo Rumble they lap about 15 % faster for it.
+- **Done: career stars** (records.js, main.js): best race result per table with one human and at least two rivals
+  (3 won, 2 second, 1 third; at most 1 against Easy), shown on the table cards, as a total, and after a race.
+- **Done: visual pass over the Time Machine Cup.** Dino Dash: stegosaurus the right way round, the brachiosaurus's
+  neck sways and dips and its tail swishes, a pterodactyl rocking on its wire, the skeleton's skull and tail,
+  raptors, boulders, footprints, reeds, lava. Castle Siege: windmill with turning sails, wheat fields, peg-doll
+  people, a dragon beating its wings, seamless grass. Pirate Cove: a galleon with a deck and bow, reefs, a wreck, a
+  sea serpent, rowing boats. Robo Rumble: dark roofs with roof lights, street lamps, an energy core, a giant robot,
+  a radar dish.
+- **Still open:** medal times in time trial; warning markers for hazards outside the view; hazard lists for the
+  older cups (doors, trains, trapdoors already have their own driver logic there).
 - **Idea bank from the same brainstorm:** challenges per table, a daily race, unlockable paint jobs, named rivals,
   elimination and checkpoint modes, tilt or slider steering, a left-handed layout, haptics, resuming a championship,
   a 30 fps battery saver, cloud save.
