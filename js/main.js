@@ -27,7 +27,7 @@ const defaults = {
   cup: CUPS[0].id,
   points: 5,
   laps: 3,
-  skill: 'normal',
+  skill: 'auto', // easy | normal | hard | auto (Matched: pace per table follows the player's results)
   catchup: 'mild',
   quality: 'auto',
   fps: 60, // 60: at most ~60 fps, evenly paced on high-refresh screens; 'max': every refresh

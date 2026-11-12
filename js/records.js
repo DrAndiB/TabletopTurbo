@@ -111,3 +111,15 @@ export function decodeGhost(g) {
     return out;
   } catch (e) { return null; }
 }
+
+// "Matched" computer drivers: the pace level they have reached on each table (see MATCH in game.js), kept in one
+// localStorage entry { <worldId>: level }.
+const PACE_KEY = 'tabletop-turbo.pace.v1';
+function paces() {
+  try { const r = JSON.parse(localStorage.getItem(PACE_KEY) || 'null'); return r && typeof r === 'object' ? r : {}; } catch (e) { return {}; }
+}
+export function loadPace(worldId) { const v = paces()[worldId]; return typeof v === 'number' && isFinite(v) ? v : 0; }
+export function savePace(worldId, level) {
+  const all = paces(); all[worldId] = Math.round(level * 100) / 100;
+  try { localStorage.setItem(PACE_KEY, JSON.stringify(all)); return true; } catch (e) { return false; }
+}

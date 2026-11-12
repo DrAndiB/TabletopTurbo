@@ -24,6 +24,9 @@ up to four players on one keyboard, plus gamepads and computer drivers.
   recorded background sounds for every world (the Drift, Mayhem, Pharaoh and Time Machine Cup tables still use synthesised music and backgrounds).
 - **Modes:** head-to-head (the screen follows the leader; drop off its edge and you're out), lap races,
   cup championships with gold/silver/bronze trophies, and time trial against your own ghost car.
+- **Playing alone:** with one human driver the camera looks about a second down the road and widens when the road
+  runs across the short side of the screen (a phone held upright). "Matched" computer drivers (the default) are
+  Normal drivers whose pace on each table follows your results there, so every table ends up a close race.
 - **Arcade touches:** adjustable catch-up, slipstream, crashes that shove and spin, turbo starts,
   moving hazards in every world, a mini map, and no shortcuts across the infield.
 

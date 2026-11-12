@@ -8,12 +8,20 @@ import { AIDriver } from './ai.js';
 import { makeKit } from './kit.js';
 import { SkidMarks, Particles } from './fx.js';
 import { PLAYER_COLORS, clamp, damp, smoothstep } from './util.js';
-import { loadBest, saveBest, clearBest, encodeGhost, decodeGhost, GHOST_HZ, formatTime } from './records.js';
+import { loadBest, saveBest, clearBest, encodeGhost, decodeGhost, GHOST_HZ, formatTime, loadPace, savePace } from './records.js';
 
 const STEP = 1 / 120;
 const GHOST_OPACITY = 0.45;
 // seconds of the followed car's sideways speed the camera looks ahead on a phone held upright (updateCamera)
 const CAM_LEAD = 0.22;
+// The camera for one human driver (soloFocus): how far down the road it looks (seconds at the car's speed, within
+// min..max track units), the share of the screen the car and that stretch must fit in, and how far the view may
+// widen for it (phone held flat, held upright).
+const SOLO_CAM = { secs: 1.05, min: 16, max: 48, inner: 0.64, widen: 1.3, widenUp: 1.5, trail: 0.8 };
+// "Matched" computer drivers (one human, races and championships): Normal drivers whose pace on each table follows
+// the player's results there. A level is `step` of top speed; after a race the level moves by how far from winning
+// by `aim` seconds the player finished (`perSec` levels per second, at most `maxMove`, `place` more per place lost).
+export const MATCH = { step: 0.015, max: 10, aim: 1, perSec: 1 / 3, maxMove: 2, place: 0.3 };
 
 // Catch-up (rubber-banding). Humans behind the leader get more top speed (and a bit more pull),
 // growing with the gap; CPU cars ahead of the best-placed human ease off (straights and corners);
@@ -127,7 +135,12 @@ export class Game {
     this.mode = mode;
     this.pointsToWin = pointsToWin;
     this.laps = laps;
+    // 'auto' = Matched: Normal drivers, their pace on this table set from the player's results here
+    this.matched = skill === 'auto' && mode === 'race' && drivers.filter((d) => d.type !== 'cpu').length === 1;
+    if (skill === 'auto') skill = 'normal';
     this.skill = skill;
+    this.paceLevel = this.matched ? loadPace(this.def.id) : 0;
+    this.paceMul = 1 + MATCH.step * this.paceLevel;
     this.catchup = CATCHUP[catchup] ? catchup : 'off';
     if (mode === 'tt') drivers = drivers.slice(0, 1);
     const vtype = this.def.vehicle || 'sports';
@@ -409,6 +422,7 @@ export class Game {
           else t = 1 + lvl.cpuPush * smoothstep(full * 0.7, full * 1.8, leadP - e.progress);
         }
       }
+      if (!e.human) t *= this.paceMul || 1;
       e.cuTarget = t;
       e.cu += (t - e.cu) * k;
     }
@@ -812,6 +826,18 @@ export class Game {
     this.raceDoneT = STEP / 2;
   }
 
+  // Matched drivers: after a race, move this table's pace level towards the player winning by MATCH.aim seconds
+  learnPace(standings) {
+    const i = standings.findIndex((e) => e.human), me = standings[i];
+    if (!me || standings.length < 2) return;
+    // seconds ahead of the next car (won) or behind the winner (lost); a car still out on the track counts as far
+    const other = standings[i === 0 ? 1 : 0];
+    const m = i === 0 ? (other.finished ? other.finishTime - me.finishTime : 8) : -(me.finished ? me.finishTime - other.finishTime : 10);
+    const move = clamp((m - MATCH.aim) * MATCH.perSec, -MATCH.maxMove, MATCH.maxMove) - MATCH.place * Math.max(0, i - 1);
+    this.paceLevel = clamp(this.paceLevel + move, -MATCH.max, MATCH.max);
+    savePace(this.def.id, this.paceLevel);
+  }
+
   endMatch(winner) {
     this.state = 'matchEnd';
     this.sound.silenceEngines();
@@ -821,6 +847,7 @@ export class Game {
       ? [...this.cars].sort((a, b) => b.points - a.points)
       : [...this.finishOrder];
     this.hud.message('', null);
+    if (this.matched) this.learnPace(standings);
     if (this.onMatchEnd) this.onMatchEnd({ winner, standings, mode: this.mode });
   }
 
@@ -961,6 +988,7 @@ export class Game {
     const humans = this.cars.filter((e) => e.human && !e.finished);
     const list = this.finishWatch ? this.finishWatchList() : humans.length ? humans : this.cars.filter((e) => e.human);
     const focus = list.length ? list : [this.leader(this.cars)];
+    if (focus.length === 1 && focus[0] && focus[0].human && !this.finishWatch && !this.noSoloCam) return this.soloFocus(focus[0], baseW, asp);
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, sx = 0, sz = 0;
     for (const e of focus) {
       const a = tr.at(e.trackS + 10);
@@ -979,6 +1007,24 @@ export class Game {
     return { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2, w: clamp(spread * 1.25 + 20, baseW * 0.9, 150), vx };
   }
 
+  // One human driver (race, championship, time trial): the view belongs to that car, so it looks down the road.
+  // The car and two points on the road ahead of it (about a second away at its speed) are kept inside the middle
+  // of the screen: the car sits towards the edge it is coming from, and the view widens when the road ahead runs
+  // across the short side of the screen (sideways on a phone held upright, up or down when it is held flat).
+  soloFocus(e, baseW, asp) {
+    const tr = this.track, c = e.car, S = SOLO_CAM;
+    const look = clamp(Math.hypot(c.vx, c.vz) * S.secs, S.min, S.max);
+    let minX = c.x, maxX = c.x, minZ = c.z, maxZ = c.z;
+    for (const k of [0.5, 1]) {
+      const a = tr.at(e.trackS + look * k);
+      minX = Math.min(minX, a.x); maxX = Math.max(maxX, a.x); minZ = Math.min(minZ, a.z); maxZ = Math.max(maxZ, a.z);
+    }
+    // ground shown from top to bottom of the screen, per unit of width
+    const depth = 1 / (asp * Math.sin(this.R.elevation || 1.08));
+    const need = Math.max((maxX - minX) / S.inner, (maxZ - minZ) / (S.inner * depth));
+    return { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2, w: clamp(need, baseW, baseW * (asp < 1 ? S.widenUp : S.widen)), vx: 0, solo: c };
+  }
+
   // the unfinished cars nearest the line (the next to arrive and any close behind it), or the last finisher
   finishWatchList() {
     const left = this.cars.filter((e) => !e.finished && !e.out).sort((a, b) => b.progress - a.progress);
@@ -994,8 +1040,11 @@ export class Game {
     // only, races and time trials; head-to-head keeps its framing, which decides who drops out).
     const upright = clamp((1 - this.R.camera.aspect) / 0.45, 0, 1);
     this.camLead = damp(this.camLead, (f.vx || 0) * CAM_LEAD * upright, 4, dt);
-    this.camX = damp(this.camX, f.x + this.camLead, rate, dt);
-    this.camZ = damp(this.camZ, f.z, rate, dt);
+    // a camera that eases towards a moving point trails it by speed / rate: the solo view adds most of that back,
+    // so the car really sits where soloFocus frames it
+    const ff = f.solo && this.state !== 'countdown' ? SOLO_CAM.trail / rate : 0;
+    this.camX = damp(this.camX, f.x + this.camLead + (ff ? f.solo.vx * ff : 0), rate, dt);
+    this.camZ = damp(this.camZ, f.z + (ff ? f.solo.vz * ff : 0), rate, dt);
     this.camW = damp(this.camW, f.w, 2, dt);
     this.R.placeCamera(this.camX, this.camZ, this.camW);
   }

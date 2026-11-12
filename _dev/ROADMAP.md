@@ -1,5 +1,23 @@
 # Tabletop Turbo: roadmap and idea bank
 
+## Version 1.8 (in progress, November 2026): playing alone on a phone
+
+Andreas plays mostly alone, on a phone, mostly championships (12 November 2026). His two complaints: hazards that
+come into view too late to avoid (worst in portrait), and computer drivers that are hard to beat on some tables and
+far behind on others.
+- **Done: solo camera** (`soloFocus`, `SOLO_CAM` in game.js). With one human driver the view frames the car and the
+  road about a second ahead, compensates the camera's trailing lag, and widens by up to 1.5x upright (1.3x flat).
+  Measured with a CPU at the wheel on four tables: the road 0.9 s ahead is on screen 95-100 % of the time (before:
+  6-26 %). Head-to-head and shared-screen races are unchanged.
+- **Done: Matched computer drivers** (`MATCH` in game.js, levels in records.js). A fourth CPU setting and the new
+  default: Normal drivers whose top-speed level per table moves after every race towards the player winning by 1 s.
+  Only with one human, in races and championships. An existing saved setting (Normal) is kept, so it has to be picked.
+- **Next, agreed in the brainstorm:** hazard-aware CPU drivers (knights, robot arms, lasers); career with stars per
+  table and medal times in time trial; warning markers for hazards outside the view.
+- **Idea bank from the same brainstorm:** challenges per table, a daily race, unlockable paint jobs, named rivals,
+  elimination and checkpoint modes, tilt or slider steering, a left-handed layout, haptics, resuming a championship,
+  a 30 fps battery saver, cloud save.
+
 ## Version 1.7 (built November 2026): the Time Machine Cup
 
 Andreas asked for "four more tracks, surprise me" (12 November 2026). Four toy sets from four ages, easy to expert,
